@@ -1,0 +1,71 @@
+/dts-v1/;
+
+/ {
+        description = "U-boot FIT image for HiFive Unleashed";
+        #address-cells = <2>;
+
+        images {
+                bbl {
+                        description = "BBL/SBI/riscv-pk";
+                        data = /incbin/("../work/bbl.bin");
+                        type = "kernel";
+                        arch = "riscv";
+                        os = "linux";
+                        load = <0x80000000>;
+                        entry = <0x80000000>;
+                        compression = "none";
+                        hash-1 {
+                                algo = "sha256";
+                        };
+                };
+
+                kernel {
+                        description = "Linux kernel";
+                        data = /incbin/("../work/vmlinux.bin");
+                        type = "kernel";
+                        arch = "riscv";
+                        os = "linux";
+                        load = <0x80200000>;
+                        compression = "none";
+                        hash-1 {
+                                algo = "sha256";
+                        };
+                };
+
+                ramdisk {
+                        description = "buildroot initramfs";
+                        data = /incbin/("../work/initramfs.cpio.gz");
+                        type = "ramdisk";
+                        arch = "riscv";
+                        os = "linux";
+                        load = <0x82000000>;
+                        compression = "gzip";
+                        hash-1 {
+                                algo = "sha256";
+                        };
+                };
+
+                fdt {
+                        data = /incbin/("../work/HiFive_U-Boot/arch/riscv/dts/hifive_u540.dtb");
+                        type = "flat_dt";
+                        arch = "riscv";
+                        load = <0x81f00000>;
+                        compression = "none";
+                        hash-1 {
+                                algo = "sha256";
+                        };
+                };
+        };
+
+        configurations {
+                default = "config-1";
+
+                config-1 {
+                        description = "HiFive Unleashed with BBL";
+                        kernel = "bbl";
+                        fdt = "fdt";
+                        loadables = "kernel", "ramdisk";
+                };
+        };
+};
+

@@ -1,0 +1,58 @@
+# This is the sample uEnv.txt file for HiFive Unleashed U-boot
+# The current convention (SUBJECT TO CHANGE) is that this file
+# will be loaded from the first MSDOS(fat) GPT partition on the
+# MMC card. 
+
+# for debugging boot
+bootargs=video=640x480 console=ttySI0 root=/dev/mmcblk0p2 rootwait
+# for normal boot
+#bootargs=video=640x480 root=/dev/mmcblk0p2 rootwait
+
+# To boot from partition 2 of an NVME drive (with a PCI iofpga,
+# such as the MicroSemi expansion board, uncomment below:
+
+#bootargs=debug console=tty0 console=ttySIF0 root=/dev/nvme0n1p2
+
+# to boot an initramfs (buildroot or debian/etc) use this
+#setupchosen=run setupvml; run setupird
+
+# to boot with straight to the root= parition, uncomment below
+# so we do not set the ramdisk pointers
+#setupchosen=run setupvml
+setupchosen=run setupird
+
+# The FIT file to boot from
+fitfile=hifiveu.fit
+
+# The rest of this is mostly of interest to u-boot developers
+# below much match what's in FIT (ugha)
+bbladdr=80000000
+fdtaddr=81f00000
+vmladdr=80200000
+irdaddr=82000000
+# oh the hack.. use a large size.. ugh
+irdsize=01000000
+vmlsize=00800000
+newfdt=f0000000
+# Use the FDT in the FIT image..
+#setupfdt1=fdt addr ${fdtaddr}; fdt resize; fdt chosen; fdt move ${fdtaddr} ${newfdt}
+
+#use FDT that came with uboot
+#setupfdt1=fdt addr ${newfdt}; fdt resize; fdt chosen; fdt move ${fdtaddr} ${newfdt}
+
+#Use fit image, but don't call fdt move  (TODO: understand later)
+setupfdt1=fdt addr ${newfdt}; fdt resize; fdt chosen
+
+setupird=setexpr irdend ${irdaddr} + ${irdsize}; fdt set /chosen linux,initrd-start <0x0 0x${irdaddr}>; fdt set /chosen linux,initrd-end <0x0 0x${irdend}>
+setupvml=setexpr vmlend ${vmladdr} + ${vmlsize}; fdt set /chosen riscv,kernel-start <0x0 0x${vmladdr}>; fdt set /chosen riscv,kernel-end <0x0 0x${vmlend}>
+
+#setupfdt2=fdt set /chosen bootargs ${bootargs}; fdt print /chosen
+setupfdt2=fdt print /chosen; fdt set /chosen bootargs "${bootargs}"; fdt set /firmware uboot,ver ${ver}; fdt print /chosen
+
+bootwait=setenv _delay ${bootdelay}; echo ${_delay}; while test ${_delay} > 0; do sleep 1; setexpr _delay ${_delay} - 1; echo ${_delay}; done
+
+# this assumes ${fileaddr} is already set!!
+boot2=fatload mmc 0:1 ${fileaddr} ${fitfile}; bootm start ${fileaddr}; run setupfdt1; run setupchosen; run setupfdt2; bootm loados ${fileaddr}; echo "Booting kernel in"; run bootwait; go 80000000
+
+# if you want to network boot, for testing, uncomment the following:
+#boot2=dhcp; env import -t ${fileaddr} ${filesize}; run boot2

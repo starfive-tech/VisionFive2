@@ -1,0 +1,31 @@
+
+                          SSS
+                       SSSSSSSSSS
+                    SSSSSSSSSSSSSSSS
+                  SSSSSSSSS  SSSSSSSSSSS
+               SSSSSSSSS        SSSSSSSS
+            SSSSSSSSS       SS      SSSS
+          SSSSSSSSS         SSSSS     SS
+        SSSSSSSS            SSSSSSSSS
+       SSSSSS        SS       SSSSSSSSSS
+       SSSSSS        SSSSS       SSSSSSSSS
+       SSSSSSS       SSSSSSSS       SSSSSS        
+        SSSSSSSS      SSSSSSSSSS       SSS
+         SSSSSSSSES       SSSSSSSSSS
+           SSSSSSSSSSS       SSSSSSSSSS
+               SSSSSSSSSS       SSSSSSSSSS
+        SSSS      SSSSSSSSSSS       SSSSSSS
+        SSSSSSS       SSSSSSS         SSSSSS
+         SSSSSSSSSS       SSS         SSSSSS       
+           SSSSSSSSSSS              SSSSSSS
+               SSSSSSS            SSSSSSSS
+         SSS      SSSS         SSSSSSSSS
+         SSSSSS     SS      SSSSSSSSSS
+         SSSSSSSSES       SSSSSSSSS
+           SSSSSSSSSSS SSSSSSSSS
+               SSSSSSSSSSSSSSS
+                   SSSSSSSS
+                      SS
+
+              StarFive RISC-V Core IP
+			  

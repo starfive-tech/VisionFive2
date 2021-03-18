@@ -1,0 +1,18 @@
+fitfile=image.fit
+# below much match what's in FIT (ugha)
+bbladdr=80000000
+fdtaddr=81f00000
+vmladdr=80200000
+irdaddr=82000000
+# oh the hack.. use a large size.. ugh
+irdsize=01000000
+vmlsize=00800000
+newfdt=f0000000
+setup1=fdt addr ${fdtaddr}; fdt resize; fdt set /chosen linux,initrd-start <0x0 0x${irdaddr}>; fdt set /chosen riscv,kernel-start <0x0 0x${vmladdr}>; fdt move ${fdtaddr} ${newfdt}
+setup2=setexpr vmlend ${vmladdr} + ${vmlsize}; setexpr irdend ${irdaddr} + ${irdsize}
+setup3=fdt set /chosen linux,initrd-end <0x0 0x${irdend}>; fdt set /chosen riscv,kernel-end <0x0 0x${vmlend}>
+#setup4=fdt set /chosen bootargs ${bootargs}; fdt print /chosen
+setup4=fdt print /chosen; fdt set /firmware uboot,ver ${ver}
+boot2=dhcp ${fitfile}; bootm start; run setup1; run setup2; run setup3; run setup4; bootm loados; echo sleep 2; sleep 2; go 80000000
+#boot2=run loadbbl; run loadfdt; run setup1; run setup3; run setup4; go 80000000
+
