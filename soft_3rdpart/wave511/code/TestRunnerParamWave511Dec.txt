@@ -1,0 +1,20 @@
+default=0                        #Default Option test:
+                                 #default=0   off
+                                 #default=1   on
+                                 #-99 all random(be carefull of render)
+                                 
+secondary-axi=0                  #0 ~ 7,                                         -99(random)
+stream-endian=31                 #16 ~ 31                                        -99(random)
+frame-endian=31                  #16 ~ 31                                        -99(random)
+render=0                         #0:no_display, 1:display                        -99(random)
+bsmode=2                         #0:interrupt, 1:reserved, 2:pic_end             -99(random)
+cbcr_interleave_mode=0           #0:planar, 1:nv12, 2:nv21                       -99(random)
+enable-thumbnail=0               #0:disable, 1:enable                            -99(random)
+
+disable_wtl=0                    #0:enable wtl, 1:disable wtl                    -99(random)
+wtl-format=0                     #0:420, 5:16BIT_MSB, 6:16BIT_LSB, 7:32BIT_MSB, 8:32BIT_LSB  -99(random)
+output_hw=0                      #0:BWB, 1:AFBCE, 2:SCALER
+bwopt=0                          #1: enable bandwith optimazation when WTL on.
+
+
+

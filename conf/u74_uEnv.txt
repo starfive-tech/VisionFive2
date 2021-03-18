@@ -1,0 +1,44 @@
+# This is the sample uEnv.txt file for HiFive Unleashed U-boot
+# The current convention (SUBJECT TO CHANGE) is that this file
+# will be loaded from the first MSDOS(fat) GPT partition on the
+# MMC card. 
+
+# for debugging boot
+#bootargs=video=640x480 console=ttySI0 root=/dev/mmcblk0p2 rootwait
+bootargs=earlyprintk console=ttyS0,115200 debug rootwait stmmaceth=chain_mode:1 root=/dev/mmcblk0p3 
+
+
+# The FIT file to boot from
+fitfile=hifiveu.fit
+
+# The rest of this is mostly of interest to u-boot developers
+# below much match what's in FIT (ugha)
+bbladdr=80700000
+fdtaddr=86000000
+irdaddr=86100000
+irdsize=06400000
+
+# Use the FDT in the FIT image..
+#setupfdt1=fdt addr ${fdtaddr}; fdt resize; fdt chosen; fdt move ${fdtaddr} ${newfdt}
+
+#use FDT that came with uboot
+#setupfdt1=fdt addr ${newfdt}; fdt resize; fdt chosen; fdt move ${fdtaddr} ${newfdt}
+
+#Use fit image, but don't call fdt move  (TODO: understand later)
+#setupfdt1=fdt addr ${newfdt}; fdt resize; fdt chosen
+setupfdt1=fdt addr ${fdtaddr}
+
+setupird=setexpr irdend ${irdaddr} + ${irdsize}; fdt set /chosen linux,initrd-start <0x0 0x${irdaddr}>; fdt set /chosen linux,initrd-end <0x0 0x${irdend}>
+
+#setupfdt2=fdt set /chosen bootargs ${bootargs}; fdt print /chosen
+#setupfdt2=fdt print /chosen; fdt set /chosen bootargs "${bootargs}"; fdt set /firmware uboot,ver ${ver}; fdt print /chosen
+setupfdt2=fdt print /chosen; fdt set /chosen bootargs "${bootargs}"; fdt print /chosen
+
+bootwait=setenv _delay ${bootdelay}; echo ${_delay}; while test ${_delay} > 0; do sleep 1; setexpr _delay ${_delay} - 1; echo ${_delay}; done
+
+# this assumes ${fileaddr} is already set!!
+#boot2=fatload mmc 0:1 ${fileaddr} ${fitfile}; bootm start ${fileaddr}; run setupfdt1; run setupchosen; run setupfdt2; bootm loados ${fileaddr}; echo "Booting kernel in"; run bootwait; go 80000000
+boot2=fatload mmc 0:1 ${fileaddr} ${fitfile}; bootm start ${fileaddr}; run setupfdt1;run setupird;run setupfdt2; bootm loados ${fileaddr}; echo "Booting kernel in"; go ${bbladdr} ${fdtaddr}
+
+# if you want to network boot, for testing, uncomment the following:
+#boot2=dhcp; env import -t ${fileaddr} ${filesize}; run boot2

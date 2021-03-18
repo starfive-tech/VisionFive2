@@ -1,0 +1,25 @@
+default=0                        #Default Option test:
+                                 #default=0   off
+                                 #default=1   on
+                                 #-99 all random
+                                 
+secondary-axi=0                  #0 ~ 3,(bitmask - 0x01:RDO, 0x02:LF),           -99(random)
+
+yuv_src_mode=0                   #0:planar, 1:nv12, 2:nv21, 3:YUYV(packed), 4:YVYU, 5:UYVY, 6:VYUY                     -99(random)
+srcFormat3p4b=0                  #three pixel four bytes                         -99(random)
+stream-endian=31                 #16 ~ 31,                                       -99(random)
+frame-endian=31                  #16 ~ 31,                                       -99(random)
+source-endian=31                 #16 ~ 31,                                       -99(random)
+rotAngle=0                       #0, 90, 180, 270,                               -99(random)
+mirDir=0                         #0 ~ 3,                                         -99(random)
+bsmode=1                         #0:ringbuffer, 1:linebuffer                     -99(random)
+
+cframe=0                         #for Vimicro fbc50s                             -99(random)
+cframelossless=1                 #for Vimicro fbc50s                             -99(random)
+cframetx16y=0                    #for Vimicro fbc50s                             -99(random)
+cframetx16c=0                    #for Vimicro fbc50s                             -99(random)
+
+lowLatencyMode=0                 #0~3                                            -99(random)
+
+MODE_COMP_ENCODED=1              #-c  compare between FPGA output & ref-c output
+
