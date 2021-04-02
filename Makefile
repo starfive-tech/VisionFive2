@@ -321,13 +321,13 @@ flash.gpt: $(flash_image)
 
 ifeq ($(TARGET_BOARD),U74)
 VFAT_START=4096
-VFAT_END=269502
-VFAT_SIZE=263454
-UBOOT_START=2048
-UBOOT_END=4048
-UBOOT_SIZE=2000
-UENV_START=1024
-UENV_END=1099
+VFAT_END=270335
+VFAT_SIZE=266239
+UBOOT_START=270336
+UBOOT_END=272383
+UBOOT_SIZE=2047
+UENV_START=272384
+UENV_END=274431
 $(vfat_image): $(fit) $(confdir)/u74_uEnv.txt
 	@if [ `du --apparent-size --block-size=512 $(uboot) | cut -f 1` -ge $(UBOOT_SIZE) ]; then \
 		echo "Uboot is too large for partition!!\nReduce uboot or increase partition size"; \
@@ -386,7 +386,7 @@ format-boot-loader: $(bbl_bin) $(uboot) $(fit) $(vfat_image)
 		--new=1:$(VFAT_START):$(VFAT_END)  --change-name=1:"Vfat Boot"	--typecode=1:$(VFAT)   \
 		--new=2:$(UBOOT_START):$(UBOOT_END)   --change-name=2:uboot	--typecode=2:$(UBOOT) \
 		--new=3:$(UENV_START):$(UENV_END)  --change-name=3:uboot-env	--typecode=3:$(UBOOTENV) \
-		--new=4:264192:0 --change-name=4:root	--typecode=4:$(LINUX) \
+		--new=4:274432:0 --change-name=4:root	--typecode=4:$(LINUX) \
 		$(DISK)
 	-/sbin/partprobe
 	@sleep 1
@@ -415,6 +415,18 @@ endif
 DEMO_IMAGE	:= sifive-debian-demo-mar7.tar.xz
 DEMO_URL	:= https://github.com/tmagik/freedom-u-sdk/releases/download/hifiveu-2.0-alpha.1/
 
+format-rootfs-image: format-boot-loader
+	@echo "Done setting up basic initramfs boot. We will now try to install"
+	@echo "a Debian snapshot to the Linux partition, which requires sudo"
+	@echo "you can safely cancel here"
+	/sbin/mke2fs -t ext4 $(PART4)
+	-mkdir -p tmp-mnt
+	-mkdir -p tmp-rootfs
+	-sudo mount $(PART4) tmp-mnt && \
+		sudo mount -o loop $(buildroot_rootfs_ext) tmp-rootfs&& \
+		sudo cp -fr tmp-rootfs/* tmp-mnt/
+	sudo umount tmp-mnt
+	sudo umount tmp-rootfs
 format-demo-image: format-boot-loader
 	@echo "Done setting up basic initramfs boot. We will now try to install"
 	@echo "a Debian snapshot to the Linux partition, which requires sudo"
@@ -426,7 +438,7 @@ format-demo-image: format-boot-loader
 		sudo tar -Jxvf $(DEMO_IMAGE)
 	sudo umount tmp-mnt
 
-ROOT_BEGIN=264192
+ROOT_BEGIN=272384
 # default size: 20GB
 ROOT_CLUSTER_NUM=$(shell echo $$((20*1024*1024*1024/512)))
 ROOT_END=$(shell echo $$(($(ROOT_BEGIN)+$(ROOT_CLUSTER_NUM))))
@@ -490,6 +502,19 @@ endif
 
 DEB_IMAGE := debian_nvdla_20190506.tar.xz
 DEB_URL := https://github.com/sifive/freedom-u-sdk/releases/download/nvdla-demo-0.1
+
+format-nvdla-rootfs: format-nvdla-disk
+	@echo "Done setting up basic initramfs boot. We will now try to install"
+	@echo "a Debian snapshot to the Linux partition, which requires sudo"
+	@echo "you can safely cancel here"
+	/sbin/mke2fs -t ext4 $(PART3)
+	-mkdir -p tmp-mnt
+	-mkdir -p tmp-rootfs
+	-sudo mount $(PART3) tmp-mnt && \
+		sudo mount -o loop $(buildroot_rootfs_ext) tmp-rootfs&& \
+		sudo cp -fr tmp-rootfs/* tmp-mnt/
+	sudo umount tmp-mnt
+	sudo umount tmp-rootfs
 
 format-nvdla-root: format-nvdla-disk
 	@echo "Done setting up basic initramfs boot. We will now try to install"
