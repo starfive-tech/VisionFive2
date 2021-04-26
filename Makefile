@@ -1,6 +1,8 @@
 ISA ?= rv64imafdc
 ABI ?= lp64d
-TARGET_BOARD := U74
+
+#TARGET_BOARD is U74 ,JH7110 or NULL
+TARGET_BOARD := JH7110
 BOARD_FLAGS	:=
 
 srcdir := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
@@ -34,8 +36,11 @@ vmlinux := $(linux_wrkdir)/vmlinux
 vmlinux_stripped := $(linux_wrkdir)/vmlinux-stripped
 vmlinux_bin := $(wrkdir)/vmlinux.bin
 
-ifeq ($(TARGET_BOARD),U74)
-export TARGET_BOARD
+ifeq ($(TARGET_BOARD),JH7110)
+	export TARGET_BOARD
+	its_file=$(confdir)/jh7110-fit-image.its
+else ifeq($(TARGET_BOARD),U74)
+	export TARGET_BOARD
 	BOARD_FLAGS += -DTARGET_BOARD_U74
 	bbl_link_addr :=0x80700000
 	its_file=$(confdir)/u74_nvdla-uboot-fit-image.its
@@ -52,7 +57,13 @@ initramfs := $(wrkdir)/initramfs.cpio.gz
 
 sbi_srcdir := $(srcdir)/opensbi
 sbi_wrkdir := $(wrkdir)/opensbi
+
+ifeq ($(TARGET_BOARD),JH7110)
+sbi_bin := $(wrkdir)/opensbi/platform/starfive/jh7110/firmware/fw_payload.bin
+else
 sbi_bin := $(wrkdir)/opensbi/platform/starfive/vic7100/firmware/fw_payload.bin
+endif
+
 fit := $(wrkdir)/image.fit
 
 fesvr_srcdir := $(srcdir)/riscv-fesvr
@@ -69,11 +80,19 @@ qemu := $(qemu_wrkdir)/prefix/bin/qemu-system-riscv64
 
 uboot_srcdir := $(srcdir)/HiFive_U-Boot
 uboot_wrkdir := $(wrkdir)/HiFive_U-Boot
+
+ifeq ($(TARGET_BOARD),JH7110)
+uboot_dtb_file := $(wrkdir)/HiFive_U-Boot/arch/riscv/dts/starfive_jh7110.dtb
+else
 uboot_dtb_file := $(wrkdir)/HiFive_U-Boot/arch/riscv/dts/starfive_vic7100_evb.dtb
+endif
+
 uboot := $(uboot_wrkdir)/u-boot.bin
 uboot_config := HiFive-U540_regression_defconfig
 
-ifeq ($(TARGET_BOARD),U74)
+ifeq ($(TARGET_BOARD),JH7110)
+	uboot_config := starfive_jh7110_smode_defconfig
+else ifeq ($(TARGET_BOARD),U74)
 	uboot_config := starfive_vic7100_evb_smode_defconfig
 else
 	uboot_config := HiFive-U540_nvdla_iofpga_defconfig
@@ -207,11 +226,19 @@ linux-menuconfig: $(linux_wrkdir)/.config
 	$(MAKE) -C $(linux_srcdir) O=$(dir $<) ARCH=riscv savedefconfig
 	cp $(dir $<)defconfig $(linux_defconfig)
 
+ifeq ($(TARGET_BOARD),JH7110)
+sbi: $(uboot) $(vmlinux)
+	rm -rf $(sbi_wrkdir)
+	mkdir -p $(sbi_wrkdir)
+	cd $(sbi_wrkdir) && O=$(sbi_wrkdir) CFLAGS="-mabi=$(ABI) -march=$(ISA)" ${MAKE} -C $(sbi_srcdir) CROSS_COMPILE=$(CROSS_COMPILE) \
+		PLATFORM=starfive/jh7110 FW_PAYLOAD_PATH=$(uboot) FW_PAYLOAD_FDT_PATH=$(uboot_dtb_file)
+else
 sbi: $(uboot) $(vmlinux)
 	rm -rf $(sbi_wrkdir)
 	mkdir -p $(sbi_wrkdir)
 	cd $(sbi_wrkdir) && O=$(sbi_wrkdir) CFLAGS="-mabi=$(ABI) -march=$(ISA)" ${MAKE} -C $(sbi_srcdir) CROSS_COMPILE=$(CROSS_COMPILE) \
 		PLATFORM=starfive/vic7100 FW_PAYLOAD_PATH=$(uboot) FW_PAYLOAD_FDT_PATH=$(uboot_dtb_file)
+endif
 
 
 $(fit): sbi $(vmlinux_bin) $(uboot) $(its_file) ${initramfs}
@@ -319,7 +346,18 @@ UBOOTFIT	= 04ffcafa-cd65-11e8-b974-70b3d592f0fa
 
 flash.gpt: $(flash_image)
 
-ifeq ($(TARGET_BOARD),U74)
+ifeq ($(TARGET_BOARD),JH7110)
+VFAT_SIZE=263454
+$(vfat_image): $(fit) $(confdir)/jh7110_uEnv.txt
+	@if [ `du --apparent-size --block-size=512 $(uboot) | cut -f 1` -ge $(UBOOT_SIZE) ]; then \
+		echo "Uboot is too large for partition!!\nReduce uboot or increase partition size"; \
+		rm $(flash_image); exit 1; fi
+	dd if=/dev/zero of=$(vfat_image) bs=512 count=$(VFAT_SIZE)
+	/sbin/mkfs.vfat $(vfat_image)
+	PATH=$(RVPATH) MTOOLS_SKIP_CHECK=1 mcopy -i $(vfat_image) $(fit) ::starfiveu.fit
+	PATH=$(RVPATH) MTOOLS_SKIP_CHECK=1 mcopy -i $(vfat_image) $(confdir)/jh7110_uEnv.txt ::jh7110_uEnv.txt
+
+else ifeq ($(TARGET_BOARD),U74)
 VFAT_START=4096
 VFAT_END=270335
 VFAT_SIZE=266239
