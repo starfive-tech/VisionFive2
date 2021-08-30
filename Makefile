@@ -30,7 +30,7 @@ buildroot_rootfs_config := $(confdir)/buildroot_rootfs_config
 
 linux_srcdir := $(srcdir)/linux
 linux_wrkdir := $(wrkdir)/linux
-linux_defconfig := $(confdir)/sdk_210209_defconfig
+linux_defconfig := $(linux_srcdir)/arch/riscv/configs/starfive_jh7110_defconfig
 
 vmlinux := $(linux_wrkdir)/vmlinux
 vmlinux_stripped := $(linux_wrkdir)/vmlinux-stripped
@@ -39,7 +39,7 @@ vmlinux_bin := $(wrkdir)/vmlinux.bin
 ifeq ($(TARGET_BOARD),JH7110)
 	export TARGET_BOARD
 	its_file=$(confdir)/jh7110-fit-image.its
-else ifeq($(TARGET_BOARD),U74)
+else ifeq ($(TARGET_BOARD),U74)
 	export TARGET_BOARD
 	BOARD_FLAGS += -DTARGET_BOARD_U74
 	bbl_link_addr :=0x80700000
@@ -146,7 +146,7 @@ $(buildroot_initramfs_tar): $(buildroot_srcdir) $(buildroot_initramfs_wrkdir)/.c
 buildroot_initramfs-menuconfig: $(buildroot_initramfs_wrkdir)/.config $(buildroot_srcdir)
 	$(MAKE) -C $(dir $<) O=$(buildroot_initramfs_wrkdir) menuconfig
 	$(MAKE) -C $(dir $<) O=$(buildroot_initramfs_wrkdir) savedefconfig
-	cp $(dir $<)defconfig conf/buildroot_initramfs_config
+	cp $(dir $<)defconfig $(buildroot_initramfs_config)
 
 # use buildroot_initramfs toolchain
 # TODO: fix path and conf/buildroot_rootfs_config

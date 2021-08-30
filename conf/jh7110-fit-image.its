@@ -1,7 +1,7 @@
 /dts-v1/;
 
 / {
-        description = "U-boot FIT image for HiFive Nvdla";
+        description = "U-boot FIT image for StarFive JH7110";
         #address-cells = <2>;
 
         images {
@@ -30,7 +30,7 @@
                 };
 
                 fdt {
-                        data = /incbin/("../work/HiFive_U-Boot/arch/riscv/dts/starfive_jh7110.dtb");
+                        data = /incbin/("../work/linux/arch/riscv/boot/dts/starfive/starfive_jh7110.dtb");
                         type = "flat_dt";
                         arch = "riscv";
                         load = <0x0 0x46000000>;
