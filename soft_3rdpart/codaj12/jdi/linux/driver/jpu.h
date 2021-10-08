@@ -21,7 +21,7 @@
 #define JDI_IOCTL_GET_INSTANCE_NUM                  _IO(JDI_IOCTL_MAGIC, 10)
 #define JDI_IOCTL_FLUSH_DCACHE                 		_IO(JDI_IOCTL_MAGIC, 11)
 
-#define MEM2SYS(addr) ((addr) > 0x80000000 && (addr) < 0x87FFFFFFF ? ((addr)+0xF80000000):(addr))
+#define MEM2SYS(addr) ((addr) > 0x40000000 && (addr) < 0x240000000 ? ((addr)+0x400000000):(addr))
 
 typedef struct jpudrv_flush_cache_t {
     unsigned long start;

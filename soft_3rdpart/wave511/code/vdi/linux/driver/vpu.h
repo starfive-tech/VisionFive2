@@ -23,7 +23,7 @@
 #define VDI_IOCTL_GET_FREE_MEM_SIZE         _IO(VDI_IOCTL_MAGIC, 13)
 #define VDI_IOCTL_FLUSH_DCACHE				_IO(VDI_IOCTL_MAGIC, 14)
 
-#define DRAM_MEM2SYS(addr) ((addr) > 0x80000000 && (addr) < 0x87FFFFFFF ? ((addr)+0xF80000000):(addr))
+#define DRAM_MEM2SYS(addr) ((addr) > 0x40000000 && (addr) < 0x43FFFFFFF ? ((addr)+0x400000000):(addr))
 #define ioremap_nocache ioremap
 
 typedef struct vpudrv_flush_cache_t {

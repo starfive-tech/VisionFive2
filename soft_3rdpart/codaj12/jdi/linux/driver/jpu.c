@@ -48,9 +48,13 @@
 
 /* definitions to be changed as customer  configuration */
 /* if you want to have clock gating scheme frame by frame */
-#define JPU_SUPPORT_CLOCK_CONTROL
+//#define JPU_SUPPORT_CLOCK_CONTROL
 #define JPU_SUPPORT_ISR
 //#define JPU_IRQ_CONTROL
+
+/* if clktree is work,try this...*/
+//#define STARFIVE_JPU_SUPPORT_CLOCK_CONTROL
+
 /* if the platform driver knows the name of this driver */
 /* JPU_PLATFORM_DEVICE_NAME */
 #define JPU_SUPPORT_PLATFORM_DRIVER_REGISTER
@@ -106,6 +110,31 @@ typedef struct jpudrv_instance_pool_t {
 	unsigned char codecInstPool[MAX_NUM_INSTANCE][MAX_INST_HANDLE_SIZE];
 } jpudrv_instance_pool_t;
 
+#ifndef STARFIVE_JPU_SUPPORT_CLOCK_CONTROL
+typedef struct jpu_clkgen_t {
+	void __iomem *en_ctrl;
+	uint32_t rst_mask;
+} jpu_clkgen_t;
+#endif
+
+typedef struct jpu_clk_t {
+#ifndef STARFIVE_JPU_SUPPORT_CLOCK_CONTROL
+	void __iomem *rst_ctrl;
+	void __iomem *rst_status;
+	uint32_t en_shift;
+	uint32_t en_mask;
+	jpu_clkgen_t apb_clk;
+	jpu_clkgen_t axi_clk;
+	jpu_clkgen_t core_clk;
+#else
+	struct clk *apb_clk;
+	struct clk *axi_clk;
+	struct clk *core_clk;
+#endif
+	void __iomem *clkgen;
+	phys_addr_t pmu_base;
+} jpu_clk_t;
+
 #ifdef JPU_SUPPORT_RESERVED_VIDEO_MEMORY
 #include "jmm.h"
 static jpu_mm_t         s_jmem;
@@ -114,17 +143,17 @@ static jpudrv_buffer_t  s_video_memory = {0};
 
 
 static int jpu_hw_reset(void);
-static void jpu_clk_disable(struct clk *clk);
-static int jpu_clk_enable(struct clk *clk);
-static struct clk *jpu_clk_get(struct device *dev);
-static void jpu_clk_put(struct clk *clk);
+static void jpu_clk_disable(jpu_clk_t *clk);
+static void jpu_clk_enable(jpu_clk_t *clk);
+static jpu_clk_t *jpu_clk_get(struct platform_device *pdev);
+static void jpu_clk_put(jpu_clk_t *clk);
 // end customer definition
 
 static jpudrv_buffer_t s_instance_pool = {0};
 static jpu_drv_context_t s_jpu_drv_context;
 static int s_jpu_major;
 static struct cdev s_jpu_cdev;
-static struct clk *s_jpu_clk;
+static jpu_clk_t *s_jpu_clk;
 static int s_jpu_open_ref_count;
 #ifdef JPU_SUPPORT_ISR
 static int s_jpu_irq = JPU_IRQ_NUM;
@@ -774,7 +803,7 @@ static int jpu_probe(struct platform_device *pdev)
     }
 
     if (pdev)
-        s_jpu_clk = jpu_clk_get(&pdev->dev);
+        s_jpu_clk = jpu_clk_get(pdev);
     else
         s_jpu_clk = jpu_clk_get(NULL);
 
@@ -891,7 +920,8 @@ static int jpu_remove(struct platform_device *pdev)
 	return 0;
 }
 
-#ifdef CONFIG_PM
+//#ifdef CONFIG_PM
+#if 1
 static int jpu_suspend(struct platform_device *pdev, pm_message_t state)
 {
     jpu_clk_disable(s_jpu_clk);
@@ -912,6 +942,7 @@ static int jpu_resume(struct platform_device *pdev)
 #ifdef JPU_SUPPORT_PLATFORM_DRIVER_REGISTER
 static const struct of_device_id jpu_of_id_table[] = {
 	{ .compatible = "cm,codaj12-jpu-1" },
+	{ .compatible = "starfive,jpu" },
 	{}
 };
 
@@ -1000,40 +1031,316 @@ MODULE_LICENSE("GPL");
 module_init(jpu_init);
 module_exit(jpu_exit);
 
+/*pmu define*/
+#define PMU_BASE_ADDR		0x17030000
+#define PMU_JPU_MASK		(0x1 << 3)
+
+static void pmu_pd_set(jpu_clk_t *clk, int on_off, uint32_t pd_flag)
+{
+	const uint32_t flag_off = 0x0c;
+	const uint32_t sw_off = 0x44;
+	void __iomem *base = ioremap(clk->pmu_base, 0x100);
+
+	writel(pd_flag, base + flag_off);
+	writel(0xff, base + sw_off);
+	if (on_off) {
+		writel(0x05, base + sw_off);
+		writel(0x50, base + sw_off);
+	} else {
+		writel(0x0a, base + sw_off);
+		writel(0xa0, base + sw_off);
+	}
+
+	iounmap(base);
+}
+
+#ifndef STARFIVE_JPU_SUPPORT_CLOCK_CONTROL
+#define CLK_ENABLE_DATA		1
+#define CLK_DISABLE_DATA	0
+#define CLK_EN_SHIFT		31
+#define CLK_EN_MASK		0x80000000U
+
+#define SAIF_BD_APBS_BASE	0x13020000
+#define CODAJ12_CLK_AXI_CTRL	0x108U
+#define CODAJ12_CLK_APB_CTRL	0x110U
+#define CODAJ12_CLK_CORE_CTRL	0x10cU
+
+#define RSTGEN_SOFTWARE_RESET_ASSERT1	0x2FCU
+#define RSTGEN_SOFTWARE_RESET_STATUS1	0x30CU
+
+#define RSTN_AXI_MASK			(0x1 << 12)
+#define RSTN_CORE_MASK			(0x1 << 13)
+#define RSTN_APB_MASK			(0x1 << 14)
+
+static __maybe_unused uint32_t saif_get_reg(
+			const volatile void __iomem *addr,
+			uint32_t shift, uint32_t mask)
+{
+	u32 tmp;
+	tmp = readl(addr);
+	tmp = (tmp & mask) >> shift;
+	return tmp;
+}
+
+static void saif_set_reg(volatile void __iomem *addr, uint32_t data,
+			uint32_t shift, uint32_t mask)
+{
+	uint32_t tmp;
+
+	tmp = readl(addr);
+	tmp &= ~mask;
+	tmp |= (data << shift) & mask;
+	writel(tmp, addr);
+}
+
+static void saif_assert_rst(volatile void __iomem *addr,
+			const volatile void __iomem *addr_status, uint32_t mask)
+{
+	uint32_t tmp;
+
+	tmp = readl(addr);
+	tmp |= mask;
+	writel(tmp, addr);
+	do {
+		tmp = readl(addr_status);
+	} while ((tmp & mask) != 0);
+}
+
+static void saif_clear_rst(volatile void __iomem *addr,
+			const volatile void __iomem *addr_status, uint32_t mask)
+{
+	uint32_t tmp;
+
+	tmp = readl(addr);
+	tmp &= ~mask;
+	writel(tmp, addr);
+	do {
+		tmp = readl(addr_status);
+	} while ((tmp & mask) != mask);
+}
+
+static void jpu_clk_control(jpu_clk_t *clk, bool enable)
+{
+	if (enable) {
+		/*enable*/
+		saif_set_reg(clk->apb_clk.en_ctrl, CLK_ENABLE_DATA, clk->en_shift, clk->en_mask);
+		saif_set_reg(clk->axi_clk.en_ctrl, CLK_ENABLE_DATA, clk->en_shift, clk->en_mask);
+		saif_set_reg(clk->core_clk.en_ctrl, CLK_ENABLE_DATA, clk->en_shift, clk->en_mask);
+
+		/*clr-reset*/
+		saif_clear_rst(clk->rst_ctrl, clk->rst_status, clk->apb_clk.rst_mask);
+		saif_clear_rst(clk->rst_ctrl, clk->rst_status, clk->axi_clk.rst_mask);
+		saif_clear_rst(clk->rst_ctrl, clk->rst_status, clk->core_clk.rst_mask);
+	} else {
+		/*assert-reset*/
+		saif_assert_rst(clk->rst_ctrl, clk->rst_status, clk->apb_clk.rst_mask);
+		saif_assert_rst(clk->rst_ctrl, clk->rst_status, clk->axi_clk.rst_mask);
+		saif_assert_rst(clk->rst_ctrl, clk->rst_status, clk->core_clk.rst_mask);
+		/*disable*/
+		saif_set_reg(clk->apb_clk.en_ctrl, CLK_DISABLE_DATA, clk->en_shift, clk->en_mask);
+		saif_set_reg(clk->axi_clk.en_ctrl, CLK_DISABLE_DATA, clk->en_shift, clk->en_mask);
+		saif_set_reg(clk->core_clk.en_ctrl, CLK_DISABLE_DATA, clk->en_shift, clk->en_mask);
+	}
+}
+
+static void jpu_clk_reset(jpu_clk_t *clk)
+{
+	/*assert-reset*/
+	saif_assert_rst(clk->rst_ctrl, clk->rst_status, clk->apb_clk.rst_mask);
+	saif_assert_rst(clk->rst_ctrl, clk->rst_status, clk->axi_clk.rst_mask);
+	saif_assert_rst(clk->rst_ctrl, clk->rst_status, clk->core_clk.rst_mask);
+
+	/*clr-reset*/
+	saif_clear_rst(clk->rst_ctrl, clk->rst_status, clk->apb_clk.rst_mask);
+	saif_clear_rst(clk->rst_ctrl, clk->rst_status, clk->axi_clk.rst_mask);
+	saif_clear_rst(clk->rst_ctrl, clk->rst_status, clk->core_clk.rst_mask);
+}
+
+int jpu_hw_reset(void)
+{
+	if (!s_jpu_clk)
+		return -1;
+
+	jpu_clk_reset(s_jpu_clk);
+
+	DPRINTK("[VPUDRV] reset vpu hardware. \n");
+	return 0;
+}
+
+static int jpu_of_clk_get(struct platform_device *pdev, jpu_clk_t *jpu_clk)
+{
+	if (!pdev)
+		return -ENXIO;
+
+	jpu_clk->pmu_base = PMU_BASE_ADDR;
+
+	jpu_clk->clkgen = ioremap(SAIF_BD_APBS_BASE, 0x400);
+	if (IS_ERR(jpu_clk->clkgen)) {
+		dev_err(&pdev->dev, "ioremap clkgen failed.\n");
+		return PTR_ERR(jpu_clk->clkgen);
+	}
+
+	/* clkgen define */
+	jpu_clk->axi_clk.en_ctrl = jpu_clk->clkgen + CODAJ12_CLK_AXI_CTRL;
+	jpu_clk->apb_clk.en_ctrl = jpu_clk->clkgen + CODAJ12_CLK_APB_CTRL;
+	jpu_clk->core_clk.en_ctrl = jpu_clk->clkgen + CODAJ12_CLK_CORE_CTRL;
+	jpu_clk->en_mask = CLK_EN_MASK;
+	jpu_clk->en_shift = CLK_EN_SHIFT;
+
+	/* rstgen define */
+	jpu_clk->rst_ctrl = jpu_clk->clkgen + RSTGEN_SOFTWARE_RESET_ASSERT1;
+	jpu_clk->rst_status = jpu_clk->clkgen + RSTGEN_SOFTWARE_RESET_STATUS1;
+	jpu_clk->axi_clk.rst_mask = RSTN_AXI_MASK;
+	jpu_clk->apb_clk.rst_mask = RSTN_APB_MASK;
+	jpu_clk->core_clk.rst_mask = RSTN_CORE_MASK;
+
+	return 0;
+}
+
+static jpu_clk_t *jpu_clk_get(struct platform_device *pdev)
+{
+	jpu_clk_t *jpu_clk;
+
+	jpu_clk = devm_kzalloc(&pdev->dev, sizeof(*jpu_clk), GFP_KERNEL);
+	if (!jpu_clk)
+		return NULL;
+
+	if (jpu_of_clk_get(pdev, jpu_clk))
+		goto err_get_clk;
+
+	return jpu_clk;
+err_get_clk:
+	kfree(jpu_clk);
+	return NULL;
+}
+
+static void jpu_clk_put(jpu_clk_t *clk)
+{
+	iounmap(clk->clkgen);
+}
+
+static void jpu_clk_enable(jpu_clk_t *clk)
+{
+	if (clk == NULL || IS_ERR(clk))
+		return;
+
+	pmu_pd_set(clk, true, PMU_JPU_MASK);
+	jpu_clk_control(clk, true);
+
+	DPRINTK("[VPUDRV] vpu_clk_enable\n");
+}
+
+static void jpu_clk_disable(jpu_clk_t *clk)
+{
+	if (clk == NULL || IS_ERR(clk))
+		return;
+
+	jpu_clk_control(clk, false);
+	pmu_pd_set(clk, false, PMU_JPU_MASK);
+
+	DPRINTK("[VPUDRV] vpu_clk_disable\n");
+}
+
+#else /* STARFIVE_JPU_SUPPORT_CLOCK_CONTROL */
+
 static int jpu_hw_reset(void)
 {
     DPRINTK("[JPUDRV] request jpu reset from application. \n");
     return 0;
 }
 
-
-struct clk *jpu_clk_get(struct device *dev)
+static int clk_check_err(struct clk *clk)
 {
-    return clk_get(dev, JPU_CLK_NAME);
-}
-void jpu_clk_put(struct clk *clk)
-{
-    if (!(clk == NULL || IS_ERR(clk)))
-        clk_put(clk);
-}
-int jpu_clk_enable(struct clk *clk)
-{
-
-    if (clk) {
-        DPRINTK("[JPUDRV] jpu_clk_enable\n");
-        // You need to implement it
-        return 1;
-    }
-    return 0;
+	return !!(clk == NULL || IS_ERR(clk));
 }
 
-void jpu_clk_disable(struct clk *clk)
+static int jpu_of_clk_get(struct platform_device *pdev, jpu_clk_t *jpu_clk)
 {
-    if (!(clk == NULL || IS_ERR(clk))) {
-        DPRINTK("[JPUDRV] jpu_clk_disable\n");
-        // You need to implement it
-    }
+	struct resource *pmu;
+	struct device *dev = &pdev->dev;
+
+	pmu = platform_get_resource_byname(pdev, IORESOURCE_MEM, "pmu");
+	if (IS_ERR(pmu))
+		dev_warn(dev, "get pmu failed.\n");
+
+	jpu_clk->pmu_base = pmu->start;
+
+	jpu_clk->apb_clk = devm_clk_get(dev, "apb_clk");
+	if (clk_check_err(jpu_clk->apb_clk)) {
+		dev_err(dev, "apb_clk get failed.\n");
+		return PTR_ERR(jpu_clk->apb_clk);
+	}
+
+	jpu_clk->axi_clk = devm_clk_get(dev, "axi_clk");
+	if (clk_check_err(jpu_clk->axi_clk)) {
+		dev_err(dev, "axi_clk get failed.\n");
+		return PTR_ERR(jpu_clk->axi_clk);
+	}
+
+	jpu_clk->core_clk = devm_clk_get(dev, "core_clk");
+	if (clk_check_err(jpu_clk->core_clk)) {
+		dev_err(dev, "core_clk get failed.\n");
+		return PTR_ERR(jpu_clk->core_clk);
+	}
+	return 0;
 }
 
 
+static jpu_clk_t *jpu_clk_get(struct platform_device *pdev)
+{
+	jpu_clk_t *jpu_clk;
 
+	if (!pdev)
+		return NULL;
+
+	jpu_clk = devm_kzalloc(&pdev->dev, sizeof(*jpu_clk), GFP_KERNEL);
+	if (!jpu_clk)
+		return NULL;
+
+	if (jpu_of_clk_get(pdev, jpu_clk))
+		goto err_of_clk_get;
+
+	return jpu_clk;
+
+err_of_clk_get:
+	kfree(jpu_clk);
+	return NULL;
+
+}
+
+static void jpu_clk_put(jpu_clk_t *clk)
+{
+	if (!(clk_check_err(clk->apb_clk)))
+		clk_put(clk->apb_clk);
+	if (!(clk_check_err(clk->axi_clk)))
+		clk_put(clk->axi_clk);
+	if (!(clk_check_err(clk->core_clk)))
+		clk_put(clk->core_clk);
+}
+
+static void jpu_clk_enable(jpu_clk_t *clk)
+{
+	pmu_pd_set(clk, true, PMU_JPU_MASK);
+
+	if (!(clk_check_err(clk->apb_clk)))
+		clk_prepare_enable(clk->apb_clk);
+	if (!(clk_check_err(clk->axi_clk)))
+		clk_prepare_enable(clk->axi_clk);
+	if (!(clk_check_err(clk->core_clk)))
+		clk_prepare_enable(clk->core_clk);
+
+	DPRINTK("[VPUDRV] vpu_clk_enable\n");
+}
+
+static void jpu_clk_disable(jpu_clk_t *clk)
+{
+	if (!(clk_check_err(clk->apb_clk)))
+		clk_disable_unprepare(clk->apb_clk);
+	if (!(clk_check_err(clk->axi_clk)))
+		clk_disable_unprepare(clk->axi_clk);
+	if (!(clk_check_err(clk->core_clk)))
+		clk_disable_unprepare(clk->core_clk);
+
+	pmu_pd_set(clk, false, PMU_JPU_MASK);
+}
+#endif /* STARFIVE_JPU_SUPPORT_CLOCK_CONTROL */

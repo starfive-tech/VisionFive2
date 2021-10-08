@@ -54,8 +54,8 @@
 typedef pthread_mutex_t	MUTEX_HANDLE;
 
 
-#    define SUPPORT_INTERRUPT
-#        define VDI_SRAM_BASE_ADDR          0x00000000    // if we can know the sram address in SOC directly for vdi layer. it is possible to set in vdi layer without allocation from driver
+#define SUPPORT_INTERRUPT
+#define VDI_SRAM_BASE_ADDR          	0x00000000    // if we can know the sram address in SOC directly for vdi layer. it is possible to set in vdi layer without allocation from driver
 #define VDI_SYSTEM_ENDIAN                   VDI_LITTLE_ENDIAN
 #define VDI_128BIT_BUS_SYSTEM_ENDIAN        VDI_128BIT_LITTLE_ENDIAN
 
