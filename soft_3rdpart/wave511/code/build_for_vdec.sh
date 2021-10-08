@@ -36,3 +36,4 @@ $CP $FIRMWARE $OUTPUT
 $CP $STEAM $OUTPUT
 $CP $MEDIA $OUTPUT
 $CP script/* $OUTPUT
+mkdir -p $OUTPUT/output
