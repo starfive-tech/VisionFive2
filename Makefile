@@ -282,7 +282,8 @@ $(qemu): $(qemu_srcdir)
 .PHONY: uboot-menuconfig
 uboot-menuconfig: $(uboot_wrkdir)/.config
 	$(MAKE) -C $(uboot_srcdir) O=$(dir $<) ARCH=riscv menuconfig
-	cp $(uboot_wrkdir)/.config $(uboot_defconfig)
+	$(MAKE) -C $(uboot_srcdir) O=$(dir $<) ARCH=riscv savedefconfig
+	cp $(dir $<)defconfig $(uboot_defconfig)
 
 $(uboot): $(uboot_srcdir) $(target_gcc)
 	rm -rf $(uboot_wrkdir)
