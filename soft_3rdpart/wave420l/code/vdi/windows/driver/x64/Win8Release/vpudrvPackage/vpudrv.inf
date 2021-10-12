@@ -1,0 +1,95 @@
+;
+; vpudrv.inf
+;
+
+[Version]
+Signature="$WINDOWS NT$"
+Class=Media ; TODO: edit Class
+ClassGuid={4d36e96c-e325-11ce-bfc1-08002be10318} ; TODO: edit ClassGuid
+Provider=%ManufacturerName%
+CatalogFile=vpudrv.cat
+DriverVer=06/25/2012,12.22.32.496
+
+[ControlFlags]
+ExcludeFromSelect=*
+
+[DestinationDirs]
+DefaultDestDir = 12
+
+; ================= Class section =====================
+; Do not need to set Class section in case that the cass is system pre-defined class.
+;[ClassInstall32]
+;Addreg=SampleClassReg
+
+;[SampleClassReg]
+;HKR,,,0,%ClassName%
+;HKR,,Icon,,-5
+; ================= Class section =====================
+
+[SourceDisksNames]
+1 = %DiskName%,,,""
+
+[SourceDisksFiles]
+vpudrv.sys  = 1,,
+
+;*****************************************
+; Install Section
+;*****************************************
+
+[Manufacturer]
+%ManufacturerName%=Standard,NTamd64
+
+[Standard.NTamd64]
+%vpudrv.DeviceDesc%=vpudrv_Device, PCI\VEN_CEDA&DEV_4311&SUBSYS_CAFEDEAD&REV_01 ; TODO: edit hw-id
+
+[vpudrv_Device.NT]
+CopyFiles=Drivers_Dir
+
+[Drivers_Dir]
+vpudrv.sys
+
+;-------------- Service installation
+[vpudrv_Device.NT.Services]
+AddService = vpudrv,%SPSVCINST_ASSOCSERVICE%, vpudrv_Service_Inst
+
+; -------------- vpudrv driver install sections
+[vpudrv_Service_Inst]
+DisplayName    = %vpudrv.SVCDESC%
+ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
+StartType      = 3               ; SERVICE_DEMAND_START
+ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %12%\vpudrv.sys
+LoadOrderGroup = Extended Base
+
+;
+;--- vpudrv_Device Coinstaller installation ------
+;
+
+[DestinationDirs]
+vpudrv_Device_CoInstaller_CopyFiles = 11
+
+[vpudrv_Device.NT.CoInstallers]
+AddReg=vpudrv_Device_CoInstaller_AddReg
+CopyFiles=vpudrv_Device_CoInstaller_CopyFiles
+
+[vpudrv_Device_CoInstaller_AddReg]
+HKR,,CoInstallers32,0x00010000, "WdfCoInstaller01011.dll,WdfCoInstaller"
+
+[vpudrv_Device_CoInstaller_CopyFiles]
+WdfCoInstaller01011.dll
+
+[SourceDisksFiles]
+WdfCoInstaller01011.dll=1 ; make sure the number matches with SourceDisksNames
+
+[vpudrv_Device.NT.Wdf]
+KmdfService =  vpudrv, vpudrv_wdfsect
+[vpudrv_wdfsect]
+KmdfLibraryVersion = 1.11
+
+[Strings]
+SPSVCINST_ASSOCSERVICE= 0x00000002
+ManufacturerName="CNM" ; TODO: add ManufacturerName
+ClassName="Media" ; TODO: edit ClassName
+DiskName = "vpudrv Installation Disk"
+vpudrv.DeviceDesc = "CNM Multi-Standard Video Codec Driver"
+vpudrv.SVCDESC = "CNM Multi-Standard Video Codec Driver Service"

@@ -1,0 +1,976 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="DebugQC|x64">
+      <Configuration>DebugQC</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug_Embedded_Linux|x64">
+      <Configuration>Debug_Embedded_Linux</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug_Mingw|x64">
+      <Configuration>Debug_Mingw</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug_NativeLinux|x64">
+      <Configuration>Debug_NativeLinux</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug_NonOS|x64">
+      <Configuration>Debug_NonOS</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug_Socket|x64">
+      <Configuration>Debug_Socket</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug_USB|x64">
+      <Configuration>Debug_USB</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug_Windows_USB|x64">
+      <Configuration>Debug_Windows_USB</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug_Windows|x64">
+      <Configuration>Debug_Windows</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="DebugQC|Win32">
+      <Configuration>DebugQC</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug_Embedded_Linux|Win32">
+      <Configuration>Debug_Embedded_Linux</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug_Mingw|Win32">
+      <Configuration>Debug_Mingw</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug_NativeLinux|Win32">
+      <Configuration>Debug_NativeLinux</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug_NonOS|Win32">
+      <Configuration>Debug_NonOS</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug_Socket|Win32">
+      <Configuration>Debug_Socket</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug_USB|Win32">
+      <Configuration>Debug_USB</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug_Windows_USB|Win32">
+      <Configuration>Debug_Windows_USB</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug_Windows|Win32">
+      <Configuration>Debug_Windows</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="ipc_vpurun|Win32">
+      <Configuration>ipc_vpurun</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="ipc_vpurun|x64">
+      <Configuration>ipc_vpurun</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="linux_hpi_qc|Win32">
+      <Configuration>linux_hpi_qc</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="linux_hpi_qc|x64">
+      <Configuration>linux_hpi_qc</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="linux_hpi_vpurun|Win32">
+      <Configuration>linux_hpi_vpurun</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="linux_hpi_vpurun|x64">
+      <Configuration>linux_hpi_vpurun</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="linux_usb_qc|Win32">
+      <Configuration>linux_usb_qc</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="linux_usb_qc|x64">
+      <Configuration>linux_usb_qc</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="USB Debug QC|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="USB Debug|Win32">
+      <Configuration>USB Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="USB Debug|x64">
+      <Configuration>USB Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="win_hpi_qc|Win32">
+      <Configuration>win_hpi_qc</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="win_hpi_qc|x64">
+      <Configuration>win_hpi_qc</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="win_usb_qc|Win32">
+      <Configuration>win_usb_qc</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="win_usb_qc|x64">
+      <Configuration>win_usb_qc</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{09F1A3AC-251B-4008-89EC-DB1A0768A324}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>theoraparser</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugQC|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugQC|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ipc_vpurun|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ipc_vpurun|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_Socket|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_Socket|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_Windows|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_Windows|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='linux_hpi_vpurun|Win32'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='linux_hpi_vpurun|x64'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_USB|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_USB|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_Windows_USB|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_Windows_USB|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='USB Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='USB Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='win_usb_qc|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='win_usb_qc|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='win_hpi_qc|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='win_hpi_qc|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug_Embedded_Linux|Win32'">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_Embedded_Linux|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug_Mingw|Win32'">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_Mingw|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug_NativeLinux|Win32'">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_NativeLinux|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug_NonOS|Win32'">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_NonOS|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='linux_usb_qc|Win32'">
+    <ConfigurationType>Makefile</ConfigurationType>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='linux_usb_qc|x64'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='linux_hpi_qc|Win32'">
+    <ConfigurationType>Makefile</ConfigurationType>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='linux_hpi_qc|x64'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='DebugQC|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='DebugQC|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug_Socket|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug_Socket|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug_Windows|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug_Windows|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='linux_hpi_vpurun|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='linux_hpi_vpurun|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug_USB|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug_USB|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug_Windows_USB|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug_Windows_USB|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='USB Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='USB Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='win_usb_qc|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='win_usb_qc|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='win_hpi_qc|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='win_hpi_qc|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug Windows|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug Windows|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugQC|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <IntDir>$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugQC|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <IntDir>$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <IntDir>$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <IntDir>$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_Socket|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <IntDir>$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_Socket|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <IntDir>$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_Windows|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <IntDir>$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_Windows|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <IntDir>$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='linux_hpi_vpurun|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <IntDir>$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
+    <NMakeBuildCommandLine>"$(VISUALGDB_DIR)\VisualGDB.exe" /build "$(ProjectPath)" "/solution:$(SolutionPath)" "/config:$(Configuration)" "/platform:$(Platform)"</NMakeBuildCommandLine>
+    <NMakeCleanCommandLine>"$(VISUALGDB_DIR)\VisualGDB.exe" /clean "$(ProjectPath)" "/solution:$(SolutionPath)" "/config:$(Configuration)" "/platform:$(Platform)"</NMakeCleanCommandLine>
+    <NMakeReBuildCommandLine>"$(VISUALGDB_DIR)\VisualGDB.exe" /rebuild "$(ProjectPath)" "/solution:$(SolutionPath)" "/config:$(Configuration)" "/platform:$(Platform)"</NMakeReBuildCommandLine>
+    <NMakeOutput>$(ProjectDir)theoraparser-linux_hpi_vpurun.vgdbsettings</NMakeOutput>
+    <IncludePath />
+    <ReferencePath />
+    <LibraryPath />
+    <NMakePreprocessorDefinitions>__VisualGDB_CFG_linux_hpi_vpurun;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath>$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.65\0000\include\c++\4.6;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.65\0000\include\c++\4.6\i686-linux-gnu;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.65\0000\include\c++\4.6\backward;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.65\0001\include;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.65\0003\include;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.65\0002\include-fixed;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.65\0000\include\i386-linux-gnu;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.65\0000\include;$(ProjectDir)\.\include;$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+    <NMakeForcedIncludes>$(ProjectDir)\gcc_linux_hpi_vpurun.h;$(VISUALGDB_DIR)\gcc_compat.h;$(NMakeForcedIncludes)</NMakeForcedIncludes>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='linux_hpi_vpurun|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <IntDir>$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
+    <NMakeBuildCommandLine>"$(VISUALGDB_DIR)\VisualGDB.exe" /build "$(ProjectPath)" "/solution:$(SolutionPath)" "/config:$(Configuration)" "/platform:$(Platform)"</NMakeBuildCommandLine>
+    <NMakeCleanCommandLine>"$(VISUALGDB_DIR)\VisualGDB.exe" /clean "$(ProjectPath)" "/solution:$(SolutionPath)" "/config:$(Configuration)" "/platform:$(Platform)"</NMakeCleanCommandLine>
+    <NMakeReBuildCommandLine>"$(VISUALGDB_DIR)\VisualGDB.exe" /rebuild "$(ProjectPath)" "/solution:$(SolutionPath)" "/config:$(Configuration)" "/platform:$(Platform)"</NMakeReBuildCommandLine>
+    <NMakeOutput>$(ProjectDir)theoraparser-linux_hpi_vpurun.vgdbsettings</NMakeOutput>
+    <IncludePath />
+    <ReferencePath />
+    <LibraryPath />
+    <NMakePreprocessorDefinitions>__VisualGDB_CFG_linux_hpi_vpurun;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath>$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.65\0000\include\c++\4.6;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.65\0000\include\c++\4.6\i686-linux-gnu;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.65\0000\include\c++\4.6\backward;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.65\0001\include;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.65\0003\include;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.65\0002\include-fixed;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.65\0000\include\i386-linux-gnu;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.65\0000\include;$(ProjectDir)\.\include;$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+    <NMakeForcedIncludes>$(ProjectDir)\gcc_linux_hpi_vpurun.h;$(VISUALGDB_DIR)\gcc_compat.h;$(NMakeForcedIncludes)</NMakeForcedIncludes>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_USB|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <IntDir>$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_USB|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <IntDir>$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_Windows_USB|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <IntDir>$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug_Windows_USB|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <IntDir>$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='USB Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <IntDir>$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='USB Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <IntDir>$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='win_usb_qc|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <IntDir>$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='win_usb_qc|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <IntDir>$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='win_hpi_qc|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <IntDir>$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='win_hpi_qc|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <IntDir>$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug Windows|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <IntDir>$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug Windows|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <IntDir>$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)$(Configuration)\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='linux_usb_qc|Win32'">
+    <NMakeBuildCommandLine>"$(VISUALGDB_DIR)\VisualGDB.exe" /build "$(ProjectPath)" "/solution:$(SolutionPath)" "/config:$(Configuration)" "/platform:$(Platform)"</NMakeBuildCommandLine>
+    <NMakeCleanCommandLine>"$(VISUALGDB_DIR)\VisualGDB.exe" /clean "$(ProjectPath)" "/solution:$(SolutionPath)" "/config:$(Configuration)" "/platform:$(Platform)"</NMakeCleanCommandLine>
+    <NMakeReBuildCommandLine>"$(VISUALGDB_DIR)\VisualGDB.exe" /rebuild "$(ProjectPath)" "/solution:$(SolutionPath)" "/config:$(Configuration)" "/platform:$(Platform)"</NMakeReBuildCommandLine>
+    <NMakeOutput>$(ProjectDir)theoraparser-linux_usb_qc.vgdbsettings</NMakeOutput>
+    <IncludePath />
+    <ReferencePath />
+    <LibraryPath />
+    <NMakePreprocessorDefinitions>__VisualGDB_CFG_linux_usb_qc;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath>$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.65\0000\include\c++\4.6;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.65\0000\include\c++\4.6\i686-linux-gnu;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.65\0000\include\c++\4.6\backward;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.65\0001\include;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.65\0003\include;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.65\0002\include-fixed;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.65\0000\include\i386-linux-gnu;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.65\0000\include;$(ProjectDir)\.\include;$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+    <NMakeForcedIncludes>$(ProjectDir)\gcc_linux_usb_qc.h;$(VISUALGDB_DIR)\gcc_compat.h;$(NMakeForcedIncludes)</NMakeForcedIncludes>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='linux_usb_qc|x64'">
+    <NMakeBuildCommandLine>"$(VISUALGDB_DIR)\VisualGDB.exe" /build "$(ProjectPath)" "/solution:$(SolutionPath)" "/config:$(Configuration)" "/platform:$(Platform)"</NMakeBuildCommandLine>
+    <NMakeCleanCommandLine>"$(VISUALGDB_DIR)\VisualGDB.exe" /clean "$(ProjectPath)" "/solution:$(SolutionPath)" "/config:$(Configuration)" "/platform:$(Platform)"</NMakeCleanCommandLine>
+    <NMakeReBuildCommandLine>"$(VISUALGDB_DIR)\VisualGDB.exe" /rebuild "$(ProjectPath)" "/solution:$(SolutionPath)" "/config:$(Configuration)" "/platform:$(Platform)"</NMakeReBuildCommandLine>
+    <NMakeOutput>$(ProjectDir)theoraparser-linux_usb_qc.vgdbsettings</NMakeOutput>
+    <IncludePath />
+    <ReferencePath />
+    <LibraryPath />
+    <NMakePreprocessorDefinitions>__VisualGDB_CFG_linux_usb_qc;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath>$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.65\0000\include\c++\4.6;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.65\0000\include\c++\4.6\i686-linux-gnu;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.65\0000\include\c++\4.6\backward;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.65\0001\include;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.65\0003\include;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.65\0002\include-fixed;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.65\0000\include\i386-linux-gnu;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.65\0000\include;$(ProjectDir)\.\include;$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+    <NMakeForcedIncludes>$(ProjectDir)\gcc_linux_usb_qc.h;$(VISUALGDB_DIR)\gcc_compat.h;$(NMakeForcedIncludes)</NMakeForcedIncludes>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='linux_hpi_qc|Win32'">
+    <NMakeBuildCommandLine>"$(VISUALGDB_DIR)\VisualGDB.exe" /build "$(ProjectPath)" "/solution:$(SolutionPath)" "/config:$(Configuration)" "/platform:$(Platform)"</NMakeBuildCommandLine>
+    <NMakeCleanCommandLine>"$(VISUALGDB_DIR)\VisualGDB.exe" /clean "$(ProjectPath)" "/solution:$(SolutionPath)" "/config:$(Configuration)" "/platform:$(Platform)"</NMakeCleanCommandLine>
+    <NMakeReBuildCommandLine>"$(VISUALGDB_DIR)\VisualGDB.exe" /rebuild "$(ProjectPath)" "/solution:$(SolutionPath)" "/config:$(Configuration)" "/platform:$(Platform)"</NMakeReBuildCommandLine>
+    <NMakeOutput>$(ProjectDir)theoraparser-linux_hpi_qc.vgdbsettings</NMakeOutput>
+    <IncludePath />
+    <ReferencePath />
+    <LibraryPath />
+    <NMakePreprocessorDefinitions>__VisualGDB_CFG_linux_hpi_qc;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath>$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.60\0000\include\c++\4.6;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.60\0000\include\c++\4.6\i686-linux-gnu;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.60\0000\include\c++\4.6\backward;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.60\0001\include;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.60\0003\include;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.60\0002\include-fixed;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.60\0000\include\i386-linux-gnu;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.60\0000\include;$(ProjectDir)\.\include;$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+    <NMakeForcedIncludes>$(ProjectDir)\gcc_linux_hpi_qc.h;$(VISUALGDB_DIR)\gcc_compat.h;$(NMakeForcedIncludes)</NMakeForcedIncludes>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='linux_hpi_qc|x64'">
+    <NMakeBuildCommandLine>"$(VISUALGDB_DIR)\VisualGDB.exe" /build "$(ProjectPath)" "/solution:$(SolutionPath)" "/config:$(Configuration)" "/platform:$(Platform)"</NMakeBuildCommandLine>
+    <NMakeCleanCommandLine>"$(VISUALGDB_DIR)\VisualGDB.exe" /clean "$(ProjectPath)" "/solution:$(SolutionPath)" "/config:$(Configuration)" "/platform:$(Platform)"</NMakeCleanCommandLine>
+    <NMakeReBuildCommandLine>"$(VISUALGDB_DIR)\VisualGDB.exe" /rebuild "$(ProjectPath)" "/solution:$(SolutionPath)" "/config:$(Configuration)" "/platform:$(Platform)"</NMakeReBuildCommandLine>
+    <NMakeOutput>$(ProjectDir)theoraparser-linux_hpi_qc.vgdbsettings</NMakeOutput>
+    <IncludePath />
+    <ReferencePath />
+    <LibraryPath />
+    <NMakePreprocessorDefinitions>__VisualGDB_CFG_linux_hpi_qc;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath>$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.60\0000\include\c++\4.6;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.60\0000\include\c++\4.6\i686-linux-gnu;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.60\0000\include\c++\4.6\backward;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.60\0001\include;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.60\0003\include;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.60\0002\include-fixed;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.60\0000\include\i386-linux-gnu;$(LOCALAPPDATA)\VisualGDB\RemoteSourceCache\52.2.12.60\0000\include;$(ProjectDir)\.\include;$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+    <NMakeForcedIncludes>$(ProjectDir)\gcc_linux_hpi_qc.h;$(VISUALGDB_DIR)\gcc_compat.h;$(NMakeForcedIncludes)</NMakeForcedIncludes>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ipc_vpurun|Win32'">
+    <OutDir>$(SolutionDir)Debug</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ipc_vpurun|x64'">
+    <OutDir>$(SolutionDir)Debug</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='USB Debug QC|Win32'">
+    <OutDir>$(SolutionDir)Debug\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='USB Debug QC|x64'">
+    <OutDir>$(SolutionDir)Debug\</OutDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugQC|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;THEORAPARSER_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>./include;./include/win32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <OutputFile>$(OutDir)$(ProjectName).dll</OutputFile>
+      <ProgramDatabaseFile>$(TargetDir)$(TargetName).pdb</ProgramDatabaseFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugQC|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;THEORAPARSER_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>./include;./include/win32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <OutputFile>$(OutDir)$(ProjectName).dll</OutputFile>
+      <ProgramDatabaseFile>$(TargetDir)$(TargetName).pdb</ProgramDatabaseFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;THEORAPARSER_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>./include;./include/win32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <OutputFile>$(OutDir)$(ProjectName).dll</OutputFile>
+      <ProgramDatabaseFile>$(TargetDir)$(TargetName).pdb</ProgramDatabaseFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;THEORAPARSER_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>./include;./include/win32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <OutputFile>$(OutDir)$(ProjectName).dll</OutputFile>
+      <ProgramDatabaseFile>$(TargetDir)$(TargetName).pdb</ProgramDatabaseFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug_Socket|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;THEORAPARSER_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>./include;./include/win32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <OutputFile>$(OutDir)$(ProjectName).dll</OutputFile>
+      <ProgramDatabaseFile>$(TargetDir)$(TargetName).pdb</ProgramDatabaseFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug_Socket|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;THEORAPARSER_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>./include;./include/win32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <OutputFile>$(OutDir)$(ProjectName).dll</OutputFile>
+      <ProgramDatabaseFile>$(TargetDir)$(TargetName).pdb</ProgramDatabaseFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug_Windows|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;THEORAPARSER_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>./include;./include/win32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <OutputFile>$(OutDir)$(ProjectName).dll</OutputFile>
+      <ProgramDatabaseFile>$(TargetDir)$(TargetName).pdb</ProgramDatabaseFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug_Windows|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;THEORAPARSER_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>./include;./include/win32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <OutputFile>$(OutDir)$(ProjectName).dll</OutputFile>
+      <ProgramDatabaseFile>$(TargetDir)$(TargetName).pdb</ProgramDatabaseFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='linux_hpi_vpurun|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;THEORAPARSER_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>./include;./include/win32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <OutputFile>$(OutDir)$(ProjectName).dll</OutputFile>
+      <ProgramDatabaseFile>$(TargetDir)$(TargetName).pdb</ProgramDatabaseFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='linux_hpi_vpurun|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;THEORAPARSER_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>./include;./include/win32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <OutputFile>$(OutDir)$(ProjectName).dll</OutputFile>
+      <ProgramDatabaseFile>$(TargetDir)$(TargetName).pdb</ProgramDatabaseFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug_USB|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;THEORAPARSER_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>./include;./include/win32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <OutputFile>$(OutDir)$(ProjectName).dll</OutputFile>
+      <ProgramDatabaseFile>$(TargetDir)$(TargetName).pdb</ProgramDatabaseFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug_USB|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;THEORAPARSER_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>./include;./include/win32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <OutputFile>$(OutDir)$(ProjectName).dll</OutputFile>
+      <ProgramDatabaseFile>$(TargetDir)$(TargetName).pdb</ProgramDatabaseFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug_Windows_USB|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;THEORAPARSER_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>./include;./include/win32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <OutputFile>$(OutDir)$(ProjectName).dll</OutputFile>
+      <ProgramDatabaseFile>$(TargetDir)$(TargetName).pdb</ProgramDatabaseFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug_Windows_USB|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;THEORAPARSER_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>./include;./include/win32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <OutputFile>$(OutDir)$(ProjectName).dll</OutputFile>
+      <ProgramDatabaseFile>$(TargetDir)$(TargetName).pdb</ProgramDatabaseFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='USB Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;THEORAPARSER_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>./include;./include/win32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <OutputFile>$(OutDir)$(ProjectName).dll</OutputFile>
+      <ProgramDatabaseFile>$(TargetDir)$(TargetName).pdb</ProgramDatabaseFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='USB Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;THEORAPARSER_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>./include;./include/win32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <OutputFile>$(OutDir)$(ProjectName).dll</OutputFile>
+      <ProgramDatabaseFile>$(TargetDir)$(TargetName).pdb</ProgramDatabaseFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='win_usb_qc|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;THEORAPARSER_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>./include;./include/win32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <OutputFile>$(OutDir)$(ProjectName).dll</OutputFile>
+      <ProgramDatabaseFile>$(TargetDir)$(TargetName).pdb</ProgramDatabaseFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='win_usb_qc|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;THEORAPARSER_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>./include;./include/win32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <OutputFile>$(OutDir)$(ProjectName).dll</OutputFile>
+      <ProgramDatabaseFile>$(TargetDir)$(TargetName).pdb</ProgramDatabaseFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='win_hpi_qc|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;THEORAPARSER_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>./include;./include/win32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <OutputFile>$(OutDir)$(ProjectName).dll</OutputFile>
+      <ProgramDatabaseFile>$(TargetDir)$(TargetName).pdb</ProgramDatabaseFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='win_hpi_qc|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;THEORAPARSER_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>./include;./include/win32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <OutputFile>$(OutDir)$(ProjectName).dll</OutputFile>
+      <ProgramDatabaseFile>$(TargetDir)$(TargetName).pdb</ProgramDatabaseFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug Windows|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;THEORAPARSER_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>./include;./include/win32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <OutputFile>$(OutDir)$(ProjectName).dll</OutputFile>
+      <ProgramDatabaseFile>$(TargetDir)$(TargetName).pdb</ProgramDatabaseFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug Windows|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;THEORAPARSER_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>./include;./include/win32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <OutputFile>$(OutDir)$(ProjectName).dll</OutputFile>
+      <ProgramDatabaseFile>$(TargetDir)$(TargetName).pdb</ProgramDatabaseFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug_NonOS|Win32'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>./include;./include/win32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug_NonOS|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>./include;./include/win32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ipc_vpurun|Win32'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>./include;./include/win32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='ipc_vpurun|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>./include;./include/win32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='USB Debug QC|Win32'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>./include;./include/win32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='USB Debug QC|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>./include;./include/win32;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="src\bitpack.c" />
+    <ClCompile Include="src\decode.c" />
+    <ClCompile Include="src\info.c" />
+    <ClCompile Include="src\internal.c" />
+    <ClCompile Include="src\state.c" />
+    <ClCompile Include="src\theora_parser.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\bitpack.h" />
+    <ClInclude Include="include\codec.h" />
+    <ClInclude Include="include\common.h" />
+    <ClInclude Include="include\decint.h" />
+    <ClInclude Include="include\dequant.h" />
+    <ClInclude Include="include\huffdec.h" />
+    <ClInclude Include="include\huffman.h" />
+    <ClInclude Include="include\internal.h" />
+    <ClInclude Include="include\ocintrin.h" />
+    <ClInclude Include="include\state.h" />
+    <ClInclude Include="include\theoradec.h" />
+    <ClInclude Include="include\theora_parser.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="linux_hpi_qc.mak" />
+    <None Include="linux_hpi_vpurun.mak" />
+    <None Include="linux_usb_qc.mak" />
+    <None Include="Makefile_vpurun.hpi" />
+    <None Include="makefile.hpi" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+  <ProjectExtensions>
+    <VisualStudio>
+      <UserProperties WinGDB_qVB57QUOT0lynJh0o1aKEg_strMakefileCompilerC="" WinGDB_qVB57QUOT0lynJh0o1aKEg_strMakefileCompilerCXX="" WinGDB_qVB57QUOT0lynJh0o1aKEg_strMakefileRM="" WinGDB_qVB57QUOT0lynJh0o1aKEg_strMakefileMKDIR="" WinGDB_qVB57QUOT0lynJh0o1aKEg_strMakefileIntDir="" WinGDB_qVB57QUOT0lynJh0o1aKEg_strMakefileDestDir="" WinGDB_qVB57QUOT0lynJh0o1aKEg_strMakefileCFLAGS="" WinGDB_qVB57QUOT0lynJh0o1aKEg_strMakefileCXXFLAGS="" WinGDB_qVB57QUOT0lynJh0o1aKEg_strMakefileLDFLAGS="" WinGDB_qVB57QUOT0lynJh0o1aKEg_strRemoteBuildCommand="" WinGDB_qVB57QUOT0lynJh0o1aKEg_strRemoteRebuildCommand="" WinGDB_qVB57QUOT0lynJh0o1aKEg_strRemoteCleanCommand="" WinGDB_qVB57QUOT0lynJh0o1aKEg_strRemoteDeployCommand="" WinGDB_qVB57QUOT0lynJh0o1aKEg_pathRemoteBuildDirectory="" WinGDB_qVB57QUOT0lynJh0o1aKEg_strRemoteBuildVariables="" WinGDB_qVB57QUOT0lynJh0o1aKEg_bDeployBeforeStartDebugging="false" WinGDB_qVB57QUOT0lynJh0o1aKEg_bDeployOnlyIfFileChanged="false" WinGDB_qVB57QUOT0lynJh0o1aKEg_pathDeployFile="" WinGDB_qVB57QUOT0lynJh0o1aKEg_pathDeployTargetDirectory="" WinGDB_qVB57QUOT0lynJh0o1aKEg_strRemoteSolutionBuildCommand="" WinGDB_qVB57QUOT0lynJh0o1aKEg_strRemoteSolutionRebuildCommand="" WinGDB_qVB57QUOT0lynJh0o1aKEg_strRemoteSolutionCleanCommand="" WinGDB_qVB57QUOT0lynJh0o1aKEg_strRemoteSolutionDeployCommand="" WinGDB_qVB57QUOT0lynJh0o1aKEg_pathRemoteSolutionBuildDirectory="" WinGDB_qVB57QUOT0lynJh0o1aKEg_strRemoteSolutionBuildVariables="" WinGDB_qVB57QUOT0lynJh0o1aKEg_bSolutionDeployOnlyIfFileChanged="false" WinGDB_qVB57QUOT0lynJh0o1aKEg_pathSolutionDeployFile="" WinGDB_qVB57QUOT0lynJh0o1aKEg_pathSolutionDeployTargetDirectory="" WinGDB_qVB57QUOT0lynJh0o1aKEg_pathCore="" WinGDB_qVB57QUOT0lynJh0o1aKEg_pathWorkingDirectory="" WinGDB_qVB57QUOT0lynJh0o1aKEg_strLaunchArguments="" WinGDB_qVB57QUOT0lynJh0o1aKEg_strLaunchEnvironment="" WinGDB_qVB57QUOT0lynJh0o1aKEg_bStopInMain="false" WinGDB_qVB57QUOT0lynJh0o1aKEg_strTarget="" WinGDB_qVB57QUOT0lynJh0o1aKEg_pathLoadProgramPath="" WinGDB_qVB57QUOT0lynJh0o1aKEg_pathExecutableOnTarget="" WinGDB_qVB57QUOT0lynJh0o1aKEg_bServerAutoLaunch="false" WinGDB_qVB57QUOT0lynJh0o1aKEg_bUseSysroot="false" WinGDB_qVB57QUOT0lynJh0o1aKEg_pathDynamicLinker="" WinGDB_qVB57QUOT0lynJh0o1aKEg_pathServerLibraryPaths="" WinGDB_qVB57QUOT0lynJh0o1aKEg_pathServerPath="" WinGDB_qVB57QUOT0lynJh0o1aKEg_bServerPortIsForwarded="false" WinGDB_qVB57QUOT0lynJh0o1aKEg_pathExecutable="" WinGDB_qVB57QUOT0lynJh0o1aKEg_pathCustomPreLoadInitScript="" WinGDB_qVB57QUOT0lynJh0o1aKEg_pathCustomInitScript="" WinGDB_qVB57QUOT0lynJh0o1aKEg_pathCustomCondPreLoadInitScript="" WinGDB_qVB57QUOT0lynJh0o1aKEg_pathCondCustomInitScript="" WinGDB_qVB57QUOT0lynJh0o1aKEg_strAdditionalDebuggerOptions="" WinGDB_qVB57QUOT0lynJh0o1aKEg_pathSourceDirectories="" WinGDB_qVB57QUOT0lynJh0o1aKEg_pathDebugInfoDirectory="" WinGDB_qVB57QUOT0lynJh0o1aKEg_pathSysrootOnHost="" WinGDB_qVB57QUOT0lynJh0o1aKEg_pathSysrootOnTarget="" WinGDB_qVB57QUOT0lynJh0o1aKEg_pathSharedLibraryDirectories="" WinGDB_qVB57QUOT0lynJh0o1aKEg_strVisualizerProfile="" WinGDB_qVB57QUOT0lynJh0o1aKEg_bSourceSession="false" WinGDB_qVB57QUOT0lynJh0o1aKEg_bDisableHangReporter="false" WinGDB_qVB57QUOT0lynJh0o1aKEg_bUseProtoCtl="false" WinGDB_qVB57QUOT0lynJh0o1aKEg_pathProtoCtlLogFile="" WinGDB_qVB57QUOT0lynJh0o1aKEg_pathDebugger="" WinGDB_qVB57QUOT0lynJh0o1aKEg_pathToolchain="" WinGDB_qVB57QUOT0lynJh0o1aKEg_bReuseStandardBuildCommand="false" WinGDB_qVB57QUOT0lynJh0o1aKEg_strDebugHostLogin="" WinGDB_qVB57QUOT0lynJh0o1aKEg_strBuildHostLogin="" WinGDB_qVB57QUOT0lynJh0o1aKEg_strDebugTargetLogin="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_strMakefileCompilerC="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_strMakefileCompilerCXX="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_strMakefileRM="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_strMakefileMKDIR="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_strMakefileIntDir="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_strMakefileDestDir="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_strMakefileCFLAGS="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_strMakefileCXXFLAGS="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_strMakefileLDFLAGS="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_strRemoteBuildCommand="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_strRemoteRebuildCommand="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_strRemoteCleanCommand="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_strRemoteDeployCommand="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_pathRemoteBuildDirectory="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_strRemoteBuildVariables="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_bDeployBeforeStartDebugging="false" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_bDeployOnlyIfFileChanged="false" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_pathDeployFile="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_pathDeployTargetDirectory="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_strRemoteSolutionBuildCommand="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_strRemoteSolutionRebuildCommand="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_strRemoteSolutionCleanCommand="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_strRemoteSolutionDeployCommand="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_pathRemoteSolutionBuildDirectory="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_strRemoteSolutionBuildVariables="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_bSolutionDeployOnlyIfFileChanged="false" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_pathSolutionDeployFile="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_pathSolutionDeployTargetDirectory="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_pathCore="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_pathWorkingDirectory="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_strLaunchArguments="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_strLaunchEnvironment="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_bStopInMain="false" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_strTarget="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_pathLoadProgramPath="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_pathExecutableOnTarget="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_bServerAutoLaunch="false" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_bUseSysroot="false" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_pathDynamicLinker="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_pathServerLibraryPaths="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_pathServerPath="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_bServerPortIsForwarded="false" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_pathExecutable="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_pathCustomPreLoadInitScript="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_pathCustomInitScript="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_pathCustomCondPreLoadInitScript="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_pathCondCustomInitScript="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_strAdditionalDebuggerOptions="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_pathSourceDirectories="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_pathDebugInfoDirectory="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_pathSysrootOnHost="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_pathSysrootOnTarget="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_pathSharedLibraryDirectories="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_strVisualizerProfile="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_bSourceSession="false" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_bDisableHangReporter="false" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_bUseProtoCtl="false" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_pathProtoCtlLogFile="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_pathDebugger="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_pathToolchain="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_bReuseStandardBuildCommand="false" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_strDebugHostLogin="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_strBuildHostLogin="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_strDebugTargetLogin="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_strMakefileCompilerC="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_strMakefileCompilerCXX="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_strMakefileRM="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_strMakefileMKDIR="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_strMakefileIntDir="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_strMakefileDestDir="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_strMakefileCFLAGS="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_strMakefileCXXFLAGS="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_strMakefileLDFLAGS="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_strRemoteBuildCommand="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_strRemoteRebuildCommand="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_strRemoteCleanCommand="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_strRemoteDeployCommand="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_pathRemoteBuildDirectory="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_strRemoteBuildVariables="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_bDeployBeforeStartDebugging="false" WinGDB_ePI5ykeUeXR2inSAMUnaLw_bDeployOnlyIfFileChanged="false" WinGDB_ePI5ykeUeXR2inSAMUnaLw_pathDeployFile="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_pathDeployTargetDirectory="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_strRemoteSolutionBuildCommand="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_strRemoteSolutionRebuildCommand="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_strRemoteSolutionCleanCommand="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_strRemoteSolutionDeployCommand="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_pathRemoteSolutionBuildDirectory="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_strRemoteSolutionBuildVariables="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_bSolutionDeployOnlyIfFileChanged="false" WinGDB_ePI5ykeUeXR2inSAMUnaLw_pathSolutionDeployFile="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_pathSolutionDeployTargetDirectory="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_pathCore="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_pathWorkingDirectory="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_strLaunchArguments="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_strLaunchEnvironment="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_bStopInMain="false" WinGDB_ePI5ykeUeXR2inSAMUnaLw_strTarget="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_pathLoadProgramPath="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_pathExecutableOnTarget="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_bServerAutoLaunch="false" WinGDB_ePI5ykeUeXR2inSAMUnaLw_bUseSysroot="false" WinGDB_ePI5ykeUeXR2inSAMUnaLw_pathDynamicLinker="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_pathServerLibraryPaths="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_pathServerPath="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_bServerPortIsForwarded="false" WinGDB_ePI5ykeUeXR2inSAMUnaLw_pathExecutable="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_pathCustomPreLoadInitScript="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_pathCustomInitScript="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_pathCustomCondPreLoadInitScript="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_pathCondCustomInitScript="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_strAdditionalDebuggerOptions="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_pathSourceDirectories="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_pathDebugInfoDirectory="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_pathSysrootOnHost="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_pathSysrootOnTarget="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_pathSharedLibraryDirectories="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_strVisualizerProfile="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_bSourceSession="false" WinGDB_ePI5ykeUeXR2inSAMUnaLw_bDisableHangReporter="false" WinGDB_ePI5ykeUeXR2inSAMUnaLw_bUseProtoCtl="false" WinGDB_ePI5ykeUeXR2inSAMUnaLw_pathProtoCtlLogFile="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_pathDebugger="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_pathToolchain="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_bReuseStandardBuildCommand="false" WinGDB_ePI5ykeUeXR2inSAMUnaLw_strDebugHostLogin="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_strBuildHostLogin="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_strDebugTargetLogin="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_strMakefileCompilerC="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_strMakefileCompilerCXX="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_strMakefileRM="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_strMakefileMKDIR="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_strMakefileIntDir="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_strMakefileDestDir="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_strMakefileCFLAGS="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_strMakefileCXXFLAGS="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_strMakefileLDFLAGS="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_strRemoteBuildCommand="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_strRemoteRebuildCommand="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_strRemoteCleanCommand="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_strRemoteDeployCommand="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_pathRemoteBuildDirectory="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_strRemoteBuildVariables="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_bDeployBeforeStartDebugging="false" WinGDB_t9PcGLz5xpomZIqSBHIjFw_bDeployOnlyIfFileChanged="false" WinGDB_t9PcGLz5xpomZIqSBHIjFw_pathDeployFile="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_pathDeployTargetDirectory="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_strRemoteSolutionBuildCommand="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_strRemoteSolutionRebuildCommand="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_strRemoteSolutionCleanCommand="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_strRemoteSolutionDeployCommand="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_pathRemoteSolutionBuildDirectory="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_strRemoteSolutionBuildVariables="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_bSolutionDeployOnlyIfFileChanged="false" WinGDB_t9PcGLz5xpomZIqSBHIjFw_pathSolutionDeployFile="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_pathSolutionDeployTargetDirectory="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_pathCore="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_pathWorkingDirectory="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_strLaunchArguments="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_strLaunchEnvironment="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_bStopInMain="false" WinGDB_t9PcGLz5xpomZIqSBHIjFw_strTarget="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_pathLoadProgramPath="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_pathExecutableOnTarget="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_bServerAutoLaunch="false" WinGDB_t9PcGLz5xpomZIqSBHIjFw_bUseSysroot="false" WinGDB_t9PcGLz5xpomZIqSBHIjFw_pathDynamicLinker="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_pathServerLibraryPaths="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_pathServerPath="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_bServerPortIsForwarded="false" WinGDB_t9PcGLz5xpomZIqSBHIjFw_pathExecutable="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_pathCustomPreLoadInitScript="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_pathCustomInitScript="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_pathCustomCondPreLoadInitScript="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_pathCondCustomInitScript="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_strAdditionalDebuggerOptions="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_pathSourceDirectories="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_pathDebugInfoDirectory="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_pathSysrootOnHost="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_pathSysrootOnTarget="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_pathSharedLibraryDirectories="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_strVisualizerProfile="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_bSourceSession="false" WinGDB_t9PcGLz5xpomZIqSBHIjFw_bDisableHangReporter="false" WinGDB_t9PcGLz5xpomZIqSBHIjFw_bUseProtoCtl="false" WinGDB_t9PcGLz5xpomZIqSBHIjFw_pathProtoCtlLogFile="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_pathDebugger="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_pathToolchain="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_bReuseStandardBuildCommand="false" WinGDB_t9PcGLz5xpomZIqSBHIjFw_strDebugHostLogin="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_strBuildHostLogin="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_strDebugTargetLogin="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_strMakefileCompilerC="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_strMakefileCompilerCXX="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_strMakefileRM="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_strMakefileMKDIR="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_strMakefileIntDir="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_strMakefileDestDir="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_strMakefileCFLAGS="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_strMakefileCXXFLAGS="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_strMakefileLDFLAGS="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_strRemoteBuildCommand="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_strRemoteRebuildCommand="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_strRemoteCleanCommand="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_strRemoteDeployCommand="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_pathRemoteBuildDirectory="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_strRemoteBuildVariables="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_bDeployBeforeStartDebugging="false" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_bDeployOnlyIfFileChanged="false" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_pathDeployFile="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_pathDeployTargetDirectory="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_strRemoteSolutionBuildCommand="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_strRemoteSolutionRebuildCommand="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_strRemoteSolutionCleanCommand="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_strRemoteSolutionDeployCommand="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_pathRemoteSolutionBuildDirectory="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_strRemoteSolutionBuildVariables="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_bSolutionDeployOnlyIfFileChanged="false" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_pathSolutionDeployFile="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_pathSolutionDeployTargetDirectory="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_pathCore="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_pathWorkingDirectory="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_strLaunchArguments="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_strLaunchEnvironment="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_bStopInMain="false" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_strTarget="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_pathLoadProgramPath="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_pathExecutableOnTarget="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_bServerAutoLaunch="false" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_bUseSysroot="false" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_pathDynamicLinker="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_pathServerLibraryPaths="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_pathServerPath="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_bServerPortIsForwarded="false" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_pathExecutable="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_pathCustomPreLoadInitScript="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_pathCustomInitScript="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_pathCustomCondPreLoadInitScript="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_pathCondCustomInitScript="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_strAdditionalDebuggerOptions="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_pathSourceDirectories="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_pathDebugInfoDirectory="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_pathSysrootOnHost="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_pathSysrootOnTarget="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_pathSharedLibraryDirectories="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_strVisualizerProfile="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_bSourceSession="false" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_bDisableHangReporter="false" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_bUseProtoCtl="false" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_pathProtoCtlLogFile="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_pathDebugger="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_pathToolchain="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_bReuseStandardBuildCommand="false" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_strDebugHostLogin="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_strBuildHostLogin="" WinGDB_8ZB2A9tMWCvRC5oI-MMFOw_strDebugTargetLogin="" WinGDB_TWdaRyclTWdkYdOXLdSygg_strMakefileCompilerC="" WinGDB_TWdaRyclTWdkYdOXLdSygg_strMakefileCompilerCXX="" WinGDB_TWdaRyclTWdkYdOXLdSygg_strMakefileRM="" WinGDB_TWdaRyclTWdkYdOXLdSygg_strMakefileMKDIR="" WinGDB_TWdaRyclTWdkYdOXLdSygg_strMakefileIntDir="" WinGDB_TWdaRyclTWdkYdOXLdSygg_strMakefileDestDir="" WinGDB_TWdaRyclTWdkYdOXLdSygg_strMakefileCFLAGS="" WinGDB_TWdaRyclTWdkYdOXLdSygg_strMakefileCXXFLAGS="" WinGDB_TWdaRyclTWdkYdOXLdSygg_strMakefileLDFLAGS="" WinGDB_TWdaRyclTWdkYdOXLdSygg_strRemoteBuildCommand="" WinGDB_TWdaRyclTWdkYdOXLdSygg_strRemoteRebuildCommand="" WinGDB_TWdaRyclTWdkYdOXLdSygg_strRemoteCleanCommand="" WinGDB_TWdaRyclTWdkYdOXLdSygg_strRemoteDeployCommand="" WinGDB_TWdaRyclTWdkYdOXLdSygg_pathRemoteBuildDirectory="" WinGDB_TWdaRyclTWdkYdOXLdSygg_strRemoteBuildVariables="" WinGDB_TWdaRyclTWdkYdOXLdSygg_bDeployBeforeStartDebugging="false" WinGDB_TWdaRyclTWdkYdOXLdSygg_bDeployOnlyIfFileChanged="false" WinGDB_TWdaRyclTWdkYdOXLdSygg_pathDeployFile="" WinGDB_TWdaRyclTWdkYdOXLdSygg_pathDeployTargetDirectory="" WinGDB_TWdaRyclTWdkYdOXLdSygg_strRemoteSolutionBuildCommand="" WinGDB_TWdaRyclTWdkYdOXLdSygg_strRemoteSolutionRebuildCommand="" WinGDB_TWdaRyclTWdkYdOXLdSygg_strRemoteSolutionCleanCommand="" WinGDB_TWdaRyclTWdkYdOXLdSygg_strRemoteSolutionDeployCommand="" WinGDB_TWdaRyclTWdkYdOXLdSygg_pathRemoteSolutionBuildDirectory="" WinGDB_TWdaRyclTWdkYdOXLdSygg_strRemoteSolutionBuildVariables="" WinGDB_TWdaRyclTWdkYdOXLdSygg_bSolutionDeployOnlyIfFileChanged="false" WinGDB_TWdaRyclTWdkYdOXLdSygg_pathSolutionDeployFile="" WinGDB_TWdaRyclTWdkYdOXLdSygg_pathSolutionDeployTargetDirectory="" WinGDB_TWdaRyclTWdkYdOXLdSygg_pathCore="" WinGDB_TWdaRyclTWdkYdOXLdSygg_pathWorkingDirectory="" WinGDB_TWdaRyclTWdkYdOXLdSygg_strLaunchArguments="" WinGDB_TWdaRyclTWdkYdOXLdSygg_strLaunchEnvironment="" WinGDB_TWdaRyclTWdkYdOXLdSygg_bStopInMain="false" WinGDB_TWdaRyclTWdkYdOXLdSygg_strTarget="" WinGDB_TWdaRyclTWdkYdOXLdSygg_pathLoadProgramPath="" WinGDB_TWdaRyclTWdkYdOXLdSygg_pathExecutableOnTarget="" WinGDB_TWdaRyclTWdkYdOXLdSygg_bServerAutoLaunch="false" WinGDB_TWdaRyclTWdkYdOXLdSygg_bUseSysroot="false" WinGDB_TWdaRyclTWdkYdOXLdSygg_pathDynamicLinker="" WinGDB_TWdaRyclTWdkYdOXLdSygg_pathServerLibraryPaths="" WinGDB_TWdaRyclTWdkYdOXLdSygg_pathServerPath="" WinGDB_TWdaRyclTWdkYdOXLdSygg_bServerPortIsForwarded="false" WinGDB_TWdaRyclTWdkYdOXLdSygg_pathExecutable="" WinGDB_TWdaRyclTWdkYdOXLdSygg_pathCustomPreLoadInitScript="" WinGDB_TWdaRyclTWdkYdOXLdSygg_pathCustomInitScript="" WinGDB_TWdaRyclTWdkYdOXLdSygg_pathCustomCondPreLoadInitScript="" WinGDB_TWdaRyclTWdkYdOXLdSygg_pathCondCustomInitScript="" WinGDB_TWdaRyclTWdkYdOXLdSygg_strAdditionalDebuggerOptions="" WinGDB_TWdaRyclTWdkYdOXLdSygg_pathSourceDirectories="" WinGDB_TWdaRyclTWdkYdOXLdSygg_pathDebugInfoDirectory="" WinGDB_TWdaRyclTWdkYdOXLdSygg_pathSysrootOnHost="" WinGDB_TWdaRyclTWdkYdOXLdSygg_pathSysrootOnTarget="" WinGDB_TWdaRyclTWdkYdOXLdSygg_pathSharedLibraryDirectories="" WinGDB_TWdaRyclTWdkYdOXLdSygg_strVisualizerProfile="" WinGDB_TWdaRyclTWdkYdOXLdSygg_bSourceSession="false" WinGDB_TWdaRyclTWdkYdOXLdSygg_bDisableHangReporter="false" WinGDB_TWdaRyclTWdkYdOXLdSygg_bUseProtoCtl="false" WinGDB_TWdaRyclTWdkYdOXLdSygg_pathProtoCtlLogFile="" WinGDB_TWdaRyclTWdkYdOXLdSygg_pathDebugger="" WinGDB_TWdaRyclTWdkYdOXLdSygg_pathToolchain="" WinGDB_TWdaRyclTWdkYdOXLdSygg_bReuseStandardBuildCommand="false" WinGDB_TWdaRyclTWdkYdOXLdSygg_strDebugHostLogin="" WinGDB_TWdaRyclTWdkYdOXLdSygg_strBuildHostLogin="" WinGDB_TWdaRyclTWdkYdOXLdSygg_strDebugTargetLogin="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_strMakefileCompilerC="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_strMakefileCompilerCXX="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_strMakefileRM="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_strMakefileMKDIR="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_strMakefileIntDir="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_strMakefileDestDir="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_strMakefileCFLAGS="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_strMakefileCXXFLAGS="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_strMakefileLDFLAGS="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_strRemoteBuildCommand="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_strRemoteRebuildCommand="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_strRemoteCleanCommand="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_strRemoteDeployCommand="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_pathRemoteBuildDirectory="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_strRemoteBuildVariables="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_bDeployBeforeStartDebugging="false" WinGDB_WdGI2ZWngywSm1w_0dqoCw_bDeployOnlyIfFileChanged="false" WinGDB_WdGI2ZWngywSm1w_0dqoCw_pathDeployFile="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_pathDeployTargetDirectory="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_strRemoteSolutionBuildCommand="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_strRemoteSolutionRebuildCommand="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_strRemoteSolutionCleanCommand="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_strRemoteSolutionDeployCommand="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_pathRemoteSolutionBuildDirectory="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_strRemoteSolutionBuildVariables="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_bSolutionDeployOnlyIfFileChanged="false" WinGDB_WdGI2ZWngywSm1w_0dqoCw_pathSolutionDeployFile="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_pathSolutionDeployTargetDirectory="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_pathCore="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_pathWorkingDirectory="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_strLaunchArguments="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_strLaunchEnvironment="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_bStopInMain="false" WinGDB_WdGI2ZWngywSm1w_0dqoCw_strTarget="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_pathLoadProgramPath="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_pathExecutableOnTarget="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_bServerAutoLaunch="false" WinGDB_WdGI2ZWngywSm1w_0dqoCw_bUseSysroot="false" WinGDB_WdGI2ZWngywSm1w_0dqoCw_pathDynamicLinker="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_pathServerLibraryPaths="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_pathServerPath="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_bServerPortIsForwarded="false" WinGDB_WdGI2ZWngywSm1w_0dqoCw_pathExecutable="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_pathCustomPreLoadInitScript="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_pathCustomInitScript="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_pathCustomCondPreLoadInitScript="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_pathCondCustomInitScript="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_strAdditionalDebuggerOptions="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_pathSourceDirectories="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_pathDebugInfoDirectory="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_pathSysrootOnHost="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_pathSysrootOnTarget="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_pathSharedLibraryDirectories="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_strVisualizerProfile="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_bSourceSession="false" WinGDB_WdGI2ZWngywSm1w_0dqoCw_bDisableHangReporter="false" WinGDB_WdGI2ZWngywSm1w_0dqoCw_bUseProtoCtl="false" WinGDB_WdGI2ZWngywSm1w_0dqoCw_pathProtoCtlLogFile="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_pathDebugger="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_pathToolchain="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_bReuseStandardBuildCommand="false" WinGDB_WdGI2ZWngywSm1w_0dqoCw_strDebugHostLogin="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_strBuildHostLogin="" WinGDB_WdGI2ZWngywSm1w_0dqoCw_strDebugTargetLogin="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_strMakefileAR="" WinGDB_Zxawnc1DhjeAMLKOxSVSFA_strMainFunctionName="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_strMakefileName="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_strMakefileAR="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_strMainFunctionName="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_pathExecutableOnBuildHost="" WinGDB_ePI5ykeUeXR2inSAMUnaLw_bForwardX11ForDebugging="false" WinGDB_ePI5ykeUeXR2inSAMUnaLw_bLaunchDebuggerInSudo="false" WinGDB_t9PcGLz5xpomZIqSBHIjFw_strMakefileName="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_strMakefileAR="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_strMainFunctionName="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_pathExecutableOnBuildHost="" WinGDB_t9PcGLz5xpomZIqSBHIjFw_bForwardX11ForDebugging="false" WinGDB_t9PcGLz5xpomZIqSBHIjFw_bLaunchDebuggerInSudo="false" />
+    </VisualStudio>
+  </ProjectExtensions>
+</Project>

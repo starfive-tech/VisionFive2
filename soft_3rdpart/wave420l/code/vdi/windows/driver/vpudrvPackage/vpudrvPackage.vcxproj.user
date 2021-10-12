@@ -1,0 +1,43 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win7 Debug|Win32'">
+    <EnableDeployment>False</EnableDeployment>
+    <RemoveDriver>True</RemoveDriver>
+    <InstallMode>HardwareId</InstallMode>
+    <HardwareIdString />
+    <CommandLine />
+    <ScriptPath>C:\Program Files (x86)\Windows Kits\8.0\Testing\Tests\DefaultDriverPackageInstallationTask\DefaultDriverPackageInstallationTask.dll</ScriptPath>
+    <DbgengRemoteMachineName>52.2.12.138</DbgengRemoteMachineName>
+    <DbgengKernelMachineName>52.2.12.138</DbgengKernelMachineName>
+    <DeployFiles />
+    <ScriptName>Microsoft.DriverKit.DefaultDriverPackageInstallationClass.PerformDefaultDriverPackageInstallation</ScriptName>
+    <ScriptDeviceQuery />
+    <DebugDeployment>False</DebugDeployment>
+    <SignMode>ProductionSign</SignMode>
+    <ProductionCertificate>CN=chipsnmedia, OU=RnD, OU=Digital ID Class 3 - Microsoft Software Validation v2, O=chipsnmedia, L=Gangnam-Gu, S=Seoul, C=KR | 149E1CED2263863A4229DE1B22B30C33440AE085</ProductionCertificate>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win7 Release|Win32'">
+    <SignMode>ProductionSign</SignMode>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win7 Release|Win32'">
+    <ProductionCertificate>CN=chipsnmedia, OU=RnD, OU=Digital ID Class 3 - Microsoft Software Validation v2, O=chipsnmedia, L=Gangnam-Gu, S=Seoul, C=KR | 149E1CED2263863A4229DE1B22B30C33440AE085</ProductionCertificate>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win7 Release|x64'">
+    <SignMode>ProductionSign</SignMode>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win7 Release|x64'">
+    <ProductionCertificate>CN=chipsnmedia, OU=RnD, OU=Digital ID Class 3 - Microsoft Software Validation v2, O=chipsnmedia, L=Gangnam-Gu, S=Seoul, C=KR | 149E1CED2263863A4229DE1B22B30C33440AE085</ProductionCertificate>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win8 Release|Win32'">
+    <SignMode>ProductionSign</SignMode>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win8 Release|Win32'">
+    <ProductionCertificate>CN=chipsnmedia, OU=RnD, OU=Digital ID Class 3 - Microsoft Software Validation v2, O=chipsnmedia, L=Gangnam-Gu, S=Seoul, C=KR | 149E1CED2263863A4229DE1B22B30C33440AE085</ProductionCertificate>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win8 Release|x64'">
+    <SignMode>ProductionSign</SignMode>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win8 Release|x64'">
+    <ProductionCertificate>CN=chipsnmedia, OU=RnD, OU=Digital ID Class 3 - Microsoft Software Validation v2, O=chipsnmedia, L=Gangnam-Gu, S=Seoul, C=KR | 149E1CED2263863A4229DE1B22B30C33440AE085</ProductionCertificate>
+  </PropertyGroup>
+</Project>

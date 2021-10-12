@@ -1,0 +1,17 @@
+default=0                        #Default Option test:
+                                 #default=0   off
+                                 #default=1   on
+                                 #-99 all random
+                                 
+secondary-axi=0                  #0 ~ 7,(bitmask - 0x01:IMD, 0x02:RDO, 0x04:LF),  -99(random)
+
+yuv_src_mode=0                   #0:planar, 1:nv12, 2:nv21, 3:YUYV(packed), 4:YVYU, 5:UYVY, 6:VYUY      -99(random)
+srcFormat3p4b=0                  #three pixel four bytes                          -99(random)
+stream-endian=31                 #16 ~ 31,                                        -99(random)
+frame-endian=31                  #16 ~ 31,                                        -99(random)
+source-endian=31                 #16 ~ 31,                                        -99(random)
+rotAngle=0                       # 0, 90, 180, 270,                               -99(random)
+mirDir=0                         # 0 ~ 3,                                         -99(random)
+bsmode=1                         #0:ringbuffer, 1:linebuffer                      -99(random)
+
+MODE_COMP_ENCODED=1              #-c  compare between FPGA output & ref-c output
