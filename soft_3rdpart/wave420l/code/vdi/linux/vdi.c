@@ -82,6 +82,18 @@ static vdi_info_t s_vdi_info[MAX_NUM_VPU_CORE];
 static int swap_endian(unsigned long core_idx, unsigned char *data, int len, int endian);
 static int allocate_common_memory(unsigned long core_idx);
 
+void vdi_flush_ddr(unsigned long core_idx,unsigned long start,unsigned long size,unsigned char flag)
+{
+    vdi_info_t *vdi;
+    vpudrv_flush_cache_t cache_info;
+    
+    vdi = &s_vdi_info[core_idx];
+    cache_info.start = start;
+    cache_info.size = size;
+    cache_info.flag = flag;
+
+    ioctl(vdi->vpu_fd, VDI_IOCTL_FLUSH_DCACHE, &cache_info);
+}
 
 int vdi_probe(unsigned long core_idx)
 {
@@ -361,7 +373,8 @@ int allocate_common_memory(unsigned long core_idx)
         return -1;
     }
 
-    vdb.virt_addr = (unsigned long)mmap(NULL, vdb.size, PROT_READ | PROT_WRITE, MAP_SHARED, vdi->vpu_fd, vdb.phys_addr);
+   // vdb.virt_addr = (unsigned long)mmap(NULL, vdb.size, PROT_READ | PROT_WRITE, MAP_SHARED, vdi->vpu_fd, vdb.phys_addr);
+   vdb.virt_addr = (unsigned long)mmap(NULL, vdb.size, PROT_READ | PROT_WRITE, MAP_SHARED, vdi->vpu_fd, DRAM_MEM2SYS(vdb.phys_addr));
     if ((void *)vdb.virt_addr == MAP_FAILED) 
     {
         VLOG(ERR, "[VDI] fail to map common memory phyaddr=0x%lx, size = %d\n", (int)vdb.phys_addr, (int)vdb.size);
@@ -838,6 +851,7 @@ int vdi_clear_memory(unsigned long core_idx, unsigned int addr, int len, int end
     osal_memset((void*)zero, 0x00, len);
 
 	offset = addr - (unsigned long)vdb.phys_addr;
+	vdi_flush_ddr(core_idx,(unsigned long )(vdb.phys_addr+offset),len,1);  //invalid cache before clear
     osal_memcpy((void *)((unsigned long)vdb.virt_addr+offset), zero, len);	
 
     osal_free(zero);
@@ -936,7 +950,9 @@ int vdi_read_memory(unsigned long core_idx, unsigned int addr, unsigned char *da
     }
 
     if (!vdb.size)
+    {
         return -1;
+    }
 
 	offset = addr - (unsigned long)vdb.phys_addr;	
     osal_memcpy(data, (const void *)((unsigned long)vdb.virt_addr+offset), len);
@@ -976,8 +992,10 @@ int vdi_allocate_dma_memory(unsigned long core_idx, vpu_buffer_t *vb)
     vb->base = (unsigned long)vdb.base;
 
     //map to virtual address
-    vdb.virt_addr = (unsigned long)mmap(NULL, vdb.size, PROT_READ | PROT_WRITE,
-        MAP_SHARED, vdi->vpu_fd, vdb.phys_addr);
+    //vdb.virt_addr = (unsigned long)mmap(NULL, vdb.size, PROT_READ | PROT_WRITE,
+    //    MAP_SHARED, vdi->vpu_fd, vdb.phys_addr);
+	vdb.virt_addr = (unsigned long)mmap(NULL, vdb.size, PROT_READ | PROT_WRITE,
+        MAP_SHARED, vdi->vpu_fd, DRAM_MEM2SYS(vdb.phys_addr));
     if ((void *)vdb.virt_addr == MAP_FAILED) 
     {
         memset(vb, 0x00, sizeof(vpu_buffer_t));

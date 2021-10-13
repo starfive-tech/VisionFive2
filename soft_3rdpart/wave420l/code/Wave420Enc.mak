@@ -42,6 +42,14 @@ ifeq ("$(BUILD_CONFIGURATION)", "EmbeddedLinux")
     PLATFORM        = armlinux
 endif
 
+ifeq ("$(BUILD_CONFIGURATION)", "RiscvLinux")
+    CROSS_CC_PREFIX = riscv64-buildroot-linux-gnu-
+    PLATFORM        = riscvlinux
+    USE_FFMPEG  	= no
+    USE_PTHREAD 	= yes
+    MM_C            = vdi/mm.c
+endif
+
 CC  = $(CROSS_CC_PREFIX)gcc
 CXX = $(CROSS_CC_PREFIX)g++
 LINKING=$(CC)

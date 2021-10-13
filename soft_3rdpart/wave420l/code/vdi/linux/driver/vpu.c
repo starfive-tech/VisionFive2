@@ -30,6 +30,8 @@
 #include <linux/slab.h>
 #include <linux/sched.h>
 #include <linux/version.h>
+#include <linux/of.h>
+#include <soc/starfive/vic7100.h>
 
 #include "../../../vpuapi/vpuconfig.h"
 
@@ -42,19 +44,25 @@
 #define DPRINTK(args...)
 #endif
 
+/* if clktree is work,try this...*/
+#define STARFIVE_VPU_SUPPORT_CLOCK_CONTROL
+
+#ifndef STARFIVE_VPU_SUPPORT_CLOCK_CONTROL
 /* definitions to be changed as customer  configuration */
 /* if you want to have clock gating scheme frame by frame */
-/* #define VPU_SUPPORT_CLOCK_CONTROL */
+#define VPU_SUPPORT_CLOCK_CONTROL
+#endif
+
 
 /* if the driver want to use interrupt service from kernel ISR */
 #define VPU_SUPPORT_ISR
 
 /* if the platform driver knows the name of this driver */
 /* VPU_PLATFORM_DEVICE_NAME */
-/* #define VPU_SUPPORT_PLATFORM_DRIVER_REGISTER	*/
+#define VPU_SUPPORT_PLATFORM_DRIVER_REGISTER
 
 /* if this driver knows the dedicated video memory address */
-#define VPU_SUPPORT_RESERVED_VIDEO_MEMORY
+//#define VPU_SUPPORT_RESERVED_VIDEO_MEMORY
 
 #define VPU_PLATFORM_DEVICE_NAME "vdec"
 #define VPU_CLK_NAME "vcodec"
@@ -63,11 +71,13 @@
 /* if the platform driver knows this driver */
 /* the definition of VPU_REG_BASE_ADDR and VPU_REG_SIZE are not meaningful */
 
-#define VPU_REG_BASE_ADDR 0x75000000
+//#define VPU_REG_BASE_ADDR 0x75000000
+#define VPU_REG_BASE_ADDR 0x130B0000
+
 #define VPU_REG_SIZE (0x4000*MAX_NUM_VPU_CORE)
 
 #ifdef VPU_SUPPORT_ISR
-#define VPU_IRQ_NUM (23+32)
+#define VPU_IRQ_NUM (15)
 #endif
 
 /* this definition is only for chipsnmedia FPGA board env */
@@ -76,6 +86,30 @@
 #ifndef VM_RESERVED	/*for kernel up to 3.7.0 version*/
 # define  VM_RESERVED   (VM_DONTEXPAND | VM_DONTDUMP)
 #endif
+
+#ifdef STARFIVE_VPU_SUPPORT_CLOCK_CONTROL
+
+typedef struct vpu_clkgen_t {
+	void __iomem *en_ctrl;
+	uint32_t rst_mask;
+} vpu_clkgen_t;
+
+typedef struct vpu_clk_t{
+	phys_addr_t pmu_base;
+	void __iomem *clkgen;
+	void __iomem *rst_status;
+	uint32_t en_shift;
+	uint32_t en_mask;
+	vpu_clkgen_t apb_clk;
+	vpu_clkgen_t axi_clk;
+	vpu_clkgen_t bpu_clk;
+	vpu_clkgen_t vce_clk;
+	vpu_clkgen_t aximem_128b;
+	void __iomem *rst_ctrl;
+}vpu_clk_t;
+#endif /*STARFIVE_VPU_SUPPORT_CLOCK_CONTROL*/
+
+struct device *vpu_dev;
 
 typedef struct vpu_drv_context_t {
 	struct fasync_struct *async_queue;
@@ -110,11 +144,20 @@ static video_mm_t s_vmem;
 static vpudrv_buffer_t s_video_memory = {0};
 #endif /*VPU_SUPPORT_RESERVED_VIDEO_MEMORY*/
 
+
+#ifdef STARFIVE_VPU_SUPPORT_CLOCK_CONTROL
+static int vpu_hw_reset(void);
+static void vpu_clk_disable(struct vpu_clk_t *clk);
+static int vpu_clk_enable(struct vpu_clk_t *clk);
+static struct vpu_clk_t *vpu_clk_get(struct device *dev);
+static void vpu_clk_put(struct vpu_clk_t *clk);
+#else
 static int vpu_hw_reset(void);
 static void vpu_clk_disable(struct clk *clk);
 static int vpu_clk_enable(struct clk *clk);
 static struct clk *vpu_clk_get(struct device *dev);
 static void vpu_clk_put(struct clk *clk);
+#endif /*STARFIVE_VPU_SUPPORT_CLOCK_CONTROL*/
 
 /* end customer definition */
 static vpudrv_buffer_t s_instance_pool = {0};
@@ -123,7 +166,12 @@ static vpu_drv_context_t s_vpu_drv_context;
 static int s_vpu_major;
 static struct cdev s_vpu_cdev;
 
+#ifdef STARFIVE_VPU_SUPPORT_CLOCK_CONTROL
+static struct vpu_clk_t *s_vpu_clk;
+#else
 static struct clk *s_vpu_clk;
+#endif
+
 static int s_vpu_open_ref_count;
 #ifdef VPU_SUPPORT_ISR
 static int s_vpu_irq = VPU_IRQ_NUM;
@@ -269,11 +317,12 @@ static int vpu_alloc_dma_buffer(vpudrv_buffer_t *vb)
 
 	vb->base = (unsigned long)(s_video_memory.base + (vb->phys_addr - s_video_memory.phys_addr));
 #else
-	vb->base = (unsigned long)dma_alloc_coherent(NULL, PAGE_ALIGN(vb->size), (dma_addr_t *) (&vb->phys_addr), GFP_DMA | GFP_KERNEL);
+	vb->base = (unsigned long)dma_alloc_coherent(vpu_dev, PAGE_ALIGN(vb->size), (dma_addr_t *) (&vb->phys_addr), GFP_DMA | GFP_KERNEL);
 	if ((void *)(vb->base) == NULL)	{
 		printk(KERN_ERR "[VPUDRV] Physical memory allocation error size=%d\n", vb->size);
 		return -1;
 	}
+	starfive_flush_dcache(vb->phys_addr,PAGE_ALIGN(vb->size));
 #endif
 	return 0;
 }
@@ -288,7 +337,7 @@ static void vpu_free_dma_buffer(vpudrv_buffer_t *vb)
 		vmem_free(&s_vmem, vb->phys_addr, 0);
 #else
 	if (vb->base)
-		dma_free_coherent(0, PAGE_ALIGN(vb->size), (void *)vb->base, vb->phys_addr);
+		dma_free_coherent(vpu_dev, PAGE_ALIGN(vb->size), (void *)vb->base, vb->phys_addr);
 #endif
 }
 
@@ -745,6 +794,21 @@ static long vpu_ioctl(struct file *filp, u_int cmd, u_long arg)
 			DPRINTK("[VPUDRV][-]VDI_IOCTL_GET_REGISTER_INFO s_vpu_register.phys_addr==0x%lx, s_vpu_register.virt_addr=0x%lx, s_vpu_register.size=%d\n", s_vpu_register.phys_addr , s_vpu_register.virt_addr, s_vpu_register.size);
 		}
 		break;
+	case VDI_IOCTL_FLUSH_DCACHE:
+        {
+            vpudrv_flush_cache_t cache_info;
+
+            DPRINTK("[JPUDRV][+]VDI_IOCTL_FLUSH_DCACHE\n");
+            ret = copy_from_user(&cache_info, (vpudrv_flush_cache_t *)arg, sizeof(vpudrv_flush_cache_t));
+            if (ret != 0)
+                ret = -EFAULT;
+
+            if(cache_info.flag)
+                starfive_flush_dcache(cache_info.start,cache_info.size);
+
+            DPRINTK("[JPUDRV][-]VDI_IOCTL_FLUSH_DCACHE\n");
+            break;
+        }
 	default:
 		{
 			printk(KERN_ERR "[VPUDRV] No such IOCTL, cmd is %d\n", cmd);
@@ -839,6 +903,8 @@ static int vpu_release(struct inode *inode, struct file *filp)
     }
     up(&s_vpu_sem);
 
+	vpu_hw_reset();
+	
     return 0;
 }
 
@@ -944,6 +1010,12 @@ static int vpu_probe(struct platform_device *pdev)
 	struct resource *res = NULL;
 
 	DPRINTK("[VPUDRV] vpu_probe\n");
+
+	if(pdev){
+		vpu_dev = &pdev->dev;
+		vpu_dev->coherent_dma_mask = 0xffffffff;
+	}
+	
 	if (pdev)
 		res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (res) {/* if platform driver is implemented */
@@ -1340,9 +1412,16 @@ DONE_WAKEUP:
 #endif				/* !CONFIG_PM */
 
 #ifdef VPU_SUPPORT_PLATFORM_DRIVER_REGISTER
+static const struct of_device_id vpu_of_id_table[] = {
+	{ .compatible = "cnm,cnm420l-vpu" },
+	{}
+};
+MODULE_DEVICE_TABLE(of, vpu_of_id_table);
+
 static struct platform_driver vpu_driver = {
 	.driver = {
 		   .name = VPU_PLATFORM_DEVICE_NAME,
+		   .of_match_table = of_match_ptr(vpu_of_id_table),
 		   },
 	.probe = vpu_probe,
 	.remove = vpu_remove,
@@ -1431,11 +1510,240 @@ static void __exit vpu_exit(void)
 
 MODULE_AUTHOR("A customer using C&M VPU, Inc.");
 MODULE_DESCRIPTION("VPU linux driver");
-MODULE_LICENSE("Proprietary");
+MODULE_LICENSE("GPL");
 
 module_init(vpu_init);
 module_exit(vpu_exit);
 
+#ifdef STARFIVE_VPU_SUPPORT_CLOCK_CONTROL
+
+#define PMU_BASE_ADDR		0x17030000
+#define PMU_VENC_MASK		(0x1<<6)
+
+#define CLK_ENABLE_DATA			1
+#define CLK_DISABLE_DATA		0
+#define CLK_EN_SHIFT			31
+#define CLK_EN_MASK			0x80000000U
+
+#define SAIF_BD_APBS_BASE		0x13020000
+#define WAVE420L_CLK_AXI_CTRL		0x138U
+#define WAVE420L_CLK_BPU_CTRL		0x13cU
+#define WAVE420L_CLK_VCE_CTRL		0x140U
+#define WAVE420L_CLK_APB_CTRL		0x144U
+
+#define RSTGEN_SOFTWARE_RESET_ASSERT1	0x2FCU
+#define RSTGEN_SOFTWARE_RESET_STATUS1	0x30CU
+
+
+#define RSTN_AXI_MASK			(0x1 << 22)
+#define RSTN_BPU_MASK			(0x1 << 23)
+#define RSTN_VCE_MASK			(0x1 << 24)
+#define RSTN_APB_MASK			(0x1 << 25)
+#define RSTN_128B_AXIMEM_MASK		(0x1 << 26)
+
+
+static void pmu_pd_set(vpu_clk_t *clk, int on_off, uint32_t pd_flag)
+{
+	const uint32_t flag_off = 0x0c;
+	const uint32_t sw_off = 0x44;
+	void __iomem *base = ioremap(clk->pmu_base, 0x100);
+
+	writel(pd_flag, base + flag_off);
+	writel(0xff, base + sw_off);
+	if (on_off) {
+		writel(0x05, base + sw_off);
+		writel(0x50, base + sw_off);
+	} else {
+		writel(0x0a, base + sw_off);
+		writel(0xa0, base + sw_off);
+	}
+
+	iounmap(base);
+}
+
+static void saif_set_reg(volatile void __iomem *addr, uint32_t data,
+			uint32_t shift, uint32_t mask)
+{
+	uint32_t tmp;
+
+	tmp = readl(addr);
+	tmp &= ~mask;
+	tmp |= (data << shift) & mask;
+	writel(tmp, addr);
+}
+
+static void saif_assert_rst(volatile void __iomem *addr,
+			const volatile void __iomem *addr_status, uint32_t mask)
+{
+	uint32_t tmp;
+
+	tmp = readl(addr);
+	tmp |= mask;
+	writel(tmp, addr);
+	do {
+		tmp = readl(addr_status);
+	} while ((tmp & mask) != 0);
+}
+
+static void saif_clear_rst(volatile void __iomem *addr,
+			const volatile void __iomem *addr_status, uint32_t mask)
+{
+	uint32_t tmp;
+
+	tmp = readl(addr);
+	tmp &= ~mask;
+	writel(tmp, addr);
+	do {
+		tmp = readl(addr_status);
+	} while ((tmp & mask) != mask);
+}
+
+static void vpu_clk_control(vpu_clk_t *clk, bool enable)
+{
+	if (enable) {
+		/*enable*/
+		saif_set_reg(clk->apb_clk.en_ctrl, CLK_ENABLE_DATA, clk->en_shift, clk->en_mask);
+		saif_set_reg(clk->axi_clk.en_ctrl, CLK_ENABLE_DATA, clk->en_shift, clk->en_mask);
+		saif_set_reg(clk->bpu_clk.en_ctrl, CLK_ENABLE_DATA, clk->en_shift, clk->en_mask);
+		saif_set_reg(clk->vce_clk.en_ctrl, CLK_ENABLE_DATA, clk->en_shift, clk->en_mask);
+
+		/*clr-reset*/
+		saif_clear_rst(clk->rst_ctrl, clk->rst_status, clk->apb_clk.rst_mask);
+		saif_clear_rst(clk->rst_ctrl, clk->rst_status, clk->axi_clk.rst_mask);
+		saif_clear_rst(clk->rst_ctrl, clk->rst_status, clk->bpu_clk.rst_mask);
+		saif_clear_rst(clk->rst_ctrl, clk->rst_status, clk->vce_clk.rst_mask);
+	} else {
+		/*assert-reset*/
+		saif_assert_rst(clk->rst_ctrl, clk->rst_status, clk->apb_clk.rst_mask);
+		saif_assert_rst(clk->rst_ctrl, clk->rst_status, clk->axi_clk.rst_mask);
+		saif_assert_rst(clk->rst_ctrl, clk->rst_status, clk->bpu_clk.rst_mask);
+		saif_assert_rst(clk->rst_ctrl, clk->rst_status, clk->vce_clk.rst_mask);
+
+		/*disable*/
+		saif_set_reg(clk->apb_clk.en_ctrl, CLK_DISABLE_DATA, clk->en_shift, clk->en_mask);
+		saif_set_reg(clk->axi_clk.en_ctrl, CLK_DISABLE_DATA, clk->en_shift, clk->en_mask);
+		saif_set_reg(clk->bpu_clk.en_ctrl, CLK_DISABLE_DATA, clk->en_shift, clk->en_mask);
+		saif_set_reg(clk->vce_clk.en_ctrl, CLK_DISABLE_DATA, clk->en_shift, clk->en_mask);
+	}
+}
+
+static void vpu_aximem_128b_control(vpu_clk_t *clk, bool enable)
+{
+	if (enable) {
+		saif_set_reg(clk->axi_clk.en_ctrl, CLK_ENABLE_DATA, clk->en_shift, clk->en_mask);
+		saif_clear_rst(clk->rst_ctrl, clk->rst_status, clk->aximem_128b.rst_mask);
+	} else {
+		saif_assert_rst(clk->rst_ctrl, clk->rst_status, clk->aximem_128b.rst_mask);
+		saif_set_reg(clk->axi_clk.en_ctrl, CLK_DISABLE_DATA, clk->en_shift, clk->en_mask);
+	}
+}
+
+
+static int vpu_of_clk_get(struct device *dev, vpu_clk_t *vpu_clk)
+{
+	if (!dev)
+		return -ENXIO;
+
+	vpu_clk->pmu_base = PMU_BASE_ADDR;
+	vpu_clk->clkgen = ioremap(SAIF_BD_APBS_BASE, 0x400);
+	if (IS_ERR(vpu_clk->clkgen)) {
+		dev_err(dev, "ioremap clkgen failed.\n");
+		return PTR_ERR(vpu_clk->clkgen);
+	}
+
+	/* clkgen define */
+	vpu_clk->axi_clk.en_ctrl = vpu_clk->clkgen + WAVE420L_CLK_AXI_CTRL;
+	vpu_clk->bpu_clk.en_ctrl = vpu_clk->clkgen + WAVE420L_CLK_BPU_CTRL;
+	vpu_clk->vce_clk.en_ctrl = vpu_clk->clkgen + WAVE420L_CLK_VCE_CTRL;
+	vpu_clk->apb_clk.en_ctrl = vpu_clk->clkgen + WAVE420L_CLK_APB_CTRL;
+	vpu_clk->en_mask = CLK_EN_MASK;
+	vpu_clk->en_shift = CLK_EN_SHIFT;
+
+	/* rstgen define */
+	vpu_clk->rst_ctrl = vpu_clk->clkgen + RSTGEN_SOFTWARE_RESET_ASSERT1;
+	vpu_clk->rst_status = vpu_clk->clkgen + RSTGEN_SOFTWARE_RESET_STATUS1;
+	vpu_clk->axi_clk.rst_mask = RSTN_AXI_MASK;
+	vpu_clk->bpu_clk.rst_mask = RSTN_BPU_MASK;
+	vpu_clk->vce_clk.rst_mask = RSTN_VCE_MASK;
+	vpu_clk->apb_clk.rst_mask = RSTN_APB_MASK;
+	vpu_clk->aximem_128b.rst_mask = RSTN_128B_AXIMEM_MASK;
+
+	return 0;
+}
+
+static void vpu_clk_reset(vpu_clk_t *clk)
+{
+	/*assert-reset*/
+	saif_assert_rst(clk->rst_ctrl, clk->rst_status, clk->apb_clk.rst_mask);
+	saif_assert_rst(clk->rst_ctrl, clk->rst_status, clk->axi_clk.rst_mask);
+	saif_assert_rst(clk->rst_ctrl, clk->rst_status, clk->bpu_clk.rst_mask);
+	saif_assert_rst(clk->rst_ctrl, clk->rst_status, clk->vce_clk.rst_mask);
+
+	/*clr-reset*/
+	saif_clear_rst(clk->rst_ctrl, clk->rst_status, clk->apb_clk.rst_mask);
+	saif_clear_rst(clk->rst_ctrl, clk->rst_status, clk->axi_clk.rst_mask);
+	saif_clear_rst(clk->rst_ctrl, clk->rst_status, clk->bpu_clk.rst_mask);
+	saif_clear_rst(clk->rst_ctrl, clk->rst_status, clk->vce_clk.rst_mask);
+
+}
+
+int vpu_hw_reset(void)
+{
+	if (!s_vpu_clk)
+		return -1;
+
+	vpu_clk_reset(s_vpu_clk);
+
+	DPRINTK("[VPUDRV] reset vpu hardware. \n");
+	return 0;
+}
+
+struct vpu_clk_t *vpu_clk_get(struct device *dev)
+{
+	vpu_clk_t *vpu_clk;
+
+	vpu_clk = devm_kzalloc(dev, sizeof(*vpu_clk), GFP_KERNEL);
+	if (!vpu_clk)
+		return NULL;
+
+	if (vpu_of_clk_get(dev, vpu_clk))
+		goto err_get_clk;
+
+	return vpu_clk;
+err_get_clk:
+	kfree(vpu_clk);
+	return NULL;
+
+}
+
+void vpu_clk_put(struct vpu_clk_t *clk)
+{
+	iounmap(clk->clkgen);
+}
+
+static int vpu_clk_enable(struct vpu_clk_t *clk)
+{
+	if (clk == NULL || IS_ERR(clk))
+		return -1;
+
+	pmu_pd_set(clk,true,PMU_VENC_MASK);
+	vpu_clk_control(clk,true);
+	vpu_aximem_128b_control(clk,true);
+	
+	DPRINTK("[VPUDRV] vpu_clk_enable\n");
+	return 0;
+}
+
+void vpu_clk_disable(struct vpu_clk_t *clk)
+{
+	vpu_aximem_128b_control(clk,false);
+	vpu_clk_control(clk,false);
+	pmu_pd_set(clk,false,PMU_VENC_MASK);
+
+	DPRINTK("[VPUDRV] vpu_clk_disable\n");
+}
+
+#else /*STARFIVE_VPU_SUPPORT_CLOCK_CONTROL*/
 int vpu_hw_reset(void)
 {
 	DPRINTK("[VPUDRV] request vpu reset from application. \n");
@@ -1477,7 +1785,8 @@ int vpu_clk_enable(struct clk *clk)
 		/* for C&M EVB. */
 
 		DPRINTK("[VPUDRV] vpu_clk_enable\n");
-		return clk_enable(clk);
+//		return clk_enable(clk);
+		return 1;
 	}
 
 	return 0;
@@ -1487,8 +1796,8 @@ void vpu_clk_disable(struct clk *clk)
 {
 	if (!(clk == NULL || IS_ERR(clk))) {
 		DPRINTK("[VPUDRV] vpu_clk_disable\n");
-		clk_disable(clk);
+//		clk_disable(clk);
 	}
 }
-
+#endif /*STARFIVE_VPU_SUPPORT_CLOCK_CONTROL*/
  

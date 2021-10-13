@@ -35,6 +35,18 @@
 #define VDI_IOCTL_CLOSE_INSTANCE			_IO(VDI_IOCTL_MAGIC, 10)
 #define VDI_IOCTL_GET_INSTANCE_NUM			_IO(VDI_IOCTL_MAGIC, 11)
 #define VDI_IOCTL_GET_REGISTER_INFO			_IO(VDI_IOCTL_MAGIC, 12)
+#define VDI_IOCTL_FLUSH_DCACHE				_IO(VDI_IOCTL_MAGIC, 14)
+
+
+#define DRAM_MEM2SYS(addr) ((addr) > 0x40000000 && (addr) < 0x43FFFFFFF ? ((addr)+0x400000000):(addr))
+
+#define ioremap_nocache ioremap
+
+typedef struct vpudrv_flush_cache_t {
+    unsigned long start;
+    unsigned long size;
+    unsigned char flag;
+} vpudrv_flush_cache_t;
 
 
 typedef struct vpudrv_buffer_t {

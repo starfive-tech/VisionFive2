@@ -848,7 +848,9 @@ int LoadYuvImageHelperFormat(Uint32 core_idx,
     if (fb->mapType)
         LoadTiledImageYuvBurst(core_idx, pYuv, picWidth, picHeight, fb, mapCfg);
     else
+    {
         LoadYuvImageBurstFormat(core_idx, pYuv, picWidth, picHeight, fb, TRUE);
+    }
 
 	return 1;
 }

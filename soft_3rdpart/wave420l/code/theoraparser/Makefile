@@ -10,6 +10,10 @@ ifeq ("$(BUILD_CONFIGURATION)", "NonOS")
     PLATFORM_CFLAGS =
 endif
 
+ifeq ("$(BUILD_CONFIGURATION)", "RiscvLinux")
+    CROSS_CC_PREFIX = riscv64-buildroot-linux-gnu-
+endif
+
 CC  = $(CROSS_CC_PREFIX)gcc
 CXX = $(CROSS_CC_PREFIX)g++
 AR  = $(CROSS_CC_PREFIX)ar

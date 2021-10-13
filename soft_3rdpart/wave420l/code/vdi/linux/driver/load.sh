@@ -13,9 +13,9 @@ fi
 
 # invoke insmod	with all arguments we got
 # and use a pathname, as newer modutils	don't look in .	by default
-/sbin/insmod -f	./$module.ko $*	|| exit	-1
+/sbin/insmod ./$module.ko $*	|| exit	-1
 
-major=`cat /proc/devices | awk "\\$2==\"$module\" {print \\$1}"`
+major=`cat /proc/devices | grep $device|awk {'print $1'}`
 
 # Remove stale nodes and replace them, then give gid and perms
 # Usually the script is	shorter, it's simple that has several devices in it.

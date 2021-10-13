@@ -17,7 +17,7 @@
 #define VPU_PRODUCT_NAME_REGISTER                 0x1040
 #define VPU_PRODUCT_CODE_REGISTER                 0x1044
 
-#define SUPPORT_MULTI_CORE_IN_ONE_DRIVER
+//#define SUPPORT_MULTI_CORE_IN_ONE_DRIVER
 #define MAX_VPU_CORE_NUM MAX_NUM_VPU_CORE
 #ifdef SUPPORT_SRC_BUF_CONTROL 
 #define MAX_VPU_BUFFER_POOL 2000
@@ -155,6 +155,7 @@ extern "C" {
     int vdi_get_system_endian(unsigned long core_idx);
     int vdi_convert_endian(unsigned long core_idx, unsigned int endian);
 	void vdi_print_vpu_status(unsigned long coreIdx);
+	void vdi_flush_ddr(unsigned long core_idx,unsigned long start,unsigned long size,unsigned char flag);
 
 
 #if defined (__cplusplus)

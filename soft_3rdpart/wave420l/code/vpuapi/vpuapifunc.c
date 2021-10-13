@@ -994,7 +994,9 @@ CodecInst *GetPendingInst(Uint32 coreIdx)
 	
     vip = (vpu_instance_pool_t *)vdi_get_instance_pool(coreIdx);
     if (!vip)
+    {
         return NULL;
+    }
 
 	if (!vip->pendingInst)
 		return NULL;
