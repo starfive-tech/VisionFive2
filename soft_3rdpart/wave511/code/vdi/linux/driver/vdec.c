@@ -114,6 +114,7 @@ typedef struct vpu_clkgen_t {
 
 typedef struct vpu_clk_t {
 #ifndef STARFIVE_VPU_SUPPORT_CLOCK_CONTROL
+	void __iomem *clkgen;
 	void __iomem *rst_ctrl;
 	void __iomem *rst_status;
 	uint32_t en_shift;
@@ -130,8 +131,8 @@ typedef struct vpu_clk_t {
 	struct clk *vce_clk;
 	struct clk *aximem_128b;
 #endif
-	void __iomem *clkgen;
 	phys_addr_t pmu_base;
+	uint32_t pmu_mask;
 	void __iomem *noc_bus;
 	bool noc_ctrl;
 } vpu_clk_t;
@@ -1164,6 +1165,7 @@ static int vpu_release(struct inode *inode, struct file *filp)
     }
     up(&s_vpu_sem);
 
+    vpu_hw_reset();
     return 0;
 }
 
@@ -1934,7 +1936,6 @@ static void vpu_clk_reset(vpu_clk_t *clk)
 	saif_clear_rst(clk->rst_ctrl, clk->rst_status, clk->axi_clk.rst_mask);
 	saif_clear_rst(clk->rst_ctrl, clk->rst_status, clk->bpu_clk.rst_mask);
 	saif_clear_rst(clk->rst_ctrl, clk->rst_status, clk->vce_clk.rst_mask);
-
 }
 
 int vpu_hw_reset(void)
@@ -1954,6 +1955,8 @@ static int vpu_of_clk_get(struct platform_device *pdev, vpu_clk_t *vpu_clk)
 		return -ENXIO;
 
 	vpu_clk->pmu_base = PMU_BASE_ADDR;
+	vpu_clk->pmu_mask = PMU_VDEC_MASK;
+
 	vpu_clk->clkgen = ioremap(SAIF_BD_APBS_BASE, 0x400);
 	if (IS_ERR(vpu_clk->clkgen)) {
 		dev_err(&pdev->dev, "ioremap clkgen failed.\n");
@@ -1997,13 +2000,14 @@ static vpu_clk_t *vpu_clk_get(struct platform_device *pdev)
 
 	return vpu_clk;
 err_get_clk:
-	kfree(vpu_clk);
+	devm_kfree(&pdev->dev, vpu_clk);
 	return NULL;
 }
 
 static void vpu_clk_put(vpu_clk_t *clk)
 {
 	iounmap(clk->clkgen);
+	kfree(clk);
 }
 
 static int vpu_clk_enable(vpu_clk_t *clk)
@@ -2011,7 +2015,7 @@ static int vpu_clk_enable(vpu_clk_t *clk)
 	if (clk == NULL || IS_ERR(clk))
 		return -1;
 
-	pmu_pd_set(clk, true, PMU_VDEC_MASK);
+	pmu_pd_set(clk, true, clk->pmu_mask);
 	vpu_clk_control(clk, true);
 	vpu_aximem_128b_control(clk, true);
 
@@ -2029,7 +2033,7 @@ static void vpu_clk_disable(vpu_clk_t *clk)
 
 	vpu_aximem_128b_control(clk, false);
 	vpu_clk_control(clk, false);
-	pmu_pd_set(clk, false, PMU_VDEC_MASK);
+	pmu_pd_set(clk, false, clk->pmu_mask);
 	if (clk->noc_ctrl == true)
 		vpu_noc_vdec_bus_control(clk, false);
 
@@ -2056,11 +2060,8 @@ static int vpu_of_clk_get(struct platform_device *pdev, vpu_clk_t *vpu_clk)
 	struct resource *pmu;
 	struct device *dev = &pdev->dev;
 
-	pmu = platform_get_resource_byname(pdev, IORESOURCE_MEM, "pmu");
-	if (IS_ERR(pmu))
-		dev_warn(dev, "get pmu failed.\n");
-
-	vpu_clk->pmu_base = pmu->start;
+	vpu_clk->pmu_base = PMU_BASE_ADDR;
+	vpu_clk->pmu_mask = PMU_VDEC_MASK;
 
 	vpu_clk->apb_clk = devm_clk_get(dev, "apb_clk");
 	if (clk_check_err(vpu_clk->apb_clk)) {
@@ -2138,7 +2139,7 @@ static void vpu_clk_put(vpu_clk_t *clk)
 }
 static int vpu_clk_enable(vpu_clk_t *clk)
 {
-	pmu_pd_set(clk, true, PMU_VDEC_MASK);
+	pmu_pd_set(clk, true, clk->pmu_mask);
 
 	if (!(clk_check_err(clk->apb_clk)))
 		clk_prepare_enable(clk->apb_clk);
@@ -2168,6 +2169,6 @@ static void vpu_clk_disable(vpu_clk_t *clk)
 	if (!(clk_check_err(clk->aximem_128b)))
 		clk_disable_unprepare(clk->aximem_128b);
 
-	pmu_pd_set(clk, false, PMU_VDEC_MASK);
+	pmu_pd_set(clk, false, clk->pmu_mask);
 }
 #endif
