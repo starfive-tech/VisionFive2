@@ -191,6 +191,7 @@ endif
 $(uboot_wrkdir)/.config: $(uboot_defconfig)
 	mkdir -p $(dir $@)
 	cp -p $< $@
+	$(MAKE) -C $(uboot_srcdir) O=$(uboot_wrkdir) ARCH=riscv olddefconfig
 
 $(vmlinux): $(linux_srcdir) $(linux_wrkdir)/.config $(target_gcc)
 	$(MAKE) -C $< O=$(linux_wrkdir) \
