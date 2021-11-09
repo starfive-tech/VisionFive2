@@ -59,9 +59,9 @@ sbi_srcdir := $(srcdir)/opensbi
 sbi_wrkdir := $(wrkdir)/opensbi
 
 ifeq ($(TARGET_BOARD),JH7110)
-sbi_bin := $(wrkdir)/opensbi/platform/starfive/jh7110/firmware/fw_payload.bin
+sbi_bin := $(wrkdir)/opensbi/platform/starfive/firmware/fw_payload.bin
 else
-sbi_bin := $(wrkdir)/opensbi/platform/starfive/vic7100/firmware/fw_payload.bin
+sbi_bin := $(wrkdir)/opensbi/platform/starfive/firmware/fw_payload.bin
 endif
 
 fit := $(wrkdir)/image.fit
@@ -232,13 +232,13 @@ sbi: $(uboot) $(vmlinux)
 	rm -rf $(sbi_wrkdir)
 	mkdir -p $(sbi_wrkdir)
 	cd $(sbi_wrkdir) && O=$(sbi_wrkdir) CFLAGS="-mabi=$(ABI) -march=$(ISA)" ${MAKE} -C $(sbi_srcdir) CROSS_COMPILE=$(CROSS_COMPILE) \
-		PLATFORM=starfive/jh7110 FW_PAYLOAD_PATH=$(uboot) FW_PAYLOAD_FDT_PATH=$(uboot_dtb_file)
+		PLATFORM=starfive FW_PAYLOAD_PATH=$(uboot) FW_FDT_PATH=$(uboot_dtb_file)
 else
 sbi: $(uboot) $(vmlinux)
 	rm -rf $(sbi_wrkdir)
 	mkdir -p $(sbi_wrkdir)
 	cd $(sbi_wrkdir) && O=$(sbi_wrkdir) CFLAGS="-mabi=$(ABI) -march=$(ISA)" ${MAKE} -C $(sbi_srcdir) CROSS_COMPILE=$(CROSS_COMPILE) \
-		PLATFORM=starfive/vic7100 FW_PAYLOAD_PATH=$(uboot) FW_PAYLOAD_FDT_PATH=$(uboot_dtb_file)
+		PLATFORM=starfive FW_PAYLOAD_PATH=$(uboot) FW_FDT_PATH=$(uboot_dtb_file)
 endif
 
 
