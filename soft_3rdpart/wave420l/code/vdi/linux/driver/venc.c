@@ -37,6 +37,10 @@
 
 #include "vpu.h"
 
+#ifndef  CONFIG_PM
+#define CONFIG_PM
+#endif
+
 //#define ENABLE_DEBUG_MSG
 #ifdef ENABLE_DEBUG_MSG
 #define DPRINTK(args...)		printk(KERN_INFO args);
@@ -64,9 +68,9 @@
 /* if this driver knows the dedicated video memory address */
 //#define VPU_SUPPORT_RESERVED_VIDEO_MEMORY
 
-#define VPU_PLATFORM_DEVICE_NAME "vdec"
-#define VPU_CLK_NAME "vcodec"
-#define VPU_DEV_NAME "vpu"
+#define VPU_PLATFORM_DEVICE_NAME "venc"
+#define VPU_CLK_NAME "vcoenc"
+#define VPU_DEV_NAME "venc"
 
 /* if the platform driver knows this driver */
 /* the definition of VPU_REG_BASE_ADDR and VPU_REG_SIZE are not meaningful */

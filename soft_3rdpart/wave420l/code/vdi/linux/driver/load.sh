@@ -1,7 +1,7 @@
 #!/bin/sh
 
-module="vpu"
-device="vpu"
+module="venc"
+device="venc"
 mode="664"
 
 # Group: since distributions do	it differently,	look for wheel or use staff

@@ -17,18 +17,16 @@ export RANLIB="${CROSS_COMPILE}ranlib"
 export READELF="${CROSS_COMPILE}readelf"
 export STRIP="${CROSS_COMPILE}strip"
 
+EXTRA_CFLAGS +=	$(DEBFLAGS) -I$(LDDINCDIR)  -DCNM_FPGA_PLATFORM -DCNM_FPGA_PCI_INTERFACE
 
-//EXTRA_CFLAGS +=	$(DEBFLAGS) -I$(LDDINCDIR) 
-EXTRA_CFLAGS +=	$(DEBFLAGS) -I$(LDDINCDIR)  -DCNM_FPGA_PLATFORM -DCNM_FPGA_PCI_INTERFACE -DCONFIG_PM
 
 ifneq ($(KERNELRELEASE),)
 # call from kernel build system
 
-obj-m	:= vpu.o
+obj-m	:= venc.o
 
 else
 
-//KERNELDIR := ../../../../../kernel
 KERNELDIR ?= /lib/modules/$(shell uname -r)/build
 
 PWD	  := $(shell pwd)
@@ -37,8 +35,6 @@ default:
 	$(MAKE)	-C $(KERNELDIR)	M=$(PWD) LDDINCDIR=$(PWD)/../include modules
 
 endif
-
-
 
 clean:
 	rm -rf *.o *~ core .depend .*.cmd *.ko *.mod.c .tmp_versions

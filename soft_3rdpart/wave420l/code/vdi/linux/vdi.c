@@ -29,7 +29,7 @@
 #include "wave/wave4/wave4_regdefine.h"
 #include "wave/coda7q/coda7q_regdefine.h"
 
-#define VPU_DEVICE_NAME "/dev/vpu"
+#define VPU_DEVICE_NAME "/dev/venc"
 
 typedef pthread_mutex_t	MUTEX_HANDLE;
 
