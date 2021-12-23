@@ -19,6 +19,7 @@
 #include <linux/version.h>
 #include <linux/kfifo.h>
 #include <linux/kthread.h>
+#include <linux/reset.h>
 #include <asm/io.h>
 #include <soc/starfive/vic7100.h>
 #include "../../../vpuapi/vpuconfig.h"
@@ -112,6 +113,14 @@ typedef struct vpu_clkgen_t {
 } vpu_clkgen_t;
 #endif
 
+struct reset_control_bulk_data vpu_resets[] = {
+		{ .id = "rst_apb" },
+		{ .id = "rst_axi" },
+		{ .id = "rst_bpu" },
+		{ .id = "rst_vce" },
+		{ .id = "rst_sram" },
+};
+
 struct clk_bulk_data vpu_clks[] = {
 		{ .id = "apb_clk" },
 		{ .id = "axi_clk" },
@@ -135,6 +144,8 @@ typedef struct vpu_clk_t {
 	int nr_clks;
 #endif
 	struct device *dev;
+	struct reset_control_bulk_data *resets;
+	int nr_rstcs;
 	phys_addr_t pmu_base;
 	uint32_t pmu_mask;
 	void __iomem *noc_bus;
@@ -2039,11 +2050,10 @@ static void vpu_clk_disable(vpu_clk_t *clk)
 
 int vpu_hw_reset(void)
 {
-	/*to do*/
 	DPRINTK("[VPUDRV] reset vpu hardware. \n");
-	return 0;
+	/* sram do not need reset */
+	return reset_control_bulk_reset(s_vpu_clk->nr_rstcs - 1, s_vpu_clk->resets);
 }
-
 
 static int vpu_of_clk_get(struct platform_device *pdev, vpu_clk_t *vpu_clk)
 {
@@ -2054,9 +2064,14 @@ static int vpu_of_clk_get(struct platform_device *pdev, vpu_clk_t *vpu_clk)
 	vpu_clk->pmu_base = PMU_BASE_ADDR;
 	vpu_clk->pmu_mask = PMU_VDEC_MASK;
 
+	vpu_clk->resets = vpu_resets;
 	vpu_clk->clks = vpu_clks;
+	vpu_clk->nr_rstcs = ARRAY_SIZE(vpu_resets);
 	vpu_clk->nr_clks = ARRAY_SIZE(vpu_clks);
 
+	ret = devm_reset_control_bulk_get_exclusive(dev, vpu_clk->nr_rstcs, vpu_clk->resets);
+	if (ret)
+		dev_err(dev, "faied to get vpu reset controls\n");
 
 	ret = devm_clk_bulk_get(dev, vpu_clk->nr_clks, vpu_clk->clks);
 	if (ret)
@@ -2106,12 +2121,22 @@ static int vpu_clk_enable(vpu_clk_t *clk)
 	if (ret)
 		dev_err(clk->dev, "enable clk error.\n");
 
+	ret = reset_control_bulk_deassert(clk->nr_rstcs, clk->resets);
+	if (ret)
+		dev_err(clk->dev, "deassert vpu error.\n");
+
 	DPRINTK("[VPUDRV] vpu_clk_enable\n");
 	return ret;
 }
 
 static void vpu_clk_disable(vpu_clk_t *clk)
 {
+	int ret;
+
+	ret = reset_control_bulk_assert(clk->nr_rstcs, clk->resets);
+	if (ret)
+		dev_err(clk->dev, "assert vpu error.\n");
+
 	clk_bulk_disable_unprepare(clk->nr_clks, clk->clks);
 	pmu_pd_set(clk, false, clk->pmu_mask);
 }
