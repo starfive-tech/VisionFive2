@@ -112,6 +112,12 @@ typedef struct vpu_clkgen_t {
 } vpu_clkgen_t;
 #endif
 
+struct clk_bulk_data vpu_clks[] = {
+		{ .id = "apb_clk" },
+		{ .id = "axi_clk" },
+		{ .id = "bpu_clk" },
+		{ .id = "vce_clk" },
+};
 typedef struct vpu_clk_t {
 #ifndef STARFIVE_VPU_SUPPORT_CLOCK_CONTROL
 	void __iomem *clkgen;
@@ -125,12 +131,10 @@ typedef struct vpu_clk_t {
 	vpu_clkgen_t vce_clk;
 	vpu_clkgen_t aximem_128b;
 #else
-	struct clk *apb_clk;
-	struct clk *axi_clk;
-	struct clk *bpu_clk;
-	struct clk *vce_clk;
-	struct clk *aximem_128b;
+	struct clk_bulk_data *clks;
+	int nr_clks;
 #endif
+	struct device *dev;
 	phys_addr_t pmu_base;
 	uint32_t pmu_mask;
 	void __iomem *noc_bus;
@@ -1883,17 +1887,6 @@ static void vpu_noc_vdec_bus_control(vpu_clk_t *clk, bool enable)
 		saif_set_reg(clk->noc_bus, CLK_DISABLE_DATA, clk->en_shift, clk->en_mask);
 }
 
-static void vpu_aximem_128b_control(vpu_clk_t *clk, bool enable)
-{
-	if (enable) {
-		saif_set_reg(clk->axi_clk.en_ctrl, CLK_ENABLE_DATA, clk->en_shift, clk->en_mask);
-		saif_clear_rst(clk->rst_ctrl, clk->rst_status, clk->aximem_128b.rst_mask);
-	} else {
-		saif_assert_rst(clk->rst_ctrl, clk->rst_status, clk->aximem_128b.rst_mask);
-		saif_set_reg(clk->axi_clk.en_ctrl, CLK_DISABLE_DATA, clk->en_shift, clk->en_mask);
-	}
-}
-
 static void vpu_clk_control(vpu_clk_t *clk, bool enable)
 {
 	if (enable) {
@@ -1908,12 +1901,14 @@ static void vpu_clk_control(vpu_clk_t *clk, bool enable)
 		saif_clear_rst(clk->rst_ctrl, clk->rst_status, clk->axi_clk.rst_mask);
 		saif_clear_rst(clk->rst_ctrl, clk->rst_status, clk->bpu_clk.rst_mask);
 		saif_clear_rst(clk->rst_ctrl, clk->rst_status, clk->vce_clk.rst_mask);
+		saif_clear_rst(clk->rst_ctrl, clk->rst_status, clk->aximem_128b.rst_mask);
 	} else {
 		/*assert-reset*/
 		saif_assert_rst(clk->rst_ctrl, clk->rst_status, clk->apb_clk.rst_mask);
 		saif_assert_rst(clk->rst_ctrl, clk->rst_status, clk->axi_clk.rst_mask);
 		saif_assert_rst(clk->rst_ctrl, clk->rst_status, clk->bpu_clk.rst_mask);
 		saif_assert_rst(clk->rst_ctrl, clk->rst_status, clk->vce_clk.rst_mask);
+		saif_assert_rst(clk->rst_ctrl, clk->rst_status, clk->aximem_128b.rst_mask);
 
 		/*disable*/
 		saif_set_reg(clk->apb_clk.en_ctrl, CLK_DISABLE_DATA, clk->en_shift, clk->en_mask);
@@ -2006,8 +2001,10 @@ err_get_clk:
 
 static void vpu_clk_put(vpu_clk_t *clk)
 {
-	iounmap(clk->clkgen);
-	kfree(clk);
+	if (clk->clkgen) {
+		iounmap(clk->clkgen);
+		clk->clkgen = NULL;
+	}
 }
 
 static int vpu_clk_enable(vpu_clk_t *clk)
@@ -2017,7 +2014,6 @@ static int vpu_clk_enable(vpu_clk_t *clk)
 
 	pmu_pd_set(clk, true, clk->pmu_mask);
 	vpu_clk_control(clk, true);
-	vpu_aximem_128b_control(clk, true);
 
 	if (clk->noc_ctrl == true)
 		vpu_noc_vdec_bus_control(clk, true);
@@ -2031,7 +2027,6 @@ static void vpu_clk_disable(vpu_clk_t *clk)
 	if (clk == NULL || IS_ERR(clk))
 		return;
 
-	vpu_aximem_128b_control(clk, false);
 	vpu_clk_control(clk, false);
 	pmu_pd_set(clk, false, clk->pmu_mask);
 	if (clk->noc_ctrl == true)
@@ -2041,11 +2036,6 @@ static void vpu_clk_disable(vpu_clk_t *clk)
 }
 
 #else  /*STARFIVE_VPU_SUPPORT_CLOCK_CONTROL*/
-
-static int clk_check_err(struct clk *clk)
-{
-	return !!(clk == NULL || IS_ERR(clk));
-}
 
 int vpu_hw_reset(void)
 {
@@ -2057,46 +2047,25 @@ int vpu_hw_reset(void)
 
 static int vpu_of_clk_get(struct platform_device *pdev, vpu_clk_t *vpu_clk)
 {
-	struct resource *pmu;
 	struct device *dev = &pdev->dev;
+	int ret;
 
+	vpu_clk->dev = dev;
 	vpu_clk->pmu_base = PMU_BASE_ADDR;
 	vpu_clk->pmu_mask = PMU_VDEC_MASK;
 
-	vpu_clk->apb_clk = devm_clk_get(dev, "apb_clk");
-	if (clk_check_err(vpu_clk->apb_clk)) {
-		dev_err(dev, "apb_clk get failed.\n");
-		return PTR_ERR(vpu_clk->apb_clk);
-	}
+	vpu_clk->clks = vpu_clks;
+	vpu_clk->nr_clks = ARRAY_SIZE(vpu_clks);
 
-	vpu_clk->axi_clk = devm_clk_get(dev, "axi_clk");
-	if (clk_check_err(vpu_clk->axi_clk)) {
-		dev_err(dev, "axi_clk get failed.\n");
-		return PTR_ERR(vpu_clk->axi_clk);
-	}
 
-	vpu_clk->bpu_clk = devm_clk_get(dev, "bpu_clk");
-	if (clk_check_err(vpu_clk->bpu_clk)) {
-		dev_err(dev, "bpu_clk get failed.\n");
-		return PTR_ERR(vpu_clk->bpu_clk);
-	}
+	ret = devm_clk_bulk_get(dev, vpu_clk->nr_clks, vpu_clk->clks);
+	if (ret)
+		dev_err(dev, "faied to get vpu clk controls\n");
 
-	vpu_clk->vce_clk = devm_clk_get(dev, "vce_clk");
-	if (clk_check_err(vpu_clk->vce_clk)) {
-		dev_err(dev, "vce_clk get failed.\n");
-		return PTR_ERR(vpu_clk->vce_clk);
-	}
-
-	vpu_clk->aximem_128b = devm_clk_get(dev, "aximem_128b");
-	if (clk_check_err(vpu_clk->aximem_128b)) {
-		dev_err(dev, "aximem_128b get failed.\n");
-		return PTR_ERR(vpu_clk->aximem_128b);
-	}
-
-	if (device_property_read_bool(&pdev->dev, "starfive,vdec_noc_ctrl")) {
+	if (device_property_read_bool(dev, "starfive,vdec_noc_ctrl")) {
 		vpu_clk->noc_bus = devm_platform_ioremap_resource_byname(pdev, "noc_bus");
 		if (IS_ERR(vpu_clk->noc_bus)) {
-			dev_err(&pdev->dev, "get noc_bus failed.\n");
+			dev_err(dev, "get noc_bus failed.\n");
 			return PTR_ERR(vpu_clk->noc_bus);
 		}
 		vpu_clk->noc_ctrl = true;
@@ -2121,54 +2090,29 @@ static vpu_clk_t *vpu_clk_get(struct platform_device *pdev)
 	return vpu_clk;
 
 err_of_clk_get:
-	kfree(vpu_clk);
+	devm_kfree(&pdev->dev, vpu_clk);
 	return NULL;
 }
 static void vpu_clk_put(vpu_clk_t *clk)
 {
-	if (!(clk_check_err(clk->apb_clk)))
-		clk_put(clk->apb_clk);
-	if (!(clk_check_err(clk->axi_clk)))
-		clk_put(clk->axi_clk);
-	if (!(clk_check_err(clk->bpu_clk)))
-		clk_put(clk->bpu_clk);
-	if (!(clk_check_err(clk->vce_clk)))
-		clk_put(clk->vce_clk);
-	if (!(clk_check_err(clk->aximem_128b)))
-		clk_put(clk->aximem_128b);
+	clk_bulk_put_all(clk->nr_clks, clk->clks);
 }
 static int vpu_clk_enable(vpu_clk_t *clk)
 {
-	pmu_pd_set(clk, true, clk->pmu_mask);
+	int ret;
 
-	if (!(clk_check_err(clk->apb_clk)))
-		clk_prepare_enable(clk->apb_clk);
-	if (!(clk_check_err(clk->axi_clk)))
-		clk_prepare_enable(clk->axi_clk);
-	if (!(clk_check_err(clk->bpu_clk)))
-		clk_prepare_enable(clk->bpu_clk);
-	if (!(clk_check_err(clk->vce_clk)))
-		clk_prepare_enable(clk->vce_clk);
-	if (!(clk_check_err(clk->aximem_128b)))
-		clk_prepare_enable(clk->aximem_128b);
+	pmu_pd_set(clk, true, clk->pmu_mask);
+	ret = clk_bulk_prepare_enable(clk->nr_clks, clk->clks);
+	if (ret)
+		dev_err(clk->dev, "enable clk error.\n");
 
 	DPRINTK("[VPUDRV] vpu_clk_enable\n");
-	return 0;
+	return ret;
 }
 
 static void vpu_clk_disable(vpu_clk_t *clk)
 {
-	if (!(clk_check_err(clk->apb_clk)))
-		clk_disable_unprepare(clk->apb_clk);
-	if (!(clk_check_err(clk->axi_clk)))
-		clk_disable_unprepare(clk->axi_clk);
-	if (!(clk_check_err(clk->bpu_clk)))
-		clk_disable_unprepare(clk->bpu_clk);
-	if (!(clk_check_err(clk->vce_clk)))
-		clk_disable_unprepare(clk->vce_clk);
-	if (!(clk_check_err(clk->aximem_128b)))
-		clk_disable_unprepare(clk->aximem_128b);
-
+	clk_bulk_disable_unprepare(clk->nr_clks, clk->clks);
 	pmu_pd_set(clk, false, clk->pmu_mask);
 }
 #endif
