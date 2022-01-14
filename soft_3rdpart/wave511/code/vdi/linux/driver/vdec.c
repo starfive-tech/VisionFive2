@@ -22,6 +22,7 @@
 #include <linux/reset.h>
 #include <asm/io.h>
 #include <soc/starfive/vic7100.h>
+#include <soc/starfive/jh7110_pmu.h>
 #include "../../../vpuapi/vpuconfig.h"
 
 #include "vpu.h"
@@ -146,8 +147,6 @@ typedef struct vpu_clk_t {
 	struct device *dev;
 	struct reset_control_bulk_data *resets;
 	int nr_rstcs;
-	phys_addr_t pmu_base;
-	uint32_t pmu_mask;
 	void __iomem *noc_bus;
 	bool noc_ctrl;
 } vpu_clk_t;
@@ -1798,29 +1797,8 @@ MODULE_LICENSE("GPL");
 module_init(vpu_init);
 module_exit(vpu_exit);
 
+
 /* clk&reset for starfive jh7110*/
-#define PMU_BASE_ADDR		0x17030000
-#define PMU_VDEC_MASK		(0x1 << 3)
-
-static void pmu_pd_set(vpu_clk_t *clk, int on_off, uint32_t pd_flag)
-{
-	const uint32_t flag_off = 0x0c;
-	const uint32_t sw_off = 0x44;
-	void __iomem *base = ioremap(clk->pmu_base, 0x100);
-
-	writel(pd_flag, base + flag_off);
-	writel(0xff, base + sw_off);
-	if (on_off) {
-		writel(0x05, base + sw_off);
-		writel(0x50, base + sw_off);
-	} else {
-		writel(0x0a, base + sw_off);
-		writel(0xa0, base + sw_off);
-	}
-
-	iounmap(base);
-}
-
 #ifndef STARFIVE_VPU_SUPPORT_CLOCK_CONTROL
 
 #define CLK_ENABLE_DATA			1
@@ -1960,9 +1938,6 @@ static int vpu_of_clk_get(struct platform_device *pdev, vpu_clk_t *vpu_clk)
 	if (!pdev)
 		return -ENXIO;
 
-	vpu_clk->pmu_base = PMU_BASE_ADDR;
-	vpu_clk->pmu_mask = PMU_VDEC_MASK;
-
 	vpu_clk->clkgen = ioremap(SAIF_BD_APBS_BASE, 0x400);
 	if (IS_ERR(vpu_clk->clkgen)) {
 		dev_err(&pdev->dev, "ioremap clkgen failed.\n");
@@ -2023,7 +1998,8 @@ static int vpu_clk_enable(vpu_clk_t *clk)
 	if (clk == NULL || IS_ERR(clk))
 		return -1;
 
-	pmu_pd_set(clk, true, clk->pmu_mask);
+	starfive_power_domain_set(POWER_DOMAIN_VDEC, true);
+
 	vpu_clk_control(clk, true);
 
 	if (clk->noc_ctrl == true)
@@ -2039,7 +2015,7 @@ static void vpu_clk_disable(vpu_clk_t *clk)
 		return;
 
 	vpu_clk_control(clk, false);
-	pmu_pd_set(clk, false, clk->pmu_mask);
+	starfive_power_domain_set(POWER_DOMAIN_VDEC, false);
 	if (clk->noc_ctrl == true)
 		vpu_noc_vdec_bus_control(clk, false);
 
@@ -2061,8 +2037,6 @@ static int vpu_of_clk_get(struct platform_device *pdev, vpu_clk_t *vpu_clk)
 	int ret;
 
 	vpu_clk->dev = dev;
-	vpu_clk->pmu_base = PMU_BASE_ADDR;
-	vpu_clk->pmu_mask = PMU_VDEC_MASK;
 
 	vpu_clk->resets = vpu_resets;
 	vpu_clk->clks = vpu_clks;
@@ -2116,7 +2090,7 @@ static int vpu_clk_enable(vpu_clk_t *clk)
 {
 	int ret;
 
-	pmu_pd_set(clk, true, clk->pmu_mask);
+	starfive_power_domain_set(POWER_DOMAIN_VDEC, true);
 	ret = clk_bulk_prepare_enable(clk->nr_clks, clk->clks);
 	if (ret)
 		dev_err(clk->dev, "enable clk error.\n");
@@ -2138,6 +2112,6 @@ static void vpu_clk_disable(vpu_clk_t *clk)
 		dev_err(clk->dev, "assert vpu error.\n");
 
 	clk_bulk_disable_unprepare(clk->nr_clks, clk->clks);
-	pmu_pd_set(clk, false, clk->pmu_mask);
+	starfive_power_domain_set(POWER_DOMAIN_VDEC, false);
 }
 #endif
