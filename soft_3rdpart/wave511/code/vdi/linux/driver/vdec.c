@@ -21,8 +21,7 @@
 #include <linux/kthread.h>
 #include <linux/reset.h>
 #include <asm/io.h>
-#include <soc/starfive/vic7100.h>
-#include <soc/starfive/jh7110_pmu.h>
+#include <soc/sifive/sifive_l2_cache.h>
 #include "../../../vpuapi/vpuconfig.h"
 
 #include "vpu.h"
@@ -46,8 +45,13 @@
 //#define VPU_IRQ_CONTROL
 #endif
 
+#define STARFIVE_VPU_PMU
+#ifdef STARFIVE_VPU_PMU
+#include <soc/starfive/jh7110_pmu.h>
+#endif
+
 /* if clktree is work,try this...*/
-//#define STARFIVE_VPU_SUPPORT_CLOCK_CONTROL
+#define STARFIVE_VPU_SUPPORT_CLOCK_CONTROL
 
 /* if the platform driver knows the name of this driver */
 /* VPU_PLATFORM_DEVICE_NAME */
@@ -55,6 +59,11 @@
 
 /* if this driver knows the dedicated video memory address */
 //#define VPU_SUPPORT_RESERVED_VIDEO_MEMORY
+
+static void starfive_flush_dcache(unsigned long start, unsigned long len)
+{
+	sifive_l2_flush64_range(start, len);
+}
 
 #define VPU_PLATFORM_DEVICE_NAME "vdec"
 #define VPU_CLK_NAME "vcodec"
@@ -127,12 +136,14 @@ struct clk_bulk_data vpu_clks[] = {
 		{ .id = "axi_clk" },
 		{ .id = "bpu_clk" },
 		{ .id = "vce_clk" },
+		{ .id = "noc_bus" },
 };
 typedef struct vpu_clk_t {
 #ifndef STARFIVE_VPU_SUPPORT_CLOCK_CONTROL
 	void __iomem *clkgen;
 	void __iomem *rst_ctrl;
 	void __iomem *rst_status;
+	void __iomem *noc_bus;
 	uint32_t en_shift;
 	uint32_t en_mask;
 	vpu_clkgen_t apb_clk;
@@ -142,12 +153,11 @@ typedef struct vpu_clk_t {
 	vpu_clkgen_t aximem_128b;
 #else
 	struct clk_bulk_data *clks;
+	struct reset_control_bulk_data *resets;
+	int nr_rstcs;
 	int nr_clks;
 #endif
 	struct device *dev;
-	struct reset_control_bulk_data *resets;
-	int nr_rstcs;
-	void __iomem *noc_bus;
 	bool noc_ctrl;
 } vpu_clk_t;
 
@@ -1441,6 +1451,7 @@ static int vpu_remove(struct platform_device *pdev)
     if (s_vpu_register.virt_addr)
         iounmap((void *)s_vpu_register.virt_addr);
 
+    vpu_clk_disable(s_vpu_clk);
     vpu_clk_put(s_vpu_clk);
 
     return 0;
@@ -1797,6 +1808,17 @@ MODULE_LICENSE("GPL");
 module_init(vpu_init);
 module_exit(vpu_exit);
 
+#ifdef STARFIVE_VPU_PMU
+static void vpu_pmu_enable(bool enable)
+{
+	starfive_power_domain_set(POWER_DOMAIN_VDEC, enable);
+}
+#else
+static void vpu_pmu_enable(bool enable)
+{
+	return;
+}
+#endif
 
 /* clk&reset for starfive jh7110*/
 #ifndef STARFIVE_VPU_SUPPORT_CLOCK_CONTROL
@@ -1998,7 +2020,7 @@ static int vpu_clk_enable(vpu_clk_t *clk)
 	if (clk == NULL || IS_ERR(clk))
 		return -1;
 
-	starfive_power_domain_set(POWER_DOMAIN_VDEC, true);
+	vpu_pmu_enable(true);
 
 	vpu_clk_control(clk, true);
 
@@ -2015,7 +2037,7 @@ static void vpu_clk_disable(vpu_clk_t *clk)
 		return;
 
 	vpu_clk_control(clk, false);
-	starfive_power_domain_set(POWER_DOMAIN_VDEC, false);
+	vpu_pmu_enable(false);
 	if (clk->noc_ctrl == true)
 		vpu_noc_vdec_bus_control(clk, false);
 
@@ -2051,14 +2073,9 @@ static int vpu_of_clk_get(struct platform_device *pdev, vpu_clk_t *vpu_clk)
 	if (ret)
 		dev_err(dev, "faied to get vpu clk controls\n");
 
-	if (device_property_read_bool(dev, "starfive,vdec_noc_ctrl")) {
-		vpu_clk->noc_bus = devm_platform_ioremap_resource_byname(pdev, "noc_bus");
-		if (IS_ERR(vpu_clk->noc_bus)) {
-			dev_err(dev, "get noc_bus failed.\n");
-			return PTR_ERR(vpu_clk->noc_bus);
-		}
+	if (device_property_read_bool(dev, "starfive,vdec_noc_ctrl"))
 		vpu_clk->noc_ctrl = true;
-	}
+
 	return 0;
 }
 
@@ -2082,15 +2099,17 @@ err_of_clk_get:
 	devm_kfree(&pdev->dev, vpu_clk);
 	return NULL;
 }
+
 static void vpu_clk_put(vpu_clk_t *clk)
 {
-	clk_bulk_put_all(clk->nr_clks, clk->clks);
+	clk_bulk_put(clk->nr_clks, clk->clks);
 }
+
 static int vpu_clk_enable(vpu_clk_t *clk)
 {
 	int ret;
 
-	starfive_power_domain_set(POWER_DOMAIN_VDEC, true);
+	vpu_pmu_enable(true);
 	ret = clk_bulk_prepare_enable(clk->nr_clks, clk->clks);
 	if (ret)
 		dev_err(clk->dev, "enable clk error.\n");
@@ -2112,6 +2131,6 @@ static void vpu_clk_disable(vpu_clk_t *clk)
 		dev_err(clk->dev, "assert vpu error.\n");
 
 	clk_bulk_disable_unprepare(clk->nr_clks, clk->clks);
-	starfive_power_domain_set(POWER_DOMAIN_VDEC, false);
+	vpu_pmu_enable(false);
 }
 #endif
