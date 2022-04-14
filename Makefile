@@ -4,6 +4,7 @@ ABI ?= lp64d
 #TARGET_BOARD is U74 ,JH7110 or NULL
 TARGET_BOARD := JH7110
 BOARD_FLAGS	:=
+HWBOARD ?= fpga
 
 srcdir := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 srcdir := $(srcdir:/=)
@@ -38,7 +39,7 @@ vmlinux_bin := $(wrkdir)/vmlinux.bin
 
 ifeq ($(TARGET_BOARD),JH7110)
 	export TARGET_BOARD
-	its_file=$(confdir)/jh7110-fit-image.its
+	its_file=$(confdir)/$(HWBOARD)-fit-image.its
 else ifeq ($(TARGET_BOARD),U74)
 	export TARGET_BOARD
 	BOARD_FLAGS += -DTARGET_BOARD_U74
@@ -103,8 +104,8 @@ rootfs := $(wrkdir)/rootfs.bin
 
 target_gcc := $(CROSS_COMPILE)gcc
 
-.PHONY: all nvdla-demo
-nvdla-demo: $(fit) $(vfat_image)
+.PHONY: all nvdla-demo check_arg
+nvdla-demo: check_arg $(fit) $(vfat_image)
 	@echo "To completely erase, reformat, and program a disk sdX, run:"
 	@echo "  make DISK=/dev/sdX format-nvdla-disk"
 	@echo "  ... you will need gdisk and e2fsprogs installed"
@@ -112,7 +113,7 @@ nvdla-demo: $(fit) $(vfat_image)
 	@echo "  This can be done manually if needed"
 	@echo
 
-all: $(fit) $(flash_image)
+all: check_arg $(fit) $(flash_image)
 	@echo
 	@echo "This image has been generated for an ISA of $(ISA) and an ABI of $(ABI)"
 	@echo "Find the image in work/image.fit, which should be copied to an MSDOS boot partition 1"
@@ -124,6 +125,11 @@ all: $(fit) $(flash_image)
 	@echo "  This can be done manually if needed"
 	@echo
 
+check_arg:
+ifeq ( , $(filter $(HWBOARD), visionfive evb fpga))
+	$(error board $(HWBOARD) is not supported, BOARD=[visionfive | evb | fpga(deflault)])
+endif
+
 # TODO: depracated for now
 #ifneq ($(RISCV),$(buildroot_initramfs_wrkdir)/host)
 #$(target_gcc):
@@ -131,6 +137,17 @@ all: $(fit) $(flash_image)
 #else
 #$(target_gcc): $(buildroot_initramfs_tar)
 #endif
+
+.PHONY: visionfive evb fpga
+
+visionfive: HWBOARD := visionfive
+visionfive: nvdla-demo
+
+evb: HWBOARD := evb
+evb: nvdla-demo
+
+fpga: HWBOARD := fpga
+fpga: nvdla-demo
 
 $(buildroot_initramfs_wrkdir)/.config: $(buildroot_srcdir)
 	rm -rf $(dir $@)
