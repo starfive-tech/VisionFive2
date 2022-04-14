@@ -1,0 +1,55 @@
+/dts-v1/;
+
+/ {
+        description = "U-boot FIT image for jh7110-fpga";
+        #address-cells = <2>;
+
+        images {
+                vmlinux {
+                        description = "vmlinux";
+                        data = /incbin/("../work/linux/arch/riscv/boot/Image");
+                        type = "kernel";
+                        arch = "riscv";
+                        os = "linux";
+                        load = <0x0 0x40200000>;
+                        entry = <0x0 0x40200000>;
+                        compression = "none";
+                };
+
+                ramdisk {
+                        description = "buildroot initramfs";
+                        data = /incbin/("../work/initramfs.cpio.gz");
+                        type = "ramdisk";
+                        arch = "riscv";
+                        os = "linux";
+                        load = <0x0 0x46100000>;
+                        compression = "none";
+                        hash-1 {
+                                algo = "sha256";
+                        };
+                };
+
+                fdt {
+                        data = /incbin/("../work/linux/arch/riscv/boot/dts/starfive/jh7110-fpga.dtb");
+                        type = "flat_dt";
+                        arch = "riscv";
+                        load = <0x0 0x46000000>;
+                        compression = "none";
+                        hash-1 {
+                                algo = "sha256";
+                        };
+                };
+        };
+
+        configurations {
+                default = "config-1";
+
+                config-1 {
+                        description = "jh7110-fpga with opensbi";
+						kernel = "vmlinux";
+                        fdt = "fdt";
+                        loadables = "ramdisk";
+                };
+        };
+};
+
