@@ -24,5 +24,4 @@ rm -f /dev/${device}
 mknod /dev/${device} c $major 0
 chgrp $group /dev/${device}
 chmod $mode  /dev/${device}
-chown $SUDO_USER.$SUDO_USER /dev/${device}
- 
+
