@@ -29,9 +29,10 @@
 #include <linux/cdev.h>
 #include <linux/slab.h>
 #include <linux/sched.h>
+#include <linux/reset.h>
 #include <linux/version.h>
 #include <linux/of.h>
-#include <soc/starfive/vic7100.h>
+#include <soc/sifive/sifive_l2_cache.h>
 
 #include "../../../vpuapi/vpuconfig.h"
 
@@ -48,15 +49,17 @@
 #define DPRINTK(args...)
 #endif
 
-/* if clktree is work,try this...*/
-#define STARFIVE_VPU_SUPPORT_CLOCK_CONTROL
-
-#ifndef STARFIVE_VPU_SUPPORT_CLOCK_CONTROL
 /* definitions to be changed as customer  configuration */
 /* if you want to have clock gating scheme frame by frame */
-#define VPU_SUPPORT_CLOCK_CONTROL
+//#define VPU_SUPPORT_CLOCK_CONTROL
+
+#define STARFIVE_VPU_PMU
+#ifdef STARFIVE_VPU_PMU
+#include <soc/starfive/jh7110_pmu.h>
 #endif
 
+/* if clktree is work,try this...*/
+#define STARFIVE_VPU_SUPPORT_CLOCK_CONTROL
 
 /* if the driver want to use interrupt service from kernel ISR */
 #define VPU_SUPPORT_ISR
@@ -67,6 +70,11 @@
 
 /* if this driver knows the dedicated video memory address */
 //#define VPU_SUPPORT_RESERVED_VIDEO_MEMORY
+
+static void starfive_flush_dcache(unsigned long start, unsigned long len)
+{
+	sifive_l2_flush64_range(start, len);
+}
 
 #define VPU_PLATFORM_DEVICE_NAME "venc"
 #define VPU_CLK_NAME "vcoenc"
@@ -98,18 +106,44 @@ typedef struct vpu_clkgen_t {
 	uint32_t rst_mask;
 } vpu_clkgen_t;
 
+struct reset_control_bulk_data vpu_resets[] = {
+		{ .id = "rst_apb" },
+		{ .id = "rst_axi" },
+		{ .id = "rst_bpu" },
+		{ .id = "rst_vce" },
+		{ .id = "rst_sram" },
+};
+
+struct clk_bulk_data vpu_clks[] = {
+		{ .id = "apb_clk" },
+		{ .id = "axi_clk" },
+		{ .id = "bpu_clk" },
+		{ .id = "vce_clk" },
+		{ .id = "noc_bus" },
+};
+
 typedef struct vpu_clk_t{
-	phys_addr_t pmu_base;
-	void __iomem *clkgen;
-	void __iomem *rst_status;
-	uint32_t en_shift;
-	uint32_t en_mask;
-	vpu_clkgen_t apb_clk;
-	vpu_clkgen_t axi_clk;
-	vpu_clkgen_t bpu_clk;
-	vpu_clkgen_t vce_clk;
-	vpu_clkgen_t aximem_128b;
-	void __iomem *rst_ctrl;
+#ifndef STARFIVE_VPU_SUPPORT_CLOCK_CONTROL
+		void __iomem *clkgen;
+		void __iomem *rst_ctrl;
+		void __iomem *rst_status;
+		void __iomem *noc_bus;
+		uint32_t en_shift;
+		uint32_t en_mask;
+		vpu_clkgen_t apb_clk;
+		vpu_clkgen_t axi_clk;
+		vpu_clkgen_t bpu_clk;
+		vpu_clkgen_t vce_clk;
+		vpu_clkgen_t aximem_128b;
+#else
+		struct clk_bulk_data *clks;
+		struct reset_control_bulk_data *resets;
+		int nr_rstcs;
+		int nr_clks;
+#endif
+		struct device *dev;
+		bool noc_ctrl;
+
 }vpu_clk_t;
 #endif /*STARFIVE_VPU_SUPPORT_CLOCK_CONTROL*/
 
@@ -148,20 +182,11 @@ static video_mm_t s_vmem;
 static vpudrv_buffer_t s_video_memory = {0};
 #endif /*VPU_SUPPORT_RESERVED_VIDEO_MEMORY*/
 
-
-#ifdef STARFIVE_VPU_SUPPORT_CLOCK_CONTROL
 static int vpu_hw_reset(void);
-static void vpu_clk_disable(struct vpu_clk_t *clk);
-static int vpu_clk_enable(struct vpu_clk_t *clk);
-static struct vpu_clk_t *vpu_clk_get(struct device *dev);
-static void vpu_clk_put(struct vpu_clk_t *clk);
-#else
-static int vpu_hw_reset(void);
-static void vpu_clk_disable(struct clk *clk);
-static int vpu_clk_enable(struct clk *clk);
-static struct clk *vpu_clk_get(struct device *dev);
-static void vpu_clk_put(struct clk *clk);
-#endif /*STARFIVE_VPU_SUPPORT_CLOCK_CONTROL*/
+static void vpu_clk_disable(vpu_clk_t *clk);
+static int vpu_clk_enable(vpu_clk_t *clk);
+static vpu_clk_t *vpu_clk_get(struct platform_device *pdev);
+static void vpu_clk_put(vpu_clk_t *clk);
 
 /* end customer definition */
 static vpudrv_buffer_t s_instance_pool = {0};
@@ -170,12 +195,7 @@ static vpu_drv_context_t s_vpu_drv_context;
 static int s_vpu_major;
 static struct cdev s_vpu_cdev;
 
-#ifdef STARFIVE_VPU_SUPPORT_CLOCK_CONTROL
 static struct vpu_clk_t *s_vpu_clk;
-#else
-static struct clk *s_vpu_clk;
-#endif
-
 static int s_vpu_open_ref_count;
 #ifdef VPU_SUPPORT_ISR
 static int s_vpu_irq = VPU_IRQ_NUM;
@@ -1053,7 +1073,7 @@ static int vpu_probe(struct platform_device *pdev)
 	}
 
 	if (pdev)
-		s_vpu_clk = vpu_clk_get(&pdev->dev);
+		s_vpu_clk = vpu_clk_get(pdev);
 	else
 		s_vpu_clk = vpu_clk_get(NULL);
 
@@ -1160,6 +1180,7 @@ static int vpu_remove(struct platform_device *pdev)
 	if (s_vpu_register.virt_addr)
 		iounmap((void *)s_vpu_register.virt_addr);
 
+	vpu_clk_disable(s_vpu_clk);
 	vpu_clk_put(s_vpu_clk);
 
 #endif /*VPU_SUPPORT_PLATFORM_DRIVER_REGISTER*/
@@ -1418,6 +1439,7 @@ DONE_WAKEUP:
 #ifdef VPU_SUPPORT_PLATFORM_DRIVER_REGISTER
 static const struct of_device_id vpu_of_id_table[] = {
 	{ .compatible = "cnm,cnm420l-vpu" },
+	{ .compatible = "starfive,venc" },
 	{}
 };
 MODULE_DEVICE_TABLE(of, vpu_of_id_table);
@@ -1519,10 +1541,19 @@ MODULE_LICENSE("GPL");
 module_init(vpu_init);
 module_exit(vpu_exit);
 
-#ifdef STARFIVE_VPU_SUPPORT_CLOCK_CONTROL
+#ifdef STARFIVE_VPU_PMU
+static void vpu_pmu_enable(bool enable)
+{
+	starfive_power_domain_set(POWER_DOMAIN_VENC, enable);
+}
+#else
+static void vpu_pmu_enable(bool enable)
+{
+	return;
+}
+#endif
 
-#define PMU_BASE_ADDR		0x17030000
-#define PMU_VENC_MASK		(0x1<<6)
+#ifndef STARFIVE_VPU_SUPPORT_CLOCK_CONTROL
 
 #define CLK_ENABLE_DATA			1
 #define CLK_DISABLE_DATA		0
@@ -1534,36 +1565,16 @@ module_exit(vpu_exit);
 #define WAVE420L_CLK_BPU_CTRL		0x13cU
 #define WAVE420L_CLK_VCE_CTRL		0x140U
 #define WAVE420L_CLK_APB_CTRL		0x144U
+#define WAVE420L_CLK_NOCBUS_CTRL	0x148U
 
 #define RSTGEN_SOFTWARE_RESET_ASSERT1	0x2FCU
 #define RSTGEN_SOFTWARE_RESET_STATUS1	0x30CU
-
 
 #define RSTN_AXI_MASK			(0x1 << 22)
 #define RSTN_BPU_MASK			(0x1 << 23)
 #define RSTN_VCE_MASK			(0x1 << 24)
 #define RSTN_APB_MASK			(0x1 << 25)
 #define RSTN_128B_AXIMEM_MASK		(0x1 << 26)
-
-
-static void pmu_pd_set(vpu_clk_t *clk, int on_off, uint32_t pd_flag)
-{
-	const uint32_t flag_off = 0x0c;
-	const uint32_t sw_off = 0x44;
-	void __iomem *base = ioremap(clk->pmu_base, 0x100);
-
-	writel(pd_flag, base + flag_off);
-	writel(0xff, base + sw_off);
-	if (on_off) {
-		writel(0x05, base + sw_off);
-		writel(0x50, base + sw_off);
-	} else {
-		writel(0x0a, base + sw_off);
-		writel(0xa0, base + sw_off);
-	}
-
-	iounmap(base);
-}
 
 static void saif_set_reg(volatile void __iomem *addr, uint32_t data,
 			uint32_t shift, uint32_t mask)
@@ -1602,6 +1613,14 @@ static void saif_clear_rst(volatile void __iomem *addr,
 	} while ((tmp & mask) != mask);
 }
 
+static void vpu_noc_vdec_bus_control(vpu_clk_t *clk, bool enable)
+{
+	if (enable)
+		saif_set_reg(clk->noc_bus, CLK_ENABLE_DATA, clk->en_shift, clk->en_mask);
+	else
+		saif_set_reg(clk->noc_bus, CLK_DISABLE_DATA, clk->en_shift, clk->en_mask);
+}
+
 static void vpu_clk_control(vpu_clk_t *clk, bool enable)
 {
 	if (enable) {
@@ -1616,12 +1635,14 @@ static void vpu_clk_control(vpu_clk_t *clk, bool enable)
 		saif_clear_rst(clk->rst_ctrl, clk->rst_status, clk->axi_clk.rst_mask);
 		saif_clear_rst(clk->rst_ctrl, clk->rst_status, clk->bpu_clk.rst_mask);
 		saif_clear_rst(clk->rst_ctrl, clk->rst_status, clk->vce_clk.rst_mask);
+		saif_clear_rst(clk->rst_ctrl, clk->rst_status, clk->aximem_128b.rst_mask);
 	} else {
 		/*assert-reset*/
 		saif_assert_rst(clk->rst_ctrl, clk->rst_status, clk->apb_clk.rst_mask);
 		saif_assert_rst(clk->rst_ctrl, clk->rst_status, clk->axi_clk.rst_mask);
 		saif_assert_rst(clk->rst_ctrl, clk->rst_status, clk->bpu_clk.rst_mask);
 		saif_assert_rst(clk->rst_ctrl, clk->rst_status, clk->vce_clk.rst_mask);
+		saif_assert_rst(clk->rst_ctrl, clk->rst_status, clk->aximem_128b.rst_mask);
 
 		/*disable*/
 		saif_set_reg(clk->apb_clk.en_ctrl, CLK_DISABLE_DATA, clk->en_shift, clk->en_mask);
@@ -1631,24 +1652,11 @@ static void vpu_clk_control(vpu_clk_t *clk, bool enable)
 	}
 }
 
-static void vpu_aximem_128b_control(vpu_clk_t *clk, bool enable)
+static int vpu_of_clk_get(struct platform_device *pdev, vpu_clk_t *vpu_clk)
 {
-	if (enable) {
-		saif_set_reg(clk->axi_clk.en_ctrl, CLK_ENABLE_DATA, clk->en_shift, clk->en_mask);
-		saif_clear_rst(clk->rst_ctrl, clk->rst_status, clk->aximem_128b.rst_mask);
-	} else {
-		saif_assert_rst(clk->rst_ctrl, clk->rst_status, clk->aximem_128b.rst_mask);
-		saif_set_reg(clk->axi_clk.en_ctrl, CLK_DISABLE_DATA, clk->en_shift, clk->en_mask);
-	}
-}
-
-
-static int vpu_of_clk_get(struct device *dev, vpu_clk_t *vpu_clk)
-{
-	if (!dev)
+	if (!pdev)
 		return -ENXIO;
 
-	vpu_clk->pmu_base = PMU_BASE_ADDR;
 	vpu_clk->clkgen = ioremap(SAIF_BD_APBS_BASE, 0x400);
 	if (IS_ERR(vpu_clk->clkgen)) {
 		dev_err(dev, "ioremap clkgen failed.\n");
@@ -1660,6 +1668,7 @@ static int vpu_of_clk_get(struct device *dev, vpu_clk_t *vpu_clk)
 	vpu_clk->bpu_clk.en_ctrl = vpu_clk->clkgen + WAVE420L_CLK_BPU_CTRL;
 	vpu_clk->vce_clk.en_ctrl = vpu_clk->clkgen + WAVE420L_CLK_VCE_CTRL;
 	vpu_clk->apb_clk.en_ctrl = vpu_clk->clkgen + WAVE420L_CLK_APB_CTRL;
+	vpu_clk->noc_bus = vpu_clk->clkgen + WAVE420L_CLK_NOCBUS_CTRL;
 	vpu_clk->en_mask = CLK_EN_MASK;
 	vpu_clk->en_shift = CLK_EN_SHIFT;
 
@@ -1671,6 +1680,9 @@ static int vpu_of_clk_get(struct device *dev, vpu_clk_t *vpu_clk)
 	vpu_clk->vce_clk.rst_mask = RSTN_VCE_MASK;
 	vpu_clk->apb_clk.rst_mask = RSTN_APB_MASK;
 	vpu_clk->aximem_128b.rst_mask = RSTN_128B_AXIMEM_MASK;
+
+	if (device_property_read_bool(&pdev->dev, "starfive,venc_noc_ctrl"))
+		vpu_clk->noc_ctrl = true;
 
 	return 0;
 }
@@ -1702,11 +1714,11 @@ int vpu_hw_reset(void)
 	return 0;
 }
 
-struct vpu_clk_t *vpu_clk_get(struct device *dev)
+struct vpu_clk_t *vpu_clk_get(struct platform_device *pdev)
 {
 	vpu_clk_t *vpu_clk;
 
-	vpu_clk = devm_kzalloc(dev, sizeof(*vpu_clk), GFP_KERNEL);
+	vpu_clk = devm_kzalloc(&pdev->dev, sizeof(*vpu_clk), GFP_KERNEL);
 	if (!vpu_clk)
 		return NULL;
 
@@ -1715,14 +1727,17 @@ struct vpu_clk_t *vpu_clk_get(struct device *dev)
 
 	return vpu_clk;
 err_get_clk:
-	kfree(vpu_clk);
+	devm_kfree(&pdev->dev, vpu_clk);
 	return NULL;
 
 }
 
 void vpu_clk_put(struct vpu_clk_t *clk)
 {
-	iounmap(clk->clkgen);
+	if (clk->clkgen) {
+		iounmap(clk->clkgen);
+		clk->clkgen = NULL;
+	}
 }
 
 static int vpu_clk_enable(struct vpu_clk_t *clk)
@@ -1730,78 +1745,116 @@ static int vpu_clk_enable(struct vpu_clk_t *clk)
 	if (clk == NULL || IS_ERR(clk))
 		return -1;
 
-	pmu_pd_set(clk,true,PMU_VENC_MASK);
-	vpu_clk_control(clk,true);
-	vpu_aximem_128b_control(clk,true);
-	
+	vpu_pmu_enable(true);
+	vpu_clk_control(clk, true);
+	if (clk->noc_ctrl == true)
+		vpu_noc_vdec_bus_control(clk, true);
+
 	DPRINTK("[VPUDRV] vpu_clk_enable\n");
 	return 0;
 }
 
 void vpu_clk_disable(struct vpu_clk_t *clk)
 {
-	vpu_aximem_128b_control(clk,false);
-	vpu_clk_control(clk,false);
-	pmu_pd_set(clk,false,PMU_VENC_MASK);
+	if (clk == NULL || IS_ERR(clk))
+		return;
+
+	vpu_clk_control(clk, false);
+	vpu_pmu_enable(false);
+	if (clk->noc_ctrl == true)
+		vpu_noc_vdec_bus_control(clk, false);
 
 	DPRINTK("[VPUDRV] vpu_clk_disable\n");
 }
 
 #else /*STARFIVE_VPU_SUPPORT_CLOCK_CONTROL*/
+
 int vpu_hw_reset(void)
 {
-	DPRINTK("[VPUDRV] request vpu reset from application. \n");
-	return 0;
+	DPRINTK("[VPUDRV] reset vpu hardware. \n");
+	/* sram do not need reset */
+	return reset_control_bulk_reset(s_vpu_clk->nr_rstcs - 1, s_vpu_clk->resets);
 }
 
-struct clk *vpu_clk_get(struct device *dev)
+static int vpu_of_clk_get(struct platform_device *pdev, vpu_clk_t *vpu_clk)
 {
-	return clk_get(dev, VPU_CLK_NAME);
-}
-void vpu_clk_put(struct clk *clk)
-{
-	if (!(clk == NULL || IS_ERR(clk)))
-		clk_put(clk);
-}
-int vpu_clk_enable(struct clk *clk)
-{
+	struct device *dev = &pdev->dev;
+	int ret;
 
-		if (!(clk == NULL || IS_ERR(clk))) {
-		/* the bellow is for C&M EVB.*/
-		/*
-		{
-			struct clk *s_vpuext_clk = NULL;
-			s_vpuext_clk = clk_get(NULL, "vcore");
-			if (s_vpuext_clk)
-			{
-				DPRINTK("[VPUDRV] vcore clk=%p\n", s_vpuext_clk);
-				clk_enable(s_vpuext_clk);
-			}
+	vpu_clk->dev = dev;
 
-			DPRINTK("[VPUDRV] vbus clk=%p\n", s_vpuext_clk);
-			if (s_vpuext_clk)
-			{
-				s_vpuext_clk = clk_get(NULL, "vbus");
-				clk_enable(s_vpuext_clk);
-			}
-		}
-		*/
-		/* for C&M EVB. */
+	vpu_clk->resets = vpu_resets;
+	vpu_clk->clks = vpu_clks;
+	vpu_clk->nr_rstcs = ARRAY_SIZE(vpu_resets);
+	vpu_clk->nr_clks = ARRAY_SIZE(vpu_clks);
 
-		DPRINTK("[VPUDRV] vpu_clk_enable\n");
-//		return clk_enable(clk);
-		return 1;
-	}
+	ret = devm_reset_control_bulk_get_exclusive(dev, vpu_clk->nr_rstcs, vpu_clk->resets);
+	if (ret)
+		dev_err(dev, "faied to get vpu reset controls\n");
+
+	ret = devm_clk_bulk_get(dev, vpu_clk->nr_clks, vpu_clk->clks);
+	if (ret)
+		dev_err(dev, "faied to get vpu clk controls\n");
+
+	if (device_property_read_bool(dev, "starfive,venc_noc_ctrl"))
+		vpu_clk->noc_ctrl = true;
 
 	return 0;
 }
 
-void vpu_clk_disable(struct clk *clk)
+static vpu_clk_t *vpu_clk_get(struct platform_device *pdev)
 {
-	if (!(clk == NULL || IS_ERR(clk))) {
-		DPRINTK("[VPUDRV] vpu_clk_disable\n");
-//		clk_disable(clk);
-	}
+	vpu_clk_t *vpu_clk;
+
+	if (!pdev)
+		return NULL;
+
+	vpu_clk = devm_kzalloc(&pdev->dev, sizeof(*vpu_clk), GFP_KERNEL);
+	if (!vpu_clk)
+		return NULL;
+
+	if (vpu_of_clk_get(pdev, vpu_clk))
+		goto err_of_clk_get;
+
+	return vpu_clk;
+
+err_of_clk_get:
+	devm_kfree(&pdev->dev, vpu_clk);
+	return NULL;
 }
+
+static void vpu_clk_put(vpu_clk_t *clk)
+{
+	clk_bulk_put(clk->nr_clks, clk->clks);
+}
+
+static int vpu_clk_enable(vpu_clk_t *clk)
+{
+	int ret;
+
+	vpu_pmu_enable(true);
+	ret = clk_bulk_prepare_enable(clk->nr_clks, clk->clks);
+	if (ret)
+		dev_err(clk->dev, "enable clk error.\n");
+
+	ret = reset_control_bulk_deassert(clk->nr_rstcs, clk->resets);
+	if (ret)
+		dev_err(clk->dev, "deassert vpu error.\n");
+
+	DPRINTK("[VPUDRV] vpu_clk_enable\n");
+	return ret;
+}
+
+static void vpu_clk_disable(vpu_clk_t *clk)
+{
+	int ret;
+
+	ret = reset_control_bulk_assert(clk->nr_rstcs, clk->resets);
+	if (ret)
+		dev_err(clk->dev, "assert vpu error.\n");
+
+	clk_bulk_disable_unprepare(clk->nr_clks, clk->clks);
+	vpu_pmu_enable(false);
+}
+
 #endif /*STARFIVE_VPU_SUPPORT_CLOCK_CONTROL*/
- 
