@@ -32,7 +32,7 @@
    tftpboot 0xa0000000 192.168.70.220:image.fit
    bootm start 0xa0000000
    bootm loados 0xa0000000
-   go 0x80700000 0x86000000   
+   go 0x80700000 0x86000000
 5. 输入内核用户/密码（root/sifive），配置网络参数，样例如下：
    ifconfig eth0 down
    ifconfig eth0 192.168.70.250 netmask 255.255.255.0
@@ -70,28 +70,26 @@
 
 ## 备注
 
-1. VDEC默认使用cma方式从通用的CMA空间分配mem。如果想给VDEC指定特定的预留空间，可以在dts文件中做预留，同时，在文件code/vdi/linux/driver/vpu.c中，打开VPU_SUPPORT_RESERVED_VIDEO_MEMORY宏。预留方式简单示例：
-   
-	freedom-u-sdk/HiFive_U-Boot/arch\riscv/dts/hifive_u74_nvdla_iofpga.dts :
-	
-		reserved_memory: reserved-memory {
-			#address-cells = <2>;
-			#size-cells = <2>;
-			ranges;
-			
-		    vpu_reserved: framebuffer@d8000000 {
-		        reg = <0x0 0xd8000000 0x0 0x20000000>;
-		    };
-		};
-		vpu_dec:vpu_dec@118F0000 {
-		    compatible = "c&m,cm511-vpu";
-		    reg = <0 0x118F0000 0 0x10000>;
-		    memory-region = <&vpu_reserved>;
-		    interrupt-parent = <&plic>;
-		    interrupts = <23>;
-		    clocks = <&vpuclk>;
-		    clock-names = "vcodec";
-		    status = "okay";
-		};
-	
-2. 驱动源码中有关模块时钟开启/关闭/复位等逻辑，作为临时代码，后期需要被内核相关接口替换。
+1. VDEC默认使用cma方式从通用的CMA空间分配mem。如果想给VDEC指定特定的预留空间，可以在dts文件中做预留，同时，在文件code/vdi/linux/driver/vdec.c中，打开VPU_SUPPORT_RESERVED_VIDEO_MEMORY宏。预留方式简单示例：
+
+
+
+	```dts
+	reserved_memory: reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+	    vpu_reserved: framebuffer@d8000000 {
+	        reg = <0x0 0xd8000000 0x0 0x20000000>;
+	    };
+	};
+	vpu_dec:vpu_dec@118F0000 {
+	    compatible = "starfive,vdec";
+	    reg = <0 0x118F0000 0 0x10000>;
+	    memory-region = <&vpu_reserved>;
+	    interrupt-parent = <&plic>;
+	    interrupts = <23>;
+	    clocks = <&vpuclk>;
+	    clock-names = "vcodec";
+	    status = "okay";
+	};
