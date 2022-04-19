@@ -78,7 +78,7 @@ typedef enum CODED__IDX
     LU_CUR2 = 2,     // luma, current MB block #2
     LU_CUR1 = 1,     // luma, current MB block #1
     LU_CUR0 = 0      // luma, current MB block #0
-};
+} CODED__IDX;
 
 typedef enum {
 	VDI_LITTLE_ENDIAN = 0,
