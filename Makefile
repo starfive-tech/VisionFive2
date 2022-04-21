@@ -5,6 +5,7 @@ ABI ?= lp64d
 TARGET_BOARD := JH7110
 BOARD_FLAGS	:=
 HWBOARD ?= fpga
+HWBOARD_FLAG ?= HWBOARD_FPGA
 
 srcdir := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 srcdir := $(srcdir:/=)
@@ -142,12 +143,15 @@ endif
 
 visionfive: HWBOARD := visionfive
 visionfive: nvdla-demo
+visionfive: HWBOARD_FLAG := HWBOARD_VISIONFIVE
 
 evb: HWBOARD := evb
 evb: nvdla-demo
+evb: HWBOARD_FLAG := HWBOARD_EVB
 
 fpga: HWBOARD := fpga
 fpga: nvdla-demo
+fpga: HWBOARD_FLAG := HWBOARD_FPGA
 
 $(buildroot_initramfs_wrkdir)/.config: $(buildroot_srcdir)
 	rm -rf $(dir $@)
@@ -216,8 +220,10 @@ $(vmlinux): $(linux_srcdir) $(linux_wrkdir)/.config $(target_gcc)
 		CROSS_COMPILE=$(CROSS_COMPILE) \
 		PATH=$(RVPATH) \
 		vmlinux		\
+		HWBOARD_FLAG=$(HWBOARD_FLAG) \
 		all \
 		modules
+
 
 .PHONY: initrd
 initrd: $(initramfs)
