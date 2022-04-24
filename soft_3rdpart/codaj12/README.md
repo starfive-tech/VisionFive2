@@ -76,5 +76,8 @@ $./run_dec.sh   #解码测试，解码后的文件存在output/dec中
 $./run_multi.sh #多路编解码测试,编解码后的文件存在output/multi中
 ```
 
+#### 验证
 
+*.yuv：解码后的文件使用yuvplayer.exe查看，需要根据文件名称手动指定分辨率、yuv格式等。注意，该工具不支持12bit的yuv文件查看。
 
+*.jpg：使用NewView.exe程序打开查看
