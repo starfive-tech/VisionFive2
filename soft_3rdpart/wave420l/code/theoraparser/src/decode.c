@@ -114,7 +114,7 @@ static const unsigned char OC_INTERNAL_DCT_TOKEN_EXTRA_BITS[15]={
 /*The number of EOBs to use for an end-of-frame token.
 Note: We want to set eobs to PTRDIFF_MAX here, but that requires C99, which
 is not yet available everywhere; this should be equivalent.*/
-#define OC_DCT_EOB_FINISH (~(size_t)0>>1)
+#define OC_DCT_EOB_FINISH (~0>>1)
 
 /*The location of the (6) run length bits in the code word.
 These are placed at index 0 and given 8 bits (even though 6 would suffice)
@@ -382,13 +382,15 @@ static int32_t oc_dec_init(oc_dec_ctx *_dec,const th_info *_info,
     for(qi=0;qi<64;qi++){
         int32_t qsum;
         qsum=0;
-        for(qti=0;qti<2;qti++)for(pli=0;pli<3;pli++){
-            qsum+=_dec->state.dequant_tables[qti][pli][qi][12]+
-                _dec->state.dequant_tables[qti][pli][qi][17]+
-                _dec->state.dequant_tables[qti][pli][qi][18]+
-                _dec->state.dequant_tables[qti][pli][qi][24]<<(pli==0);
+        for(qti=0;qti<2;qti++) {
+		for(pli=0;pli<3;pli++) {
+			qsum += _dec->state.dequant_tables[qi][pli][qti][12]+
+			_dec->state.dequant_tables[qi][pli][qti][17]+
+			_dec->state.dequant_tables[qi][pli][qti][18]+
+			_dec->state.dequant_tables[qi][pli][qti][24]<<(pli==0);
+		}
         }
-        _dec->pp_sharp_mod[qi]=-(qsum>>11);
+       _dec->pp_sharp_mod[qi]=-(qsum>>11);
     }
     memcpy(_dec->state.loop_filter_limits,_setup->qinfo.loop_filter_limits,
         sizeof(_dec->state.loop_filter_limits));

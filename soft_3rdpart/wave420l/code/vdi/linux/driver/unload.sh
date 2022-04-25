@@ -1,10 +1,10 @@
 #!/bin/sh
-module="vpu"
-device="vpu"
+module="venc"
+device="venc"
 
 # invoke rmmod with all	arguments we got
 /sbin/rmmod $module $* || exit 1
 
 # Remove stale nodes
-rm -f /dev/${device} 
+rm -f /dev/${device}
 
