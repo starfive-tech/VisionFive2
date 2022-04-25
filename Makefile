@@ -84,7 +84,7 @@ uboot_srcdir := $(srcdir)/HiFive_U-Boot
 uboot_wrkdir := $(wrkdir)/HiFive_U-Boot
 
 ifeq ($(TARGET_BOARD),JH7110)
-uboot_dtb_file := $(wrkdir)/HiFive_U-Boot/arch/riscv/dts/starfive_jh7110.dtb
+uboot_dtb_file := $(wrkdir)/HiFive_U-Boot/arch/riscv/dts/starfive_visionfive.dtb
 else
 uboot_dtb_file := $(wrkdir)/HiFive_U-Boot/arch/riscv/dts/starfive_vic7100_evb.dtb
 endif
@@ -93,7 +93,7 @@ uboot := $(uboot_wrkdir)/u-boot.bin
 uboot_config := HiFive-U540_regression_defconfig
 
 ifeq ($(TARGET_BOARD),JH7110)
-	uboot_config := starfive_jh7110_smode_defconfig
+	uboot_config := starfive_visionfive_defconfig
 else ifeq ($(TARGET_BOARD),U74)
 	uboot_config := starfive_vic7100_evb_smode_defconfig
 else
