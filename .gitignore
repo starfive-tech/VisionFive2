@@ -1,0 +1,21 @@
+# Top-level project build directories
+/work*
+
+# Top-level generic files
+/*.log
+
+# Merge conflict files
+*.orig
+*.swp
+
+*.code-workspace
+
+# ctags files
+tags
+TAGS
+ctags
+etags
+
+# cscope files
+cscope.*
+ncscope.*
