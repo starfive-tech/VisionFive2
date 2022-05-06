@@ -15,6 +15,9 @@
 4. make -f WaveDecodeMult.mak       多路解码测试程序编译
 5. make -f WaveDecode-ffmpeg.mak    多媒体文件解码测试程序编译
 6. build_for_vdec.sh 	                           本工程一键编译脚本
+7. build_ffmpeg.sh                                  编译ffmpeg脚本
+
+> 注意： 运行make -f WaveDecode-ffmpeg.mak 之前，需要先执行./build_ffmpeg.sh,编译得到ffmpeg相关的库文件和头文件。强烈建议使用build_for_vdec.sh一键编译脚本编译全部文件。
 
 ## 编译输出文件
 
