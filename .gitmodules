@@ -1,16 +1,16 @@
 [submodule "buildroot"]
 	path = buildroot
-	url = http://192.168.110.45/sdk/sft-riscvpi-buildroot.git
+	url = http://192.168.110.45/sdk/buildroot.git
 	branch = jh7110_fpga_dev_5.15
-[submodule "HiFive_U-Boot"]
-	path = HiFive_U-Boot
-	url = http://192.168.110.45/sdk/sft-riscvpi-uboot.git
+[submodule "u-boot"]
+	path = u-boot
+	url = http://192.168.110.45/sdk/u-boot.git
 	branch = CR_752_UPSTREAM_yanhong.wang
 [submodule "linux"]
 	path = linux
-	url = http://192.168.110.45/sdk/sft-riscvpi-linux-5.10.git
+	url = http://192.168.110.45/sdk/linux.git
 	branch = jh7110_fpga_dev_5.15
 [submodule "opensbi"]
 	path = opensbi
-	url = http://192.168.110.45/sdk/sft-riscvpi-opensbi.git
+	url = http://192.168.110.45/sdk/opensbi.git
 	branch = jh7110_fpga_dev
