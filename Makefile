@@ -80,13 +80,13 @@ qemu_srcdir := $(srcdir)/riscv-qemu
 qemu_wrkdir := $(wrkdir)/riscv-qemu
 qemu := $(qemu_wrkdir)/prefix/bin/qemu-system-riscv64
 
-uboot_srcdir := $(srcdir)/HiFive_U-Boot
-uboot_wrkdir := $(wrkdir)/HiFive_U-Boot
+uboot_srcdir := $(srcdir)/u-boot
+uboot_wrkdir := $(wrkdir)/u-boot
 
 ifeq ($(TARGET_BOARD),JH7110)
-uboot_dtb_file := $(wrkdir)/HiFive_U-Boot/arch/riscv/dts/starfive_visionfive.dtb
+uboot_dtb_file := $(wrkdir)/u-boot/arch/riscv/dts/starfive_visionfive.dtb
 else
-uboot_dtb_file := $(wrkdir)/HiFive_U-Boot/arch/riscv/dts/starfive_vic7100_evb.dtb
+uboot_dtb_file := $(wrkdir)/u-boot/arch/riscv/dts/starfive_vic7100_evb.dtb
 endif
 
 uboot := $(uboot_wrkdir)/u-boot.bin
@@ -328,7 +328,7 @@ fit: $(fit)
 
 .PHONY: clean
 clean:
-	rm -rf work/HiFive_U-Boot
+	rm -rf work/u-boot
 	rm -rf work/opensbi
 	rm work/vmlinux.bin
 	rm work/hifive-unleashed-vfat.part

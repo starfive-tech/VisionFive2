@@ -28,7 +28,7 @@ fail because certain dependencies don't have the best git hosting. The only
 solution is to wait and try again later (or ask someone for a copy of that
 source repository).
 
-Once the submodules are initialized, 4 modules buildroot, HiFive_U-Boot, linux and opensbi will checkout to vic_starlight branch.
+Once the submodules are initialized, 4 modules buildroot, u-boot, linux and opensbi will checkout to vic_starlight branch.
 After update submodules, run `make` or `make -jx` and the complete toolchain and
 fw_payload.bin.out & image.fit will be built. The completed build tree will consume about 14G of
 disk space.
