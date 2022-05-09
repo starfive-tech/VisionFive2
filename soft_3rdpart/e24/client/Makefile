@@ -1,5 +1,5 @@
 wrkdir := $(CURDIR)
-RISCVV := /home/lisl/sft-riscvpi-freedom-u-sdk/work/buildroot_initramfs/host/bin
+RISCVV := $(wrkdir)/../../../work/buildroot_initramfs/host/bin
 target := riscv64-buildroot-linux-gnu
 CROSS_COMPILE := $(RISCVV)/$(target)-
 
