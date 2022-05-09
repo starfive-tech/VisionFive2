@@ -27,7 +27,7 @@ obj-m	:= vdec.o
 
 else
 
-KERNELDIR := ~/work/freedom-u-sdk-chendu/freedom-u-sdk/work/linux
+KERNELDIR ?= /lib/modules/$(shell uname -r)/build
 
 PWD	  := $(shell pwd)
 
