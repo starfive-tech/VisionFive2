@@ -4,8 +4,8 @@ ABI ?= lp64d
 #TARGET_BOARD is U74 ,JH7110 or NULL
 TARGET_BOARD := JH7110
 BOARD_FLAGS	:=
-HWBOARD ?= fpga
-HWBOARD_FLAG ?= HWBOARD_FPGA
+HWBOARD ?= evb
+HWBOARD_FLAG ?= HWBOARD_EVB
 
 srcdir := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 srcdir := $(srcdir:/=)
