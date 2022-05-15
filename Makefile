@@ -1,11 +1,11 @@
 ISA ?= rv64imafdc
 ABI ?= lp64d
 
-#TARGET_BOARD is U74 ,JH7110 or NULL
-TARGET_BOARD := JH7110
+#TARGET_BOARD is JH7110 or NULL
+SOC := JH7110
 BOARD_FLAGS	:=
-HWBOARD ?= fpga
-HWBOARD_FLAG ?= HWBOARD_FPGA
+HWBOARD ?= evb
+HWBOARD_FLAG ?= HWBOARD_EVB
 
 srcdir := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 srcdir := $(srcdir:/=)
@@ -38,21 +38,10 @@ vmlinux := $(linux_wrkdir)/vmlinux
 vmlinux_stripped := $(linux_wrkdir)/vmlinux-stripped
 vmlinux_bin := $(wrkdir)/vmlinux.bin
 
-ifeq ($(TARGET_BOARD),JH7110)
-	export TARGET_BOARD
-	its_file=$(confdir)/$(HWBOARD)-fit-image.its
-else ifeq ($(TARGET_BOARD),U74)
-	export TARGET_BOARD
-	BOARD_FLAGS += -DTARGET_BOARD_U74
-	bbl_link_addr :=0x80700000
-	its_file=$(confdir)/u74_nvdla-uboot-fit-image.its
-else
-	bbl_link_addr :=0x80000000
-	its_file=$(confdir)/nvdla-uboot-fit-image.its
-endif
+its_file=$(confdir)/$(HWBOARD)-fit-image.its
+uboot_its_file=$(confdir)/$(HWBOARD)-uboot-image.its
 
-flash_image := $(wrkdir)/hifive-unleashed-a00-YYYY-MM-DD.gpt
-vfat_image := $(wrkdir)/hifive-unleashed-vfat.part
+vfat_image := $(wrkdir)/starfive-$(HWBOARD)-vfat.part
 #ext_image := $(wrkdir)  # TODO
 
 initramfs := $(wrkdir)/initramfs.cpio.gz
@@ -60,13 +49,10 @@ initramfs := $(wrkdir)/initramfs.cpio.gz
 sbi_srcdir := $(srcdir)/opensbi
 sbi_wrkdir := $(wrkdir)/opensbi
 
-ifeq ($(TARGET_BOARD),JH7110)
 sbi_bin := $(wrkdir)/opensbi/platform/starfive/firmware/fw_payload.bin
-else
-sbi_bin := $(wrkdir)/opensbi/platform/starfive/firmware/fw_payload.bin
-endif
 
 fit := $(wrkdir)/image.fit
+uboot_fit := $(wrkdir)/$(HWBOARD)_fw_paylaod.img
 
 fesvr_srcdir := $(srcdir)/riscv-fesvr
 fesvr_wrkdir := $(wrkdir)/riscv-fesvr
@@ -83,38 +69,24 @@ qemu := $(qemu_wrkdir)/prefix/bin/qemu-system-riscv64
 uboot_srcdir := $(srcdir)/u-boot
 uboot_wrkdir := $(wrkdir)/u-boot
 
-ifeq ($(TARGET_BOARD),JH7110)
-uboot_dtb_file := $(wrkdir)/u-boot/arch/riscv/dts/starfive_visionfive.dtb
-else
-uboot_dtb_file := $(wrkdir)/u-boot/arch/riscv/dts/starfive_vic7100_evb.dtb
-endif
+uboot_dtb_file := $(wrkdir)/u-boot/arch/riscv/dts/starfive_$(HWBOARD).dtb
 
 uboot := $(uboot_wrkdir)/u-boot.bin
-uboot_config := HiFive-U540_regression_defconfig
 
-ifeq ($(TARGET_BOARD),JH7110)
-	uboot_config := starfive_visionfive_defconfig
-else ifeq ($(TARGET_BOARD),U74)
-	uboot_config := starfive_vic7100_evb_smode_defconfig
-else
-	uboot_config := HiFive-U540_nvdla_iofpga_defconfig
-endif
+uboot_payload :=$(srcdir)/fw_payload.img
+
+spl_payload :=$(srcdir)/u-boot-spl.bin.normal.out
+
+uboot_config := starfive_$(HWBOARD)_defconfig
 
 uboot_defconfig := $(uboot_srcdir)/configs/$(uboot_config)
 rootfs := $(wrkdir)/rootfs.bin
 
 target_gcc := $(CROSS_COMPILE)gcc
 
-.PHONY: all nvdla-demo check_arg
-nvdla-demo: check_arg $(fit) $(vfat_image)
-	@echo "To completely erase, reformat, and program a disk sdX, run:"
-	@echo "  make DISK=/dev/sdX format-nvdla-disk"
-	@echo "  ... you will need gdisk and e2fsprogs installed"
-	@echo "  Please note this will not currently format the SDcard ext4 partition"
-	@echo "  This can be done manually if needed"
-	@echo
+.PHONY: all check_arg
 
-all: check_arg $(fit) $(flash_image)
+all: check_arg $(fit) $(vfat_image)
 	@echo
 	@echo "This image has been generated for an ISA of $(ISA) and an ABI of $(ABI)"
 	@echo "Find the image in work/image.fit, which should be copied to an MSDOS boot partition 1"
@@ -142,15 +114,15 @@ endif
 .PHONY: visionfive evb fpga
 
 visionfive: HWBOARD := visionfive
-visionfive: nvdla-demo
+visionfive: all
 visionfive: HWBOARD_FLAG := HWBOARD_VISIONFIVE
 
 evb: HWBOARD := evb
-evb: nvdla-demo
+evb: all
 evb: HWBOARD_FLAG := HWBOARD_EVB
 
 fpga: HWBOARD := fpga
-fpga: nvdla-demo
+fpga: all
 fpga: HWBOARD_FLAG := HWBOARD_FPGA
 
 $(buildroot_initramfs_wrkdir)/.config: $(buildroot_srcdir)
@@ -250,24 +222,16 @@ linux-menuconfig: $(linux_wrkdir)/.config
 	$(MAKE) -C $(linux_srcdir) O=$(dir $<) ARCH=riscv savedefconfig
 	cp $(dir $<)defconfig $(linux_defconfig)
 
-ifeq ($(TARGET_BOARD),JH7110)
-sbi: $(uboot) $(vmlinux)
+$(sbi_bin): $(uboot) $(vmlinux)
 	rm -rf $(sbi_wrkdir)
 	mkdir -p $(sbi_wrkdir)
 	cd $(sbi_wrkdir) && O=$(sbi_wrkdir) CFLAGS="-mabi=$(ABI) -march=$(ISA)" ${MAKE} -C $(sbi_srcdir) CROSS_COMPILE=$(CROSS_COMPILE) \
 		PLATFORM=starfive FW_PAYLOAD_PATH=$(uboot) FW_FDT_PATH=$(uboot_dtb_file)
-else
-sbi: $(uboot) $(vmlinux)
-	rm -rf $(sbi_wrkdir)
-	mkdir -p $(sbi_wrkdir)
-	cd $(sbi_wrkdir) && O=$(sbi_wrkdir) CFLAGS="-mabi=$(ABI) -march=$(ISA)" ${MAKE} -C $(sbi_srcdir) CROSS_COMPILE=$(CROSS_COMPILE) \
-		PLATFORM=starfive FW_PAYLOAD_PATH=$(uboot) FW_FDT_PATH=$(uboot_dtb_file)
-endif
 
-
-$(fit): sbi $(vmlinux_bin) $(uboot) $(its_file) ${initramfs}
+$(fit): $(sbi_bin) $(vmlinux_bin) $(uboot) $(its_file) ${initramfs}
 	$(uboot_wrkdir)/tools/mkimage -f $(its_file) -A riscv -O linux -T flat_dt $@
 	@if [ -f fsz.sh ]; then ./fsz.sh $(sbi_bin); fi
+	@if [ -f uboot-img.sh ]; then ./uboot-img.sh ; fi
 
 $(libfesvr): $(fesvr_srcdir)
 	rm -rf $(fesvr_wrkdir)
@@ -316,12 +280,15 @@ $(uboot): $(uboot_srcdir) $(target_gcc)
 	$(MAKE) -C $(uboot_srcdir) O=$(uboot_wrkdir) $(uboot_config)
 	$(MAKE) -C $(uboot_srcdir) O=$(uboot_wrkdir) CROSS_COMPILE=$(CROSS_COMPILE)
 
+$(uboot_fit): $(sbi_bin) $(uboot_its_file) $(uboot)
+	$(uboot_wrkdir)/tools/mkimage -f $(uboot_its_file) -A riscv -O u-boot -T firmware $@
+
 $(rootfs): $(buildroot_rootfs_ext)
 	cp $< $@
 
 $(buildroot_initramfs_sysroot): $(buildroot_initramfs_sysroot_stamp)
 
-.PHONY: buildroot_initramfs_sysroot vmlinux bbl fit
+.PHONY: buildroot_initramfs_sysroot vmlinux fit
 buildroot_initramfs_sysroot: $(buildroot_initramfs_sysroot)
 vmlinux: $(vmlinux)
 fit: $(fit)
@@ -330,28 +297,27 @@ fit: $(fit)
 clean:
 	rm -rf work/u-boot
 	rm -rf work/opensbi
-	rm work/vmlinux.bin
-	rm work/hifive-unleashed-vfat.part
-	rm work/image.fit
-	rm work/initramfs.cpio.gz
-	rm work/linux/vmlinux
+	rm -f work/starfive-visionfive-vfat.part
+	rm -f work/image.fit
+	rm -f work/initramfs.cpio.gz
+	rm -f work/linux/vmlinux*
 
 .PHONY: distclean
 distclean:
 	rm -rf -- $(wrkdir) $(toolchain_dest)
 
 .PHONY: sim
-sim: $(spike) $(bbl_payload)
-	$(spike) --isa=$(ISA) -p4 $(bbl_payload)
+sim: $(spike) $(sbi_bin)
+	$(spike) --isa=$(ISA) -p4 $(sbi_bin)
 
 .PHONY: qemu
-qemu: $(qemu) $(sbi) $(vmlinux) $(initramfs)
-	$(qemu) -nographic -machine virt -bios $(bbl) -kernel $(vmlinux) -initrd $(initramfs) \
+qemu: $(qemu) $(sbi_bin) $(vmlinux) $(initramfs)
+	$(qemu) -nographic -machine virt -bios $(sbi_bin) -kernel $(vmlinux) -initrd $(initramfs) \
 		-netdev user,id=net0 -device virtio-net-device,netdev=net0
 
 .PHONY: qemu-rootfs
-qemu-rootfs: $(qemu) $(bbl) $(vmlinux) $(initramfs) $(rootfs)
-	$(qemu) -nographic -machine virt -bios $(bbl) -kernel $(vmlinux) -initrd $(initramfs) \
+qemu-rootfs: $(qemu) $(sbi_bin) $(vmlinux) $(initramfs) $(rootfs)
+	$(qemu) -nographic -machine virt -bios $(sbi_bin) -kernel $(vmlinux) -initrd $(initramfs) \
 		-drive file=$(rootfs),format=raw,id=hd0 -device virtio-blk-device,drive=hd0 \
 		-netdev user,id=net0 -device virtio-net-device,netdev=net0
 
@@ -360,96 +326,41 @@ qemu-rootfs: $(qemu) $(bbl) $(vmlinux) $(initramfs) $(rootfs)
 uboot: $(uboot)
 
 # Relevant partition type codes
-BBL		= 2E54B353-1271-4842-806F-E436D6AF6985
+SPL		= 2E54B353-1271-4842-806F-E436D6AF6985
 VFAT            = EBD0A0A2-B9E5-4433-87C0-68B6B72699C7
 LINUX		= 0FC63DAF-8483-4772-8E79-3D69D8477DE4
-#FSBL		= 5B193300-FC78-40CD-8002-E86C45580B47
 UBOOT		= 5B193300-FC78-40CD-8002-E86C45580B47
 UBOOTENV	= a09354ac-cd63-11e8-9aff-70b3d592f0fa
 UBOOTDTB	= 070dd1a8-cd64-11e8-aa3d-70b3d592f0fa
 UBOOTFIT	= 04ffcafa-cd65-11e8-b974-70b3d592f0fa
 
-flash.gpt: $(flash_image)
+SPL_START=2048
+SPL_END=6143
+UBOOT_START=6144
+UBOOT_END=16385
+UBOOT_SIZE=12288
+VFAT_START=16386
+VFAT_END=425985
+VFAT_SIZE=204800
+ROOT_START=425986
 
-ifeq ($(TARGET_BOARD),JH7110)
-VFAT_SIZE=263454
 $(vfat_image): $(fit) $(confdir)/jh7110_uEnv.txt
 	@if [ `du --apparent-size --block-size=512 $(uboot) | cut -f 1` -ge $(UBOOT_SIZE) ]; then \
 		echo "Uboot is too large for partition!!\nReduce uboot or increase partition size"; \
-		rm $(flash_image); exit 1; fi
+		 exit 1; fi
 	dd if=/dev/zero of=$(vfat_image) bs=512 count=$(VFAT_SIZE)
 	/sbin/mkfs.vfat $(vfat_image)
 	PATH=$(RVPATH) MTOOLS_SKIP_CHECK=1 mcopy -i $(vfat_image) $(fit) ::starfiveu.fit
 	PATH=$(RVPATH) MTOOLS_SKIP_CHECK=1 mcopy -i $(vfat_image) $(confdir)/jh7110_uEnv.txt ::jh7110_uEnv.txt
 
-else ifeq ($(TARGET_BOARD),U74)
-VFAT_START=4096
-VFAT_END=270335
-VFAT_SIZE=266239
-UBOOT_START=270336
-UBOOT_END=272383
-UBOOT_SIZE=2047
-UENV_START=272384
-UENV_END=274431
-$(vfat_image): $(fit) $(confdir)/u74_uEnv.txt
-	@if [ `du --apparent-size --block-size=512 $(uboot) | cut -f 1` -ge $(UBOOT_SIZE) ]; then \
-		echo "Uboot is too large for partition!!\nReduce uboot or increase partition size"; \
-		rm $(flash_image); exit 1; fi
-	dd if=/dev/zero of=$(vfat_image) bs=512 count=$(VFAT_SIZE)
-	/sbin/mkfs.vfat $(vfat_image)
-	PATH=$(RVPATH) MTOOLS_SKIP_CHECK=1 mcopy -i $(vfat_image) $(fit) ::hifiveu.fit
-	PATH=$(RVPATH) MTOOLS_SKIP_CHECK=1 mcopy -i $(vfat_image) $(confdir)/u74_uEnv.txt ::u74_uEnv.txt
-else
-
-VFAT_START=4096
-VFAT_END=269502
-VFAT_SIZE=263454
-UBOOT_START=2048
-UBOOT_END=4048
-UBOOT_SIZE=2000
-UENV_START=1024
-UENV_END=1099
-
-$(vfat_image): $(fit) $(confdir)/uEnv.txt
-	@if [ `du --apparent-size --block-size=512 $(uboot) | cut -f 1` -ge $(UBOOT_SIZE) ]; then \
-		echo "Uboot is too large for partition!!\nReduce uboot or increase partition size"; \
-		rm $(flash_image); exit 1; fi
-	dd if=/dev/zero of=$(vfat_image) bs=512 count=$(VFAT_SIZE)
-	/sbin/mkfs.vfat $(vfat_image)
-	PATH=$(RVPATH) MTOOLS_SKIP_CHECK=1 mcopy -i $(vfat_image) $(fit) ::hifiveu.fit
-	PATH=$(RVPATH) MTOOLS_SKIP_CHECK=1 mcopy -i $(vfat_image) $(confdir)/uEnv.txt ::uEnv.txt
-endif
-$(flash_image): $(uboot) $(fit) $(vfat_image)
-	dd if=/dev/zero of=$(flash_image) bs=1M count=32
-	/sbin/sgdisk --clear  \
-		--new=1:$(VFAT_START):$(VFAT_END)  --change-name=1:"Vfat Boot"	--typecode=1:$(VFAT)   \
-		--new=2:$(UBOOT_START):$(UBOOT_END)   --change-name=2:uboot	--typecode=2:$(UBOOT) \
-		--new=3:$(UENV_START):$(UENV_END)   --change-name=3:uboot-env	--typecode=3:$(UBOOTENV) \
-		$(flash_image)
-	dd conv=notrunc if=$(vfat_image) of=$(flash_image) bs=512 seek=$(VFAT_START)
-	dd conv=notrunc if=$(uboot) of=$(flash_image) bs=512 seek=$(UBOOT_START) count=$(UBOOT_SIZE)
-
-DEMO_END=11718750
-
-#$(demo_image): $(uboot) $(fit) $(vfat_image) $(ext_image)
-#	dd if=/dev/zero of=$(flash_image) bs=512 count=$(DEMO_END)
-#	/sbin/sgdisk --clear  \
-#		--new=1:$(VFAT_START):$(VFAT_END)  --change-name=1:"Vfat Boot"	--typecode=1:$(VFAT)   \
-#		--new=3:$(UBOOT_START):$(UBOOT_END)   --change-name=3:uboot	--typecode=3:$(UBOOT) \
-#		--new=2:264192:$(DEMO_END) --change-name=2:root	--typecode=2:$(LINUX) \
-#		--new=4:1024:1247   --change-name=4:uboot-env	--typecode=4:$(UBOOTENV) \
-#		$(flash_image)
-#	dd conv=notrunc if=$(vfat_image) of=$(flash_image) bs=512 seek=$(VFAT_START)
-#	dd conv=notrunc if=$(uboot) of=$(flash_image) bs=512 seek=$(UBOOT_START) count=$(UBOOT_SIZE)
-
 .PHONY: format-boot-loader
-format-boot-loader: $(bbl_bin) $(uboot) $(fit) $(vfat_image)
+format-boot-loader: $(sbi_bin) $(uboot) $(fit) $(vfat_image)
 	@test -b $(DISK) || (echo "$(DISK): is not a block device"; exit 1)
 	/sbin/sgdisk --clear  \
-		--new=1:$(VFAT_START):$(VFAT_END)  --change-name=1:"Vfat Boot"	--typecode=1:$(VFAT)   \
-		--new=2:$(UBOOT_START):$(UBOOT_END)   --change-name=2:uboot	--typecode=2:$(UBOOT) \
-		--new=3:$(UENV_START):$(UENV_END)  --change-name=3:uboot-env	--typecode=3:$(UBOOTENV) \
-		--new=4:274432:0 --change-name=4:root	--typecode=4:$(LINUX) \
+		--new=1:$(SPL_START):$(SPL_END)  	--change-name=1:"spl"	--typecode=1:$(SPL)   \
+		--new=2:$(UBOOT_START):$(UBOOT_END)     --change-name=2:uboot	--typecode=2:$(UBOOT) \
+		--new=3:$(VFAT_START):$(VFAT_END)     --change-name=3:image	--typecode=2:$(VFAT) \
+		--new=4:$(ROOT_START):0 		--change-name=4:root	--typecode=4:$(LINUX) \
 		$(DISK)
 	-/sbin/partprobe
 	@sleep 1
@@ -472,12 +383,11 @@ else
 	@echo Error: Could not find bootloader partition for $(DISK)
 	@exit 1
 endif
-	dd if=$(uboot) of=$(PART2) bs=4096
-	dd if=$(vfat_image) of=$(PART1) bs=4096
+	dd if=$(spl_payload)   of=$(PART1) bs=4096
+	dd if=$(uboot_payload) of=$(PART2) bs=4096
+	dd if=$(vfat_image) of=$(PART3) bs=4096
 
-DEMO_IMAGE	:= sifive-debian-demo-mar7.tar.xz
-DEMO_URL	:= https://github.com/tmagik/freedom-u-sdk/releases/download/hifiveu-2.0-alpha.1/
-
+#starfive image
 format-rootfs-image: format-boot-loader
 	@echo "Done setting up basic initramfs boot. We will now try to install"
 	@echo "a Debian snapshot to the Linux partition, which requires sudo"
@@ -490,53 +400,10 @@ format-rootfs-image: format-boot-loader
 		sudo cp -fr tmp-rootfs/* tmp-mnt/
 	sudo umount tmp-mnt
 	sudo umount tmp-rootfs
-format-demo-image: format-boot-loader
-	@echo "Done setting up basic initramfs boot. We will now try to install"
-	@echo "a Debian snapshot to the Linux partition, which requires sudo"
-	@echo "you can safely cancel here"
-	/sbin/mke2fs -t ext4 $(PART4)
-	-mkdir tmp-mnt
-	-sudo mount $(PART4) tmp-mnt && cd tmp-mnt && \
-		sudo wget $(DEMO_URL)$(DEMO_IMAGE) && \
-		sudo tar -Jxvf $(DEMO_IMAGE)
-	sudo umount tmp-mnt
 
-ROOT_BEGIN=272384
-# default size: 20GB
-ROOT_CLUSTER_NUM=$(shell echo $$((20*1024*1024*1024/512)))
-ROOT_END=$(shell echo $$(($(ROOT_BEGIN)+$(ROOT_CLUSTER_NUM))))
-
-format-nvdla-disk: $(bbl_bin) $(uboot) $(fit) $(vfat_image)
-	@test -b $(DISK) || (echo "$(DISK): is not a block device"; exit 1)
-	/sbin/sgdisk --clear  \
-		--new=1:$(VFAT_START):$(VFAT_END)  --change-name=1:"Vfat Boot"  --typecode=1:$(VFAT)   \
-		--new=2:$(UBOOT_START):$(UBOOT_END)   --change-name=2:uboot --typecode=2:$(UBOOT) \
-		--new=3:$(ROOT_BEGIN):0 --change-name=3:root  --typecode=3:$(LINUX) \
-		$(DISK)
-	-/sbin/partprobe
-	@sleep 1
-ifeq ($(DISK)p1,$(wildcard $(DISK)p1))
-	@$(eval PART1 := $(DISK)p1)
-	@$(eval PART2 := $(DISK)p2)
-	@$(eval PART3 := $(DISK)p3)
-else ifeq ($(DISK)s1,$(wildcard $(DISK)s1))
-	@$(eval PART1 := $(DISK)s1)
-	@$(eval PART2 := $(DISK)s2)
-	@$(eval PART3 := $(DISK)s3)
-else ifeq ($(DISK)1,$(wildcard $(DISK)1))
-	@$(eval PART1 := $(DISK)1)
-	@$(eval PART2 := $(DISK)2)
-	@$(eval PART3 := $(DISK)3)
-else
-	@echo Error: Could not find bootloader partition for $(DISK)
-	@exit 1
-endif
-	dd if=$(uboot) of=$(PART2) bs=4096
-	dd if=$(vfat_image) of=$(PART1) bs=4096
 
 #usb config
-
-format-usb-disk: sbi $(uboot) $(fit) $(vfat_image)
+format-usb-disk: $(sbi_bin) $(uboot) $(fit) $(vfat_image)
 	@test -b $(DISK) || (echo "$(DISK): is not a block device"; exit 1)
 	/sbin/sgdisk --clear  \
 	--new=1:0:+256M  --change-name=1:"Vfat Boot"  --typecode=1:$(VFAT)   \
@@ -547,15 +414,12 @@ format-usb-disk: sbi $(uboot) $(fit) $(vfat_image)
 ifeq ($(DISK)p1,$(wildcard $(DISK)p1))
 	@$(eval PART1 := $(DISK)p1)
 	@$(eval PART2 := $(DISK)p2)
-#	@$(eval PART3 := $(DISK)p3)
 else ifeq ($(DISK)s1,$(wildcard $(DISK)s1))
 	@$(eval PART1 := $(DISK)s1)
 	@$(eval PART2 := $(DISK)s2)
-#	@$(eval PART3 := $(DISK)s3)
 else ifeq ($(DISK)1,$(wildcard $(DISK)1))
 	@$(eval PART1 := $(DISK)1)
 	@$(eval PART2 := $(DISK)2)
-#	@$(eval PART3 := $(DISK)3)
 else
 	@echo Error: Could not find bootloader partition for $(DISK)
 	@exit 1
@@ -563,32 +427,36 @@ endif
 	dd if=$(uboot) of=$(PART2) bs=4096
 	dd if=$(vfat_image) of=$(PART1) bs=4096
 
-DEB_IMAGE := debian_nvdla_20190506.tar.xz
-DEB_URL := https://github.com/sifive/freedom-u-sdk/releases/download/nvdla-demo-0.1
 
-format-nvdla-rootfs: format-nvdla-disk
-	@echo "Done setting up basic initramfs boot. We will now try to install"
-	@echo "a Debian snapshot to the Linux partition, which requires sudo"
-	@echo "you can safely cancel here"
-	/sbin/mke2fs -t ext4 $(PART3)
-	-mkdir -p tmp-mnt
-	-mkdir -p tmp-rootfs
-	-sudo mount $(PART3) tmp-mnt && \
-		sudo mount -o loop $(buildroot_rootfs_ext) tmp-rootfs&& \
-		sudo cp -fr tmp-rootfs/* tmp-mnt/
-	sudo umount tmp-mnt
-	sudo umount tmp-rootfs
+DEB_IMAGE 	:= debian_nvdla_20190506.tar.xz
+DEB_URL 	:= https://github.com/sifive/freedom-u-sdk/releases/download/nvdla-demo-0.1
 
-format-nvdla-root: format-nvdla-disk
+DEMO_IMAGE	:= sifive-debian-demo-mar7.tar.xz
+DEMO_URL	:= https://github.com/tmagik/freedom-u-sdk/releases/download/hifiveu-2.0-alpha.1/
+
+#nvdla image
+format-nvdla-image: format-boot-loader
 	@echo "Done setting up basic initramfs boot. We will now try to install"
 	@echo "a Debian snapshot to the Linux partition, which requires sudo"
 	@echo "you can safely cancel here"
 	@test -e $(wrkdir)/$(DEB_IMAGE) || (wget -P $(wrkdir) $(DEB_URL)/$(DEB_IMAGE))
-	/sbin/mke2fs -t ext4 $(PART3)
+	/sbin/mke2fs -t ext4 $(PART4)
 	-mkdir -p tmp-mnt
-	-mount $(PART3) tmp-mnt && \
+	-mount $(PART4) tmp-mnt && \
 		echo "please wait until checkpoint reaches 489k" && \
 		tar Jxf $(wrkdir)/$(DEB_IMAGE) -C tmp-mnt --checkpoint=1000
 	umount tmp-mnt
+
+#demo image
+format-demo-image: format-boot-loader
+	@echo "Done setting up basic initramfs boot. We will now try to install"
+	@echo "a Debian snapshot to the Linux partition, which requires sudo"
+	@echo "you can safely cancel here"
+	/sbin/mke2fs -t ext4 $(PART4)
+	-mkdir tmp-mnt
+	-sudo mount $(PART4) tmp-mnt && cd tmp-mnt && \
+		sudo wget $(DEMO_URL)$(DEMO_IMAGE) && \
+		sudo tar -Jxvf $(DEMO_IMAGE)
+	sudo umount tmp-mnt
 
 -include $(initramfs).d
