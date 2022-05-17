@@ -139,6 +139,7 @@ struct clk_bulk_data jpu_clks[] = {
 		{ .id = "axi_clk" },
 		{ .id = "core_clk" },
 		{ .id = "apb_clk" },
+		{ .id = "noc_bus" },
 };
 
 typedef struct jpu_clk_t {
