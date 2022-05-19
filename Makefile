@@ -39,7 +39,7 @@ vmlinux_stripped := $(linux_wrkdir)/vmlinux-stripped
 vmlinux_bin := $(wrkdir)/vmlinux.bin
 
 its_file=$(confdir)/$(HWBOARD)-fit-image.its
-uboot_its_file=$(confdir)/$(HWBOARD)-uboot-image.its
+uboot_its_file=$(confdir)/$(HWBOARD)-uboot-fit-image.its
 
 vfat_image := $(wrkdir)/starfive-$(HWBOARD)-vfat.part
 #ext_image := $(wrkdir)  # TODO
@@ -52,7 +52,7 @@ sbi_wrkdir := $(wrkdir)/opensbi
 sbi_bin := $(wrkdir)/opensbi/platform/starfive/firmware/fw_payload.bin
 
 fit := $(wrkdir)/image.fit
-uboot_fit := $(wrkdir)/$(HWBOARD)_fw_paylaod.img
+uboot_fit := $(wrkdir)/$(HWBOARD)_fw_payload.img
 
 fesvr_srcdir := $(srcdir)/riscv-fesvr
 fesvr_wrkdir := $(wrkdir)/riscv-fesvr
@@ -73,8 +73,6 @@ uboot_dtb_file := $(wrkdir)/u-boot/arch/riscv/dts/starfive_$(HWBOARD).dtb
 
 uboot := $(uboot_wrkdir)/u-boot.bin
 
-uboot_payload :=$(srcdir)/fw_payload.img
-
 spl_payload :=$(srcdir)/u-boot-spl.bin.normal.out
 
 uboot_config := starfive_$(HWBOARD)_defconfig
@@ -86,7 +84,7 @@ target_gcc := $(CROSS_COMPILE)gcc
 
 .PHONY: all check_arg
 
-all: check_arg $(fit) $(vfat_image)
+all: check_arg $(fit) $(vfat_image) $(uboot_fit)
 	@echo
 	@echo "This image has been generated for an ISA of $(ISA) and an ABI of $(ABI)"
 	@echo "Find the image in work/image.fit, which should be copied to an MSDOS boot partition 1"
@@ -231,7 +229,6 @@ $(sbi_bin): $(uboot) $(vmlinux)
 $(fit): $(sbi_bin) $(vmlinux_bin) $(uboot) $(its_file) ${initramfs}
 	$(uboot_wrkdir)/tools/mkimage -f $(its_file) -A riscv -O linux -T flat_dt $@
 	@if [ -f fsz.sh ]; then ./fsz.sh $(sbi_bin); fi
-	@if [ -f uboot-img.sh ]; then ./uboot-img.sh ; fi
 
 $(libfesvr): $(fesvr_srcdir)
 	rm -rf $(fesvr_wrkdir)
@@ -288,10 +285,11 @@ $(rootfs): $(buildroot_rootfs_ext)
 
 $(buildroot_initramfs_sysroot): $(buildroot_initramfs_sysroot_stamp)
 
-.PHONY: buildroot_initramfs_sysroot vmlinux fit
+.PHONY: buildroot_initramfs_sysroot vmlinux fit uboot_fit
 buildroot_initramfs_sysroot: $(buildroot_initramfs_sysroot)
 vmlinux: $(vmlinux)
 fit: $(fit)
+uboot_fit: $(uboot_fit)
 
 .PHONY: clean
 clean:
@@ -299,6 +297,7 @@ clean:
 	rm -rf work/opensbi
 	rm -f work/starfive-visionfive-vfat.part
 	rm -f work/image.fit
+	rm -f work/*_fw_payload.img
 	rm -f work/initramfs.cpio.gz
 	rm -f work/linux/vmlinux*
 
@@ -384,7 +383,7 @@ else
 	@exit 1
 endif
 	dd if=$(spl_payload)   of=$(PART1) bs=4096
-	dd if=$(uboot_payload) of=$(PART2) bs=4096
+	dd if=$(uboot_fit) of=$(PART2) bs=4096
 	dd if=$(vfat_image) of=$(PART3) bs=4096
 
 #starfive image
