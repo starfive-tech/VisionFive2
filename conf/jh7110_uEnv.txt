@@ -9,8 +9,7 @@ partnum=3
 fitfile=starfiveu.fit
 
 # for debugging boot
-bootargs=earlyprintk console=ttyS0,115200 debug rootwait 
-#stmmaceth=chain_mode:1 root=/dev/mmcblk0p4 
+bootargs=earlyprintk console=ttyS0,115200 debug rootwait earlycon=sbi root=/dev/mmcblk0p4
 
 # for addr info
 fileaddr=0xa0000000
