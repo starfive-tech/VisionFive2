@@ -73,7 +73,7 @@ uboot_dtb_file := $(wrkdir)/u-boot/arch/riscv/dts/starfive_$(HWBOARD).dtb
 
 uboot := $(uboot_wrkdir)/u-boot.bin
 
-spl_payload :=$(srcdir)/u-boot-spl.bin.normal.out
+spl_payload :=$(wrkdir)/u-boot-spl.bin.normal.out
 
 uboot_config := starfive_$(HWBOARD)_defconfig
 
@@ -382,7 +382,7 @@ else
 	@echo Error: Could not find bootloader partition for $(DISK)
 	@exit 1
 endif
-	dd if=$(spl_payload)   of=$(PART1) bs=4096
+	#dd if=$(spl_payload)   of=$(PART1) bs=4096
 	dd if=$(uboot_fit) of=$(PART2) bs=4096
 	dd if=$(vfat_image) of=$(PART3) bs=4096
 
@@ -399,6 +399,8 @@ format-rootfs-image: format-boot-loader
 		sudo cp -fr tmp-rootfs/* tmp-mnt/
 	sudo umount tmp-mnt
 	sudo umount tmp-rootfs
+	rmdir tmp-mnt
+	rmdir tmp-rootfs
 
 
 #usb config
