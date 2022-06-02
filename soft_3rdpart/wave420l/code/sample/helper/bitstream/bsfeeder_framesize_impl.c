@@ -713,6 +713,7 @@ void* BSFeederFrameSize_Create(
 
     if (standard == STD_THO || standard == STD_VP3) {
         theora_parser_init((void**)&ffmpegReader->theora);
+        fuck
     }
 
     return (void*)ffmpegReader;

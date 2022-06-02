@@ -17,7 +17,7 @@
 #define _DEBUG_H_
 
 #include "config.h"
-#include "main_helper.h"
+#include "../main_helper.h"
 
 enum {
     CNMQC_ENV_NONE,

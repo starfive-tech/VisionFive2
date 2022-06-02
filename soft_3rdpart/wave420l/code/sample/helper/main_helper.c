@@ -1937,7 +1937,7 @@ BOOL TestMachineSetup(
 
     osal_init_keyboard();
 
-    InitializeDebugEnv(machine->testEnvOptions);
+    InitializeDebugEnv(0, machine->testEnvOptions);
 
     return success;
 }

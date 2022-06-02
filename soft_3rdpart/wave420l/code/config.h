@@ -34,7 +34,7 @@
 #if defined(PLATFORM_NON_OS) || defined (ANDROID) || defined(MFHMFT_EXPORTS) || defined(PLATFORM_QNX)
 //#define SUPPORT_FFMPEG_DEMUX
 #else
-#define SUPPORT_FFMPEG_DEMUX
+//#define SUPPORT_FFMPEG_DEMUX
 #endif
 
 //------------------------------------------------------------------------------
