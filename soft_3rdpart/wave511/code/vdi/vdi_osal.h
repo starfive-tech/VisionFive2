@@ -29,9 +29,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
-#include "vputypes.h"
+#ifdef USE_FEEDING_METHOD_BUFFER
+    #include "wave511/vpuapi/vputypes.h"
+#else
+    #include "vputypes.h"
+#endif
 
-enum {NONE=0, INFO, WARN, ERR, TRACE, MAX_LOG_LEVEL};
+enum
+{
+    ERR=0,
+    WARN,
+    TRACE,
+    INFO,
+    DEBUG,
+    MAX_LOG_LEVEL
+};
+
 enum
 {
     LOG_HAS_DAY_NAME   =    1, /**< Include day name [default: no] 	      */

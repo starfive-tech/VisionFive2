@@ -29,7 +29,7 @@
 #include "coda9/coda9_regdefine.h"
 #include "coda9/coda9_vpuconfig.h"
 #include "wave/wave5_regdefine.h"
-
+#include "misc/debug.h"
 
 #ifndef MIN
 #define MIN(a, b)       (((a) < (b)) ? (a) : (b))

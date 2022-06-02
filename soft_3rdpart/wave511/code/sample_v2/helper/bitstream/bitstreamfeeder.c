@@ -47,6 +47,12 @@ typedef struct {
     int             sequenceHeaderSize;
 } BitstreamFeeder;
 
+void*  BitstreamFeeder_GetActualFeeder(void *feeder)
+{
+    BitstreamFeeder*    handle = (BitstreamFeeder*) feeder;
+    return handle->actualFeeder;
+}
+
 static void BitstreamFeeder_DummyObserver(
     void*   handle,
     void*   es,
@@ -123,6 +129,29 @@ extern Int32 BSFeederFrameSize_GetStandard(
     void*       feeder
     );
 
+extern void* BSFeederBuffer_Create(
+    const char* path,
+    CodStd      codecId
+    );
+
+extern BOOL BSFeederBuffer_Destroy(
+    void* feeder
+    );
+
+extern Int32 BSFeederBuffer_Act(
+    void*       feeder,
+    BSChunk*    chunk
+    );
+
+extern BOOL BSFeederBuffer_Rewind(
+    void*       feeder
+    );
+
+extern void BSFeederBuffer_SetFeedingSize(
+    void*   feeder,
+    Uint32  feedingSize
+    );
+
 /**
 * Abstract Bitstream Feeader Functions
 */
@@ -148,6 +177,11 @@ void* BitstreamFeeder_Create(
     case FEEDING_METHOD_SIZE_PLUS_ES:
         feeder = BSFeederSizePlusEs_Create(path, codecId);
         break;
+#ifdef USE_FEEDING_METHOD_BUFFER
+    case FEEDING_METHOD_BUFFER:
+        feeder = BSFeederBuffer_Create(path, codecId);
+        break;
+#endif
     default:
         feeder = NULL;
         break;
@@ -250,6 +284,11 @@ Uint32 BitstreamFeeder_Act(
         case FEEDING_METHOD_SIZE_PLUS_ES:
             feedingSize = BSFeederSizePlusEs_Act(bsf->actualFeeder, &chunk);
             break;
+#ifdef USE_FEEDING_METHOD_BUFFER
+        case FEEDING_METHOD_BUFFER:
+            feedingSize = BSFeederBuffer_Act(bsf->actualFeeder, &chunk);
+            break;
+#endif
         default:
             VLOG(ERR, "%s:%d Invalid method(%d)\n", __FUNCTION__, __LINE__, bsf->method);
             osal_free(chunk.data);
@@ -352,6 +391,9 @@ Int32 BitstreamFeeder_GetStandard(
         break;
     case FEEDING_METHOD_FIXED_SIZE:
     case FEEDING_METHOD_SIZE_PLUS_ES:
+#ifdef USE_FEEDING_METHOD_BUFFER
+    case FEEDING_METHOD_BUFFER:
+#endif
     default:
         VLOG(ERR, "%s:%d Invalid return value (%d),  method(%d)\n", __FUNCTION__, __LINE__, -1, bsf->method);
         break;
@@ -391,6 +433,11 @@ BOOL BitstreamFeeder_Destroy(
     case FEEDING_METHOD_SIZE_PLUS_ES:
         BSFeederSizePlusEs_Destroy(bsf->actualFeeder);
         break;
+#ifdef USE_FEEDING_METHOD_BUFFER
+    case FEEDING_METHOD_BUFFER:
+        BSFeederBuffer_Destroy(bsf->actualFeeder);
+        break;
+#endif
     default:
         VLOG(ERR, "%s:%d Invalid method(%d)\n", __FUNCTION__, __LINE__, bsf->method);
         break;
@@ -427,6 +474,9 @@ BOOL BitstreamFeeder_Rewind(
     case FEEDING_METHOD_SIZE_PLUS_ES:
         success = BSFeederSizePlusEs_Rewind(bsf->actualFeeder);
         break;
+#ifdef USE_FEEDING_METHOD_BUFFER
+    case FEEDING_METHOD_BUFFER:
+#endif
     default:
         VLOG(ERR, "%s:%d Invalid method(%d)\n", __FUNCTION__, __LINE__, bsf->method);
         break;

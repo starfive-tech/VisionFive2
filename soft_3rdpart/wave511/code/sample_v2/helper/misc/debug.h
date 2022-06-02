@@ -26,8 +26,14 @@
 #ifndef _DEBUG_H_
 #define _DEBUG_H_
 
-#include "config.h"
-#include "main_helper.h"
+#ifdef USE_FEEDING_METHOD_BUFFER
+    #include "wave511/config.h"
+    #include "wave511/sample_v2/helper/main_helper.h"
+#else
+    #include "config.h"
+    #include "main_helper.h"
+#endif
+
 
 enum {
     CNMQC_ENV_NONE,

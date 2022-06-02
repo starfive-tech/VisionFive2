@@ -26,10 +26,18 @@
 #ifndef _MAIN_HELPER_H_
 #define _MAIN_HELPER_H_
 
-#include "config.h"
-#include "vpuapifunc.h"
-#include "vpuapi.h"
-#include "vputypes.h"
+
+#ifdef USE_FEEDING_METHOD_BUFFER
+   #include "wave511/config.h"
+   #include "wave511/vpuapi/vpuapifunc.h"
+   #include "wave511/vpuapi/vpuapi.h"
+   #include "wave511/vpuapi/vputypes.h"
+#else
+    #include "config.h"
+    #include "vpuapifunc.h"
+    #include "vpuapi.h"
+    #include "vputypes.h"
+#endif
 #ifdef PLATFORM_QNX
     #include <sys/stat.h>
 #endif
@@ -575,6 +583,18 @@ Uint8* GetYUVFromFrameBuffer(
     size_t*		retSize
     );
 
+BOOL GetYUVFromFrameBuffer2(
+    Uint8*          pYuv,
+    Uint8**         pYuv2,
+    Uint32          size,
+    DecHandle       decHandle,
+    FrameBuffer*    fb,
+    VpuRect         rcFrame,
+    Uint32*         retWidth,
+    Uint32*         retHeight,
+    Uint32*         retBpp,
+    size_t*         retSize
+    );
 /************************************************************************/
 /* Queue                                                                */
 /************************************************************************/
@@ -793,6 +813,9 @@ typedef enum {
     FEEDING_METHOD_FIXED_SIZE,
     FEEDING_METHOD_FRAME_SIZE,
     FEEDING_METHOD_SIZE_PLUS_ES,
+#ifdef USE_FEEDING_METHOD_BUFFER
+    FEEDING_METHOD_BUFFER,
+#endif
     FEEDING_METHOD_MAX
 } FeedingMethod;
 
@@ -896,7 +919,9 @@ BOOL BitstreamFeeder_SetHook(
 /************************************************************************/
 #define SOURCE_YUV                  0
 #define SOURCE_YUV_WITH_LOADER      2
-
+#ifdef USE_FEEDING_METHOD_BUFFER
+    #define SOURCE_YUV_WITH_BUFFER  4
+#endif
 typedef struct {
     Uint32   cbcrInterleave;
     Uint32   nv21;
@@ -1395,6 +1420,23 @@ void ReleaseVideoMemory(
     Uint32        count
     );
 
+void *AllocateDecFrameBuffer2(
+    DecHandle decHandle,
+    TestDecConfig* config,
+    Uint32 size,
+    FrameBuffer* retFbArray,
+    vpu_buffer_t* retFbAddrs
+    );
+
+BOOL AttachDecDMABuffer(
+    DecHandle decHandle,
+    TestDecConfig* config,
+    Uint64 virtAddress,
+    Uint32 size,
+    FrameBuffer* retFbArray,
+    vpu_buffer_t* retFbAddrs
+    );
+
 BOOL AllocateDecFrameBuffer(
     DecHandle       decHandle,
     TestDecConfig*  config,
@@ -1402,6 +1444,10 @@ BOOL AllocateDecFrameBuffer(
     Uint32          linearFbCount,
     FrameBuffer*    retFbArray,
     vpu_buffer_t*   retFbAddrs,
+#if 0
+    vpu_buffer_t*   inFbAddrs,
+    Uint32          inFbCount,
+#endif
     Uint32*         retStride
     );
 

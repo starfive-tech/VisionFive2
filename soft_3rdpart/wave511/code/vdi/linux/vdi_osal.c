@@ -25,6 +25,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
 #include <stdarg.h>
 #include <errno.h>
@@ -52,7 +53,7 @@ static int peek_character = -1;
 static unsigned log_decor = LOG_HAS_TIME | LOG_HAS_FILE | LOG_HAS_MICRO_SEC |
 			    LOG_HAS_NEWLINE |
 			    LOG_HAS_SPACE | LOG_HAS_COLOR;
-static int max_log_level = MAX_LOG_LEVEL;
+static int max_log_level = ERR;
 static FILE *fpLog  = NULL;
 
 #if defined(SUPPORT_SW_UART) || defined(SUPPORT_SW_UART_V2)
@@ -61,7 +62,7 @@ static pthread_mutex_t s_log_mutex;
 
 int InitLog()
 {
-	fpLog = osal_fopen("ErrorLog.txt", "w");
+	fpLog = osal_fopen("/tmp/DecoderErrorLog.txt", "w");
 #if defined(SUPPORT_SW_UART) || defined(SUPPORT_SW_UART_V2)
 	pthread_mutex_init(&s_log_mutex, NULL);
 #endif

@@ -54,8 +54,8 @@
 typedef pthread_mutex_t	MUTEX_HANDLE;
 
 
-#define SUPPORT_INTERRUPT
-#define VDI_SRAM_BASE_ADDR          	0x00000000    // if we can know the sram address in SOC directly for vdi layer. it is possible to set in vdi layer without allocation from driver
+#    define SUPPORT_INTERRUPT
+#        define VDI_SRAM_BASE_ADDR          0x00000000    // if we can know the sram address in SOC directly for vdi layer. it is possible to set in vdi layer without allocation from driver
 #define VDI_SYSTEM_ENDIAN                   VDI_LITTLE_ENDIAN
 #define VDI_128BIT_BUS_SYSTEM_ENDIAN        VDI_128BIT_LITTLE_ENDIAN
 
@@ -946,6 +946,84 @@ int vdi_read_memory(unsigned long core_idx, PhysicalAddress addr, unsigned char 
     return len;
 }
 
+// return the vpudrv_buffer_t virt addr, not copy data
+int vdi_read_memory2(unsigned long core_idx, PhysicalAddress addr, unsigned char **ppdata, int len, int endian)
+{
+    vdi_info_t *vdi;
+    vpudrv_buffer_t vdb;
+    unsigned long offset;
+    int i;
+
+#ifdef SUPPORT_MULTI_CORE_IN_ONE_DRIVER
+    core_idx = 0;
+#endif
+    if (core_idx >= MAX_NUM_VPU_CORE)
+        return -1;
+
+    vdi = &s_vdi_info[core_idx];
+
+    if(!vdi || vdi->vpu_fd==-1 || vdi->vpu_fd == 0x00)
+        return -1;
+
+    osal_memset(&vdb, 0x00, sizeof(vpudrv_buffer_t));
+
+    for (i=0; i<MAX_VPU_BUFFER_POOL; i++)
+    {
+        if (vdi->vpu_buffer_pool[i].inuse == 1)
+        {
+            vdb = vdi->vpu_buffer_pool[i].vdb;
+            if (addr >= vdb.phys_addr && addr < (vdb.phys_addr + vdb.size))
+                break;
+        }
+    }
+
+    if (!vdb.size)
+        return -1;
+
+    offset = addr - (unsigned long)vdb.phys_addr;
+    vdi_flush_ddr(core_idx,(unsigned long )(vdb.phys_addr+offset),len,1);
+    *ppdata = (unsigned char *)(vdb.virt_addr + offset);
+    swap_endian(core_idx, *ppdata, len,  endian);
+
+    return len;
+}
+
+void* vdi_map_virt2(unsigned long core_idx, int size, PhysicalAddress bufY)
+{
+    vdi_info_t *vdi = &s_vdi_info[core_idx];
+    void *virt_addr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, vdi->vpu_fd, bufY);
+    return virt_addr;
+}
+
+int vdi_virt_to_phys(unsigned long core_idx, vpu_buffer_t *vb)
+{
+    vdi_info_t *vdi;
+    vpudrv_buffer_t vdb;
+
+#ifdef SUPPORT_MULTI_CORE_IN_ONE_DRIVER
+    core_idx = 0;
+#endif
+    if (core_idx >= MAX_NUM_VPU_CORE)
+        return -1;
+
+    vdi = &s_vdi_info[core_idx];
+
+    if(!vdi || vdi->vpu_fd==-1 || vdi->vpu_fd == 0x00)
+        return -1;
+
+    osal_memset(&vdb, 0x00, sizeof(vpudrv_buffer_t));
+    vdb.virt_addr = vb->virt_addr;
+    if (ioctl(vdi->vpu_fd, VDI_IOCTL_GET_PHYSICAL_MEMORY, &vdb) < 0)
+    {
+        VLOG(ERR, "[VDI] fail to GET_PHYSICAL_MEMORY\n");
+        return -1;
+    }
+    vb->phys_addr = (unsigned long)vdb.phys_addr;
+    vb->base = (unsigned long)vdb.base;
+    VLOG(INFO, "get phy = %#x vb->phy = %#x, base=%lx\n", vdb.phys_addr, vb->phys_addr, vb->base);
+    return 0;
+}
+
 int vdi_allocate_dma_memory(unsigned long core_idx, vpu_buffer_t *vb, int memTypes, int instIndex)
 {
     vdi_info_t *vdi;
@@ -1066,7 +1144,7 @@ int vdi_attach_dma_memory(unsigned long core_idx, vpu_buffer_t *vb)
     }
     vmem_unlock(vdi);
 
-    //VLOG(INFO, "[VDI] vdi_attach_dma_memory, physaddr=0x%lx, virtaddr=0x%lx, size=%d, index=%d\n", vb->phys_addr, vb->virt_addr, vb->size, i);
+    VLOG(INFO, "[VDI] vdi_attach_dma_memory, physaddr=0x%#x, virtaddr=0x%lx, size=%d, index=%d\n", vb->phys_addr, vb->virt_addr, vb->size, i);
 
     return 0;
 }
@@ -1132,7 +1210,10 @@ void vdi_free_dma_memory(unsigned long core_idx, vpu_buffer_t *vb, int memTypes,
     vmem_lock(vdi);
     for (i=0; i<MAX_VPU_BUFFER_POOL; i++)
     {
-        if (vdi->vpu_buffer_pool[i].vdb.phys_addr == vb->phys_addr)
+        /* add more constraints for finding the correct buffer */
+        if ((vdi->vpu_buffer_pool[i].vdb.phys_addr == vb->phys_addr)
+			&& (vdi->vpu_buffer_pool[i].vdb.size == vb->size)
+			&& (vdi->vpu_buffer_pool[i].vdb.virt_addr == vb->virt_addr))
         {
             vdi->vpu_buffer_pool[i].inuse = 0;
             vdi->vpu_buffer_pool_count--;

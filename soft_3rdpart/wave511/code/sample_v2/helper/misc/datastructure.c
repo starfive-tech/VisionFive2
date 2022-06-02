@@ -97,7 +97,7 @@ BOOL Queue_Enqueue(
     if (queue->count == queue->size) {
         if (queue->lock)
             osal_mutex_unlock(queue->lock);
-        return -1;
+        return FALSE;
     }
     offset = queue->rear * queue->itemSize;
 

@@ -221,6 +221,32 @@ static BOOL ExecuteFeeder(ComponentImpl* com, PortContainer* in, PortContainer* 
 
     if (com->pause) return TRUE;
 
+#ifdef USE_FEEDING_METHOD_BUFFER
+extern void BSFeederBuffer_SetData(
+    void*       feeder,
+    char*       address,
+    Uint32       size);
+extern void*  BitstreamFeeder_GetActualFeeder(void *feeder);
+extern void BSFeederBuffer_SetEos(void* feeder);
+extern BOOL BSFeederBuffer_GetEos(void* feeder);
+
+    void *actualFeeder = BitstreamFeeder_GetActualFeeder(bsFeeder);
+    PortContainerExternal *input = NULL;
+    if (BSFeederBuffer_GetEos(actualFeeder) == FALSE) {
+        input = (PortContainerExternal *)ComponentPortPeekData(&com->srcPort);
+        if (input == NULL) {
+            return TRUE;
+        }
+        BSFeederBuffer_SetData(actualFeeder, (char *)input->pBuffer, input->nFilledLen);
+        if ((input->nFlags & 0x1) == 0x1)
+        {
+            BSFeederBuffer_SetEos(actualFeeder);
+        }
+    } else {
+        BSFeederBuffer_SetData(actualFeeder, 0, 0);
+    }
+#endif
+
     eos = BitstreamFeeder_IsEos(bsFeeder);
 
     if (config->bitstreamMode == BS_MODE_PIC_END) {
@@ -228,6 +254,14 @@ static BOOL ExecuteFeeder(ComponentImpl* com, PortContainer* in, PortContainer* 
         wrPtr    = bsBuffer->phys_addr;
         room     = bsBuffer->size;
         container->size = BitstreamFeeder_Act(bsFeeder, bsBuffer, wrPtr, (Uint32)room, &ctx->nextWrPtr);
+#ifdef USE_FEEDING_METHOD_BUFFER
+        if (input != NULL) {
+            ComponentPortGetData(&com->srcPort);
+            ComponentNotifyListeners(com, COMPONENT_EVENT_DEC_EMPTY_BUFFER_DONE, (void *)input);
+            // do not use input var under next line because this data already be droped.
+            (void)input;
+        }
+#endif
     }
     else {
         ParamDecBitstreamBufPos bsPos;
@@ -256,6 +290,15 @@ static BOOL ExecuteFeeder(ComponentImpl* com, PortContainer* in, PortContainer* 
                 ctx->dropCount--;
                 ctx->nextWrPtr = wrPtr;
             }
+#ifdef USE_FEEDING_METHOD_BUFFER
+            eos = BitstreamFeeder_IsEos(bsFeeder);
+            if (eos == TRUE) {
+                ComponentPortGetData(&com->srcPort);
+                ComponentNotifyListeners(com, COMPONENT_EVENT_DEC_EMPTY_BUFFER_DONE, (void *)input);
+                // do not use input var under next line because this data already be droped.
+                (void)input;
+            }
+#endif
         }
         else {
             if (ctx->loopCount > 0) {

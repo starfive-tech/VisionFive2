@@ -169,7 +169,7 @@ void EncoderListener(Component com, Uint64 event, void* data, void* context)
     EncHandle   handle;
 #if defined(SUPPORT_MULTI_INSTANCE_TEST) || defined(SUPPORT_LOOK_AHEAD_RC)
 #else
-    int         key=0;
+    /* int         key=0;
 
     if (osal_kbhit()) {
         key = osal_getch();
@@ -180,7 +180,7 @@ void EncoderListener(Component com, Uint64 event, void* data, void* context)
                 return;
             }
         }
-    }
+    } */
 #endif
     switch (event) {
     case COMPONENT_EVENT_ENC_OPEN:

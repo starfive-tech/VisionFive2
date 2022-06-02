@@ -193,6 +193,23 @@ static void LoadSrcYUV(
     Uint32          srcWidthC,
     Uint32          srcHeightC,
     Uint32          chroma_stride);
+void LoadSrcYUV2(
+    Uint32          coreIdx,
+    TiledMapConfig  mapCfg,
+    Uint8*          pSrc,
+    Uint8**         pSrc2,
+    FrameBuffer*    fbSrc,
+    VpuRect         cropRect,
+    BOOL            enableCrop,
+    Uint32          is10bit,
+    Uint32          is3pxl4byte,
+    Uint32          isMSB,
+    Uint32          srcWidthY,
+    Uint32          srcHeightY,
+    Uint32          srcWidthC,
+    Uint32          srcHeightC,
+    Uint32          chroma_stride
+    );
 
 static void DePackedYUV(
     Uint32          is10bit,
@@ -1037,6 +1054,174 @@ Uint32 StoreYuvImageBurst(
 
     //9: free memories
     osal_free(pSrc);
+    if (pFormat != NULL)
+        osal_free(pFormat);
+    if (pPack != NULL)
+        osal_free(pPack);
+    if (pInterLeave != NULL)
+        osal_free(pInterLeave);
+    return totSize;
+}
+
+Uint32 StoreYuvImageBurst2(
+    Uint32          coreIdx,
+    FrameBuffer     *fbSrc,
+    TiledMapConfig  mapCfg,
+    Uint8           *pDst,
+    Uint8           **pDst2,
+    VpuRect         cropRect,
+    BOOL            enableCrop
+    )
+{
+    int      interLeave  = fbSrc->cbcrInterleave;
+    BOOL     nv21        = fbSrc->nv21;
+    Uint32   totSize = 0;
+    Uint32   is422;
+    Uint32   isPack;
+    Uint32   PackMode;
+    Uint32   is10bit;
+    Uint32   isMSB;
+    Uint32   is3pxl4byte;
+
+    Uint32   srcWidthY;
+    Uint32   srcHeightY;
+    Uint32   srcWidthC;
+    Uint32   srcHeightC;
+    Uint32   chroma_stride;
+
+    Uint32   dstWidthY;
+    Uint32   dstHeightY;
+    Uint32   dstWidthC;
+    Uint32   dstHeightC;
+
+    Uint32   DstSize = 0;
+    Uint32   SrcSize = 0;
+    //Uint8*   pSrc = NULL;
+
+    Uint8*   pSrcFormat;
+    Uint8*   pDstFormat = NULL;
+    Uint32   deFormatSize = 0;
+    Uint8*   pFormat = NULL;
+
+    Uint8*   pSrcInterLeave;
+    Uint8*   pDstInterLeave = NULL;
+    Uint32   InterLeaveSize = 0;
+    Uint8*   pInterLeave = NULL;
+
+    Uint8*   pSrcPack;
+    Uint8*   pDstPack = NULL;
+    Uint32   PackSize = 0;
+    Uint8*   pPack = NULL;
+
+    Uint8*   pSrc422;
+    Uint8*   pDst422 = NULL;
+
+    Uint8*   pSrcSwap;
+    Uint8*   pDstSwap;
+
+    GeneratePicParam(fbSrc, cropRect, enableCrop,
+        &is422, &isPack, &PackMode, &is10bit, &isMSB, &is3pxl4byte,
+        &srcWidthY, &srcHeightY, &srcWidthC, &srcHeightC, &chroma_stride,
+        &dstWidthY, &dstHeightY, &dstWidthC, &dstHeightC);
+
+     //1. Source YUV memory allocation
+    SrcSize = srcWidthY*srcHeightY + srcWidthC*srcHeightC;
+    if (interLeave != TRUE)
+        SrcSize += srcWidthC*srcHeightC;
+    //pSrc = (Uint8*)osal_malloc(SrcSize);
+    //if (!pSrc)
+    //    return 0;
+
+    //2. Destination YUV size
+    DstSize = dstWidthY*dstHeightY + dstWidthC*dstHeightC * 2;
+    totSize = DstSize;
+
+    //3. Source YUV Load
+    LoadSrcYUV2(coreIdx, mapCfg, pDst, pDst2, fbSrc, cropRect, enableCrop,
+        is10bit, is3pxl4byte, isMSB,
+        srcWidthY, srcHeightY, srcWidthC, srcHeightC, chroma_stride);
+
+    //4.    osal_memcpy and termination for 8bit, 420, normal(non packed) YUV
+    //SrcYUV => DstYUV
+#if defined(SAVE_YUV)
+    //osal_memcpy(pDst, pSrc, SrcSize);
+    totSize = SrcSize;
+
+    //osal_free(pSrc);
+    return totSize;
+#else
+    // if dec video format is I420 NV21 NV12, just dump it
+    if (is10bit != TRUE  && is422 != TRUE && isPack != TRUE) {
+        //osal_memcpy(pDst, pSrc, SrcSize);
+        //osal_free(pSrc);
+        return totSize;
+    }
+#endif
+
+    //5. deFormat
+    //all format for 10bit => 1 pixel 2byte LSB
+    if (is10bit == TRUE) {
+        if (is3pxl4byte == TRUE) {
+            deFormatSize = dstWidthY*srcHeightY + (dstWidthC*srcHeightY * 2);
+            pFormat      = (Uint8*)osal_malloc(deFormatSize);
+        }
+        pSrcFormat = pDst;
+        pDstFormat = (is3pxl4byte == TRUE) ? pFormat : pDst;
+
+        DeFormatYUV( is3pxl4byte, isMSB, interLeave, srcWidthY, srcHeightY, srcWidthC, srcHeightC,
+            dstWidthY, dstWidthC, pSrcFormat, pDstFormat);
+    }
+
+    //6. dePack or interleave
+    //Pack => Normal
+    //interleave => Normal
+    if (isPack) {
+        //pPack allocation
+        PackSize = dstWidthY*dstHeightY + dstWidthC*dstHeightY * 2;
+        pPack    = (Uint8*)osal_malloc(PackSize);
+        if ( !pPack )
+            return 0;
+        pSrcPack = pDst; //3pixel4byte no support
+        pDstPack = pPack;
+
+        DePackedYUV(is10bit, PackMode, srcWidthY, srcHeightY, pSrcPack,
+            dstWidthY, dstHeightY, dstWidthC, dstHeightY/*Pack : 422*/, pDstPack);
+    }
+    else if (interLeave == TRUE) {
+        pSrcInterLeave = (is10bit) ? pDstFormat : pDst;
+        if (is422) {
+            InterLeaveSize = dstWidthY*srcHeightY + dstWidthC*srcHeightC * 2;
+            pInterLeave    = (Uint8*)osal_malloc(InterLeaveSize);
+            if ( !pInterLeave )
+                return 0;
+            pDstInterLeave = pInterLeave;
+        }
+        else
+            pDstInterLeave = pDst;
+
+        DeInterLeave(is10bit, nv21, dstWidthY, srcHeightY, dstWidthC*2, srcHeightC, pSrcInterLeave, pDstInterLeave);
+    }
+
+    //7. 422 => 420
+    if (is422 || isPack) {
+        pSrc422 =  (isPack) ?      pDstPack         :
+                   ((interLeave) ? pDstInterLeave   :
+                   ((is10bit) ?    pDstFormat       : pDst));
+        pDst422 = pDst;
+
+        Convert422to420(pSrc422, dstWidthY, dstHeightY, dstWidthC, dstHeightC, pDst422);
+    }
+
+    //8.byte swap for short-type for Windows
+    if (is10bit) {
+        pSrcSwap = (is422 || isPack) ?     pDst422        :
+                   ((interLeave == TRUE) ? pDstInterLeave : pDstFormat);
+        pDstSwap = pDst;
+        ByteSwap10bit(DstSize, pSrcSwap, pDstSwap);
+    }
+
+    //9: free memories
+    //osal_free(pSrc);
     if (pFormat != NULL)
         osal_free(pFormat);
     if (pPack != NULL)
@@ -1899,6 +2084,82 @@ void LoadSrcYUV(
     if (pCr)
         osal_free(pCr);
 }
+
+void LoadSrcYUV2(
+    Uint32          coreIdx,
+    TiledMapConfig  mapCfg,
+    Uint8*          pSrc,
+    Uint8**         pSrc2,
+    FrameBuffer*    fbSrc,
+    VpuRect         cropRect,
+    BOOL            enableCrop,
+    Uint32          is10bit,
+    Uint32          is3pxl4byte,
+    Uint32          isMSB,
+    Uint32          srcWidthY,
+    Uint32          srcHeightY,
+    Uint32          srcWidthC,
+    Uint32          srcHeightC,
+    Uint32          chroma_stride
+    )
+{
+    Uint32      pix_addr;
+    Uint8*      rowBufferY;
+
+    Int32       baseY;
+
+    Uint8       *pY = NULL;
+    Uint8       *pCb = NULL;
+    Uint8       *pCr = NULL;
+
+    int         interLeave  = fbSrc->cbcrInterleave;
+    Uint32      stride      = fbSrc->stride;
+#ifdef SAVE_YUV
+    EndianMode  endian      = 31;
+#else
+    EndianMode  endian      = (EndianMode)fbSrc->endian;
+#endif
+
+    //base address
+    baseY  = fbSrc->bufY;
+
+    VLOG(DEBUG, "%s %d baseY = %x stride = %d srcHeightY = %d endian = %d\r\n",
+        __FUNCTION__, __LINE__, baseY, stride, srcHeightY, endian);
+
+
+    int ret = vdi_read_memory2(coreIdx, fbSrc->bufY, &pY, stride * srcHeightY, endian);
+
+#if defined(SAVE_YUV)
+#else
+    // not used here for 8bit
+    if (is10bit) {
+        DePxlOrder(stride, srcHeightY, chroma_stride, srcHeightC,
+            interLeave, is10bit, is3pxl4byte, isMSB, pY, pCb, pCr);
+    }
+#endif
+
+    pix_addr = fbSrc->bufY + 0xffffffff00000000;
+    rowBufferY = pY + (pix_addr - baseY);
+    VLOG(DEBUG, "%s %d ret = %d, pix_addr = %lx,  pY = %p, rowBufferY = %p pSrc = %p pSrc2 = %p\n",
+        __FUNCTION__, __LINE__, ret, pix_addr, pY, rowBufferY, pSrc, pSrc2);
+    if (pSrc) {
+        osal_memcpy(pSrc, rowBufferY, srcHeightY*srcWidthY*3/2);
+    }
+    if (pSrc2) {
+        *pSrc2 = rowBufferY;
+    }
+    // following code store output buffers
+#if 0
+    {
+        void *virt_addr = vdi_map_virt2(coreIdx, srcHeightY*srcWidthY*3/2, fbSrc->bufY);
+        VLOG(INFO, "------=-==-=-=-==%p, %d\r\n", virt_addr, srcHeightY*srcWidthY*3/2);
+        FILE *fb = fopen("./out_vpu.bcp", "ab+");
+        fwrite(virt_addr, 1, srcHeightY*srcWidthY*3/2, fb);
+        fclose(fb);
+    }
+#endif
+}
+
 BOOL CalcYuvSize_412(
     Int32   format,
     Int32   picWidth,
@@ -2949,6 +3210,70 @@ Uint8* GetYUVFromFrameBuffer(
     *retBpp    = Bpp;
 
     return pYuv;
+}
+
+BOOL GetYUVFromFrameBuffer2(
+    Uint8*          pYuv,
+    Uint8**         pYuv2,
+    Uint32          size,
+    DecHandle       decHandle,
+    FrameBuffer*    fb,
+    VpuRect         rcFrame,
+    Uint32*         retWidth,
+    Uint32*         retHeight,
+    Uint32*         retBpp,
+    size_t*         retSize
+    )
+{
+    Uint32          coreIdx = VPU_HANDLE_CORE_INDEX(decHandle);
+    size_t          frameSizeY;                                         // the size of luma
+    size_t          frameSizeC;                                         // the size of chroma
+    size_t          frameSize;                                          // the size of frame
+    Uint32          Bpp = 1;                                            //!<< Byte per pixel
+    Uint32          picWidth, picHeight;
+    TiledMapConfig  mapCfg;
+
+    if (pYuv == NULL && pYuv2 == NULL) {
+        return FALSE;
+    }
+    picWidth  = rcFrame.right - rcFrame.left;
+    picHeight = rcFrame.bottom - rcFrame.top;
+
+    CalcYuvSize_412(fb->format, picWidth, fb->height, fb->cbcrInterleave, &frameSizeY, &frameSizeC, &frameSize, NULL, NULL, NULL);
+    if (size < frameSize) {
+        VLOG(ERR, "Buffer is not long enough, expect:%d, give:%d\n", frameSize, size);
+        *retSize = 0;
+        return FALSE;
+    }
+    switch (fb->format) {
+    case FORMAT_422_P10_16BIT_MSB:
+    case FORMAT_422_P10_16BIT_LSB:
+    case FORMAT_420_P10_16BIT_LSB:
+    case FORMAT_420_P10_16BIT_MSB:
+        Bpp = 2;
+        break;
+    case FORMAT_420_P10_32BIT_LSB:
+    case FORMAT_420_P10_32BIT_MSB:
+        picWidth = (picWidth/3)*4 + ((picWidth%3) ? 4 : 0);
+        Bpp = 1;
+        break;
+    case FORMAT_422:
+    case FORMAT_422_P10_32BIT_MSB:
+    case FORMAT_422_P10_32BIT_LSB:
+        break;
+    default:
+        Bpp = 1;
+        break;
+    }
+
+    VPU_DecGiveCommand(decHandle, GET_TILEDMAP_CONFIG, &mapCfg);
+    *retSize = StoreYuvImageBurst2(coreIdx, fb, mapCfg, pYuv, pYuv2, rcFrame, TRUE);
+
+    *retWidth  = picWidth;
+    *retHeight = picHeight;
+    *retBpp    = Bpp;
+
+    return TRUE;
 }
 
 void PrepareDecoderTest(

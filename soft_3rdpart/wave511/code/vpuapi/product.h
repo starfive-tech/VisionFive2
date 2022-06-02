@@ -26,8 +26,14 @@
 #ifndef __VPUAPI_PRODUCT_ABSTRACT_H__
 #define __VPUAPI_PRODUCT_ABSTRACT_H__
 
-#include "vpuapi.h"
-#include "vpuapifunc.h"
+#ifdef USE_FEEDING_METHOD_BUFFER
+    #include "wave511/vpuapi/vpuapi.h"
+    #include "wave511/vpuapi/vpuapifunc.h"
+#else
+    #include "vpuapi.h"
+    #include "vpuapifunc.h"
+#endif
+
 
 #define IS_CODA_DECODER_HANDLE(_inst)      (_inst->codecMode < AVC_ENC)
 

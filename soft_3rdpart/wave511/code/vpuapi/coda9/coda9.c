@@ -26,6 +26,7 @@
 #include "coda9_vpuconfig.h"
 #include "product.h"
 #include "coda9_regdefine.h"
+#include "misc/debug.h"
 
 static void LoadBitCode(Uint32 coreIdx, PhysicalAddress codeBase, const Uint16 *codeWord, int codeSize)
 {

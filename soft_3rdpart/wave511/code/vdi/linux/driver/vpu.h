@@ -22,6 +22,7 @@
 #define VDI_IOCTL_GET_REGISTER_INFO         _IO(VDI_IOCTL_MAGIC, 12)
 #define VDI_IOCTL_GET_FREE_MEM_SIZE         _IO(VDI_IOCTL_MAGIC, 13)
 #define VDI_IOCTL_FLUSH_DCACHE				_IO(VDI_IOCTL_MAGIC, 14)
+#define VDI_IOCTL_GET_PHYSICAL_MEMORY       _IO(VDI_IOCTL_MAGIC, 15)
 
 #define DRAM_MEM2SYS(addr) ((addr) > 0x40000000 && (addr) < 0x43FFFFFFF ? ((addr)+0x400000000):(addr))
 #define ioremap_nocache ioremap

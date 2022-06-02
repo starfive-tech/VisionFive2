@@ -26,9 +26,14 @@
 #ifndef __CNM_APP_H__
 #define __CNM_APP_H__
 
-#include "vputypes.h"
-#include "component.h"
 
+#ifdef USE_FEEDING_METHOD_BUFFER
+    #include "wave511/vpuapi/vputypes.h"
+    #include "wave511/sample_v2/component/component.h"
+#else
+    #include "vputypes.h"
+    #include "component.h"
+#endif
 typedef void*       CNMTask;
 
 typedef enum {

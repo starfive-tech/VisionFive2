@@ -27,7 +27,11 @@
 #define _VPU_TYPES_H_
 
 #include <stdint.h>
-#include "vpuconfig.h"
+#ifdef USE_FEEDING_METHOD_BUFFER
+    #include "wave511/vpuapi/vputypes.h"
+#else
+    #include "vputypes.h"
+#endif
 
 #define STATIC          static
 /**

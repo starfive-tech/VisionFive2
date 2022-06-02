@@ -7,11 +7,10 @@
 BUILD_CONFIGURATION := EmbeddedRiscvLinux
 
 PRODUCT := WAVE511
-PRODUCT := WAVE521C
+#PRODUCT := WAVE521C
 
 $(shell cp sample_v2/component_list_decoder.h sample_v2/component/component_list.h)
 
-USE_FFMPEG  = yes
 USE_PTHREAD = yes
 USE_RTL_SIM = no
 LINT_HOME   = etc/lint
@@ -45,7 +44,6 @@ ifeq ("$(BUILD_CONFIGURATION)", "NonOS")
     VDI_C           = vdi/nonos/vdi.c
     VDI_OSAL_C      = vdi/nonos/vdi_osal.c
     MM_C            = vdi/mm.c
-    USE_FFMPEG      = no
     USE_PTHREAD     = no
     PLATFORM        = none
     DEFINES         = -DLIB_C_STUB
@@ -67,7 +65,7 @@ CXX = $(CROSS_CC_PREFIX)g++
 LINKER=$(CC)
 AR  = $(CROSS_CC_PREFIX)ar
 
-INCLUDES = -I./vpuapi -I./ffmpeg/include -I./sample_v2/helper -I./sample_v2/helper/misc -I./sample_v2/component -I./vdi
+INCLUDES = -I./vpuapi -I./ffmpeg/include -I./sample_v2/helper -I./sample_v2/helper/misc -I./sample_v2/component -I./vdi -I../
 INCLUDES += -I./sample_v2/component_decoder
 ifeq ($(USE_RTL_SIM), yes)
 DEFINES += -DCNM_SIM_PLATFORM -DCNM_SIM_DPI_INTERFACE -DSUPPORT_DECODER
@@ -75,9 +73,9 @@ DEFINES += -D$(PRODUCT) -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
 else
 DEFINES += -D$(PRODUCT) -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
 endif	# USE_SIM_PLATFORM
+DEFINES += -DUSE_FEEDING_METHOD_BUFFER
 
-
-CFLAGS  += -g -I. -Wno-implicit-function-declaration -Wno-format -Wl,--fatal-warning $(INCLUDES) $(DEFINES) $(PLATFORM_FLAGS)
+CFLAGS  += -g -I. -Wl,--fatal-warning $(INCLUDES) $(DEFINES) $(PLATFORM_FLAGS)
 ifeq ($(USE_RTL_SIM), yes)
 ifeq ($(IUS), 1)
 CFLAGS  += -fPIC # ncverilog is 64bit version
@@ -87,16 +85,6 @@ ARFLAGS += cru
 
 LDFLAGS  = $(PLATFORM_FLAGS)
 
-
-ifeq ($(USE_FFMPEG), yes)
-CFLAGS  += -DSUPPORT_FFMPEG_DEMUX
-LDLIBS  += -lavformat -lavcodec -lavutil -lswresample
-LDFLAGS += -L./ffmpeg/lib/$(PLATFORM)
-ifneq ($(USE_32BIT), yes)
-#LDLIBS  += -lz
-endif #USE_32BIT
-endif #USE_FFMPEG
-
 ifeq ($(USE_PTHREAD), yes)
 LDLIBS  += -lpthread
 endif
@@ -104,11 +92,7 @@ LDLIBS  += -lm
 
 BUILDLIST=DECTEST
 MAKEFILE=WaveDecode.mak
-ifeq ($(USE_FFMPEG), yes)
-DECTEST=ffmpeg_dec_test
-else
-DECTEST=dec_test
-endif
+DECTEST=libsfdec.so
 
 OBJDIR=obj
 ALLOBJS=*.o
@@ -120,7 +104,7 @@ MKDIR=mkdir -p
 SOURCES_COMMON =main_helper.c                   vpuhelper.c                 bitstreamfeeder.c           \
                 bitstreamreader.c               bsfeeder_fixedsize_impl.c   bsfeeder_framesize_impl.c   \
                 bsfeeder_size_plus_es_impl.c    bin_comparator_impl.c       comparator.c                \
-                md5_comparator_impl.c           yuv_comparator_impl.c       \
+                md5_comparator_impl.c           yuv_comparator_impl.c       bsfeeder_buffer_impl.c   \
                 cfgParser.c                     decoder_listener.c          \
                 cnm_video_helper.c              container.c                 \
                 datastructure.c                 debug.c                     \
@@ -159,10 +143,10 @@ OBJECTPATHS_DECTEST=$(addprefix $(OBJDIR)/,$(notdir $(OBJECTNAMES_DECTEST))) $(O
 all: $(BUILDLIST)
 
 ifeq ($(USE_RTL_SIM), yes)
-DECTEST: CREATE_DIR $(OBJECTPATHS_DECTEST)
+DECTEST: CREATE_DIR $(OBJECTPATHS_COMMON)
 else
-DECTEST: CREATE_DIR $(OBJECTPATHS_DECTEST)
-	$(LINKER) -o $(DECTEST) $(LDFLAGS) -Wl,-gc-section -Wl,--start-group $(OBJECTPATHS_DECTEST) $(LDLIBS) -Wl,--end-group
+DECTEST: CREATE_DIR $(OBJECTPATHS_COMMON)
+	$(LINKER) -fPIC -shared -o $(DECTEST) $(LDFLAGS) -Wl,-gc-section -Wl,--start-group $(OBJECTPATHS_COMMON) $(LDLIBS) -Wl,--end-group
 endif
 
 -include $(OBJECTPATHS:.o=.dep)
@@ -176,7 +160,7 @@ CREATE_DIR:
 	-mkdir -p $(OBJDIR)
 
 obj/%.o: %.c $(MAKEFILE)
-	$(CC) $(CFLAGS) -Wall -Werror -c $< -o $@ -MD -MF $(@:.o=.dep)
+	$(CC) -fPIC -shared $(CFLAGS) -Wall -Werror -c $< -o $@ -MD -MF $(@:.o=.dep)
 
 
 lint:

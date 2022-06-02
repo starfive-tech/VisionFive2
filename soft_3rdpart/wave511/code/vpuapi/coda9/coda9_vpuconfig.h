@@ -26,8 +26,13 @@
 #ifndef __CODA9_VPU_CONFIG_H__
 #define __CODA9_VPU_CONFIG_H__
 
-#include "vpuconfig.h"
-#include "vputypes.h"
+#ifdef USE_FEEDING_METHOD_BUFFER
+    #include "wave511/vpuapi/vpuconfig.h"
+    #include "wave511/vpuapi/vputypes.h"
+#else
+    #include "vpuconfig.h"
+    #include "vputypes.h"
+#endif
 
 
 #if MAX_DEC_PIC_WIDTH > 1920		// 4K		

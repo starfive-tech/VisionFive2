@@ -44,6 +44,11 @@ typedef struct {
     osal_mutex_t                lock;
     char                        outputPath[256];
     FILE*                       fpOutput[OUTPUT_FP_NUMBER];
+    BOOL                        MemoryOptimization;
+    int                         totalBufferNumber;
+    int                         currentBufferNumber;
+    FrameBuffer                 pLinearFrame[MAX_REG_FRAME];
+    vpu_buffer_t                pLinearFbMem[MAX_REG_FRAME];
 } RendererContext;
 
 typedef struct SequenceMemInfo {
@@ -175,6 +180,12 @@ static BOOL ReallocateFrameBuffers(ComponentImpl* com, ParamDecReallocFB* param)
     return TRUE;
 }
 
+void Render_DecClrDispFlag(void *context, int index)
+{
+    RendererContext* ctx = (RendererContext*)context;
+    VPU_DecClrDispFlag(ctx->handle, index);
+}
+
 static void DisplayFrame(RendererContext* ctx, DecOutputInfo* result)
 {
     Int32 productID = ctx->testDecConfig.productId;
@@ -226,6 +237,69 @@ static BOOL FlushFrameBuffers(ComponentImpl* com, Uint32* flushedIndexes)
 
     return TRUE;
 }
+
+
+
+void SetRenderTotalBufferNumber(ComponentImpl* com, Uint32 number)
+{
+    RendererContext*     ctx            = (RendererContext*)com->context;
+    ctx->fbCount.linearNum = ctx->totalBufferNumber = number;
+}
+
+void* AllocateFrameBuffer2(ComponentImpl* com, Uint32 size)
+{
+    RendererContext*     ctx            = (RendererContext*)com->context;
+    int i = 0;
+
+    if (ctx->handle == NULL) {
+        ctx->MemoryOptimization = FALSE;
+        return NULL;
+    }
+    for (i = 0;i < MAX_REG_FRAME; i ++){
+        if (ctx->pLinearFbMem[i].phys_addr == 0)
+        {
+            VLOG(INFO, "Found empty frame at index %d\r\n", i);
+            break;
+        }
+    }
+    if (i == MAX_REG_FRAME)
+    {
+        VLOG(ERR, "Could not found empty frame at index\r\n");
+        return NULL;
+    }
+    // TODO: Adjust ctx->fbCount
+    void *ret = AllocateDecFrameBuffer2(ctx->handle, &ctx->testDecConfig, size, &ctx->pLinearFrame[i], &ctx->pLinearFbMem[i]);
+    ctx->currentBufferNumber ++;
+    return ret;
+}
+
+BOOL AttachDMABuffer(ComponentImpl* com, Uint64 virtAddress, Uint32 size)
+{
+    BOOL ret = FALSE;
+    RendererContext*     ctx            = (RendererContext*)com->context;
+    int i = 0;
+
+    if (ctx->handle == NULL) {
+        ctx->MemoryOptimization = FALSE;
+        return FALSE;
+    }
+    for (i = 0;i < MAX_REG_FRAME; i ++){
+        if (ctx->pLinearFbMem[i].phys_addr == 0)
+        {
+            VLOG(INFO, "Found empty frame at index %d\r\n", i);
+            break;
+        }
+    }
+    if (i == MAX_REG_FRAME)
+    {
+        VLOG(ERR, "Could not found empty frame at index\r\n");
+        return FALSE;
+    }
+    ret = AttachDecDMABuffer(ctx->handle, &ctx->testDecConfig, virtAddress, size, &ctx->pLinearFrame[i], &ctx->pLinearFbMem[i]);
+    ctx->currentBufferNumber ++;
+    return ret;
+}
+
 static BOOL AllocateFrameBuffer(ComponentImpl* com)
 {
     RendererContext*     ctx            = (RendererContext*)com->context;
@@ -249,6 +323,9 @@ static BOOL AllocateFrameBuffer(ComponentImpl* com)
         VLOG(ERR, "%s:%d The number of framebuffers are zero. compressed %d, linear: %d\n",
             __FUNCTION__, __LINE__, compressedNum, linearNum);
         return FALSE;
+    }
+    if (ctx->MemoryOptimization){
+        linearNum = 0;
     }
 
     if (AllocateDecFrameBuffer(ctx->handle, &ctx->testDecConfig, compressedNum, linearNum, ctx->pFrame, ctx->pFbMem, &ctx->framebufStride) == FALSE) {
@@ -296,6 +373,23 @@ static CNMComponentParamRet GetParameterRenderer(ComponentImpl* from, ComponentI
         container->consumed = TRUE;
         break;
     case GET_PARAM_RENDERER_FRAME_BUF:
+        if (ctx->MemoryOptimization){
+            if (ctx->currentBufferNumber < ctx->totalBufferNumber) return CNM_COMPONENT_PARAM_NOT_READY;
+            int i = 0;
+            for (i = 0;i < MAX_REG_FRAME; i ++) {
+                if (ctx->pFbMem[i].phys_addr == 0) {
+                    break;
+                }
+            }
+            VLOG(INFO, "The start index of LINEAR buffer = %d\n", i);
+            for (int j = 0; j < MAX_REG_FRAME; j ++) {
+                if (ctx->pLinearFbMem[j].phys_addr != 0) {
+                    memcpy(&ctx->pFbMem[i + j], &ctx->pLinearFbMem[j], sizeof(vpu_buffer_t));
+                    memcpy(&ctx->pFrame[i + j], &ctx->pLinearFrame[j], sizeof(FrameBuffer));
+                }
+            }
+        }
+        //TODO: Adjust Liner number
         allocFb = (ParamDecFrameBuffer*)data;
         allocFb->stride        = ctx->framebufStride;
         allocFb->linearNum     = ctx->fbCount.linearNum;
@@ -353,7 +447,6 @@ static CNMComponentParamRet SetParameterRenderer(ComponentImpl* from, ComponentI
 }
 
 
-
 static BOOL ExecuteRenderer(ComponentImpl* com, PortContainer* in, PortContainer* out)
 {
     RendererContext*        ctx               = (RendererContext*)com->context;
@@ -364,26 +457,79 @@ static BOOL ExecuteRenderer(ComponentImpl* com, PortContainer* in, PortContainer
     if (TRUE == com->pause) {
         return TRUE;
     }
-
+#ifdef USE_FEEDING_METHOD_BUFFER
+    PortContainerExternal *output = (PortContainerExternal*)ComponentPortPeekData(&com->sinkPort);
+    if (output == NULL) {
+        in->reuse = TRUE;
+        return TRUE;
+    }
+#endif
     in->reuse = TRUE;
-
 
     indexFrameDisplay = srcData->decInfo.indexFrameDisplay;
 
     if (indexFrameDisplay == DISPLAY_IDX_FLAG_SEQ_END) {
+
+        while ((output = (PortContainerExternal*)ComponentPortGetData(&com->sinkPort)) != NULL)
+        {
+            output->nFlags = 0x1;
+            output->nFilledLen = 0;
+            ComponentNotifyListeners(com, COMPONENT_EVENT_DEC_FILL_BUFFER_DONE, (void *)output);
+        }
         com->terminate = TRUE;
+        ComponentNotifyListeners(com, COMPONENT_EVENT_DEC_DECODED_ALL, NULL);
     }
     else if (indexFrameDisplay >= 0) {
-        if (strlen((const char*)decConfig->outputPath) > 0) {
-            VpuRect      rcDisplay  = {0,};
-            TiledMapType mapType    = srcData->decInfo.dispFrame.mapType;
+        VpuRect      rcDisplay  = {0,};
+        TiledMapType mapType    = srcData->decInfo.dispFrame.mapType;
 
-            rcDisplay.right  = srcData->decInfo.dispPicWidth;
-            rcDisplay.bottom = srcData->decInfo.dispPicHeight;
-            if (decConfig->scaleDownWidth > 0 || decConfig->scaleDownHeight > 0) {
-                rcDisplay.right  = VPU_CEIL(srcData->decInfo.dispPicWidth, 16);
+        rcDisplay.right  = srcData->decInfo.dispPicWidth;
+        rcDisplay.bottom = srcData->decInfo.dispPicHeight;
+
+#ifdef USE_FEEDING_METHOD_BUFFER
+        Uint32 width, height, bpp;
+        size_t sizeYuv;
+        Uint32 count = 0, total_count = 0;
+        if (ctx->MemoryOptimization){
+            uint8_t *dmaBuffer = NULL;
+            if (FALSE ==GetYUVFromFrameBuffer2(NULL, &dmaBuffer, output->nFilledLen, ctx->handle, &srcData->decInfo.dispFrame, rcDisplay, &width, &height, &bpp, &sizeYuv)) {
+                VLOG(ERR, "GetYUVFromFrameBuffer2 FAIL!\n");
             }
+            total_count = Queue_Get_Cnt(com->sinkPort.inputQ);
+            while (output->pBuffer != dmaBuffer)
+            {
+                output = (PortContainerExternal*)ComponentPortGetData(&com->sinkPort);
+                Queue_Enqueue(com->sinkPort.inputQ, (void *)output);
+                output = (PortContainerExternal*)ComponentPortPeekData(&com->sinkPort);
+                VLOG(INFO, "pBuffer = %p, dmaBuffer = %p, index = %d/%d\n", output->pBuffer, dmaBuffer, count, total_count);
+                if (count >= total_count)
+                {
+                    VLOG(ERR, "A wrong Frame Found\n");
+                    output->nFilledLen = 0;
+                    break;
+                }
+                count ++;
+            }
+        } else {
+            if (FALSE ==GetYUVFromFrameBuffer2(output->pBuffer, NULL, output->nFilledLen, ctx->handle, &srcData->decInfo.dispFrame, rcDisplay, &width, &height, &bpp, &sizeYuv)) {
+                VLOG(ERR, "GetYUVFromFrameBuffer2 FAIL!\n");
+            }
+        }
+        output->nFilledLen = sizeYuv;
+        output->nFlags = srcData->decInfo.indexFrameDisplay;
+        if(ComponentPortGetData(&com->sinkPort))
+        {
+            ComponentNotifyListeners(com, COMPONENT_EVENT_DEC_FILL_BUFFER_DONE, (void *)output);
+        }
+        (void)DisplayFrame;
+        (void)decConfig;
+        (void)mapType;
+#else
+        if (decConfig->scaleDownWidth > 0 || decConfig->scaleDownHeight > 0) {
+            rcDisplay.right  = VPU_CEIL(srcData->decInfo.dispPicWidth, 16);
+        }
 
+        if (strlen((const char*)decConfig->outputPath) > 0) {
             if (ctx->fpOutput[0] == NULL) {
                 if (OpenDisplayBufferFile(decConfig->bitFormat, decConfig->outputPath, rcDisplay, mapType, ctx->fpOutput) == FALSE) {
                     return FALSE;
@@ -391,15 +537,22 @@ static BOOL ExecuteRenderer(ComponentImpl* com, PortContainer* in, PortContainer
             }
             SaveDisplayBufferToFile(ctx->handle, decConfig->bitFormat, srcData->decInfo.dispFrame, rcDisplay, ctx->fpOutput);
         }
-
         DisplayFrame(ctx, &srcData->decInfo);
-        osal_msleep(ctx->displayPeriodTime);
+#endif
+        //osal_msleep(ctx->displayPeriodTime);
     }
 
     srcData->consumed = TRUE;
     srcData->reuse    = FALSE;
 
     if (srcData->last == TRUE) {
+        while ((output = (PortContainerExternal*)ComponentPortGetData(&com->sinkPort)) != NULL)
+        {
+            output->nFlags = 0x1;
+            output->nFilledLen = 0;
+            VLOG(ERR, "Flush output port\r\n");
+            ComponentNotifyListeners(com, COMPONENT_EVENT_DEC_FILL_BUFFER_DONE, (void *)output);
+        }
         com->terminate = TRUE;
     }
 
@@ -423,6 +576,7 @@ static BOOL PrepareRenderer(ComponentImpl* com, BOOL* done)
     if ((ret=AllocateFrameBuffer(com)) == FALSE || ctx->fbAllocated == FALSE) {
         return ret;
     }
+    ComponentNotifyListeners(com, COMPONENT_EVENT_DEC_REGISTER_FB, &ctx->pFrame[0]);
     // Nothing to do
     *done = TRUE;
     return TRUE;
@@ -469,6 +623,8 @@ static Component CreateRenderer(ComponentImpl* com, CNMComponentConfig* componen
     osal_memset(com->context, 0, sizeof(RendererContext));
     ctx = com->context;
 
+    osal_memset(ctx->pLinearFbMem, 0, sizeof(ctx->pLinearFbMem));
+    osal_memset(ctx->pLinearFrame, 0, sizeof(ctx->pLinearFrame));
     osal_memcpy((void*)&ctx->testDecConfig, (void*)&componentParam->testDecConfig, sizeof(TestDecConfig));
     if (componentParam->testDecConfig.fps > 0)
         ctx->displayPeriodTime = (1000 / componentParam->testDecConfig.fps);
@@ -478,7 +634,9 @@ static Component CreateRenderer(ComponentImpl* com, CNMComponentConfig* componen
     ctx->seqMemQ           = Queue_Create(10, sizeof(SequenceMemInfo));
     ctx->lock              = osal_mutex_create();
     ctx->ppuQ              = Queue_Create(MAX_REG_FRAME, sizeof(FrameBuffer));
-
+    ctx->MemoryOptimization = TRUE;
+    ctx->totalBufferNumber = 10;
+    ctx->currentBufferNumber = 0;
     return (Component)com;
 }
 
