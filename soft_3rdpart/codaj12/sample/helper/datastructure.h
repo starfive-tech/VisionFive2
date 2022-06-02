@@ -25,8 +25,13 @@
 #ifndef __DATA_STRUCTURE_H__
 #define __DATA_STRUCTURE_H__
 
-#include "jputypes.h"
-#include "platform.h"
+#ifdef USE_FEEDING_METHOD_BUFFER
+    #include "codaj12/jpuapi/jputypes.h"
+    #include "codaj12/sample/helper/platform.h"
+#else
+    #include "jputypes.h"
+    #include "platform.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {

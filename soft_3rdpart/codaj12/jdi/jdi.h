@@ -28,9 +28,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
-#include "../jpuapi/jpuconfig.h"
-#include "mm.h"
-#include "jputypes.h"
+
+#ifdef USE_FEEDING_METHOD_BUFFER
+    #include "codaj12/jpuapi/jpuconfig.h"
+    #include "codaj12/jdi/mm.h"
+    #include "codaj12/jpuapi/jputypes.h"
+#else
+    #include "../jpuapi/jpuconfig.h"
+    #include "mm.h"
+    #include "jputypes.h"
+#endif
+
 
 #define MAX_JPU_BUFFER_POOL 32
 #define JpuWriteInstReg( INST_IDX, ADDR, DATA )		jdi_write_register( ((unsigned long)INST_IDX*NPT_REG_SIZE)+ADDR, DATA ) // system register write 	with instance index
@@ -103,6 +111,7 @@ extern "C" {
 
     int jdi_write_memory(unsigned long addr, unsigned char *data, int len, int endian);
     int jdi_read_memory(unsigned long addr, unsigned char *data, int len, int endian);
+    int jdi_attach_dma_memory(jpu_buffer_t *vb);
 
     int jdi_lock();
     void jdi_unlock();

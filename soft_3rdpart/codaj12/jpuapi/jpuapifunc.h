@@ -26,7 +26,11 @@
 #ifndef JPUAPI_UTIL_H_INCLUDED
 #define JPUAPI_UTIL_H_INCLUDED
 
-#include "jpuapi.h"
+#ifdef USE_FEEDING_METHOD_BUFFER
+    #include "codaj12/jpuapi/jpuapi.h"
+#else
+    #include "jpuapi.h"
+#endif
 
 #define DC_TABLE_INDEX0				0
 #define AC_TABLE_INDEX0				1

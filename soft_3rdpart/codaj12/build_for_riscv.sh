@@ -45,3 +45,6 @@ cp ${jpu_path}/jpg_enc_test ${jpu_path}/jpg_dec_test $obj_jpu
 
 #cp driver
 cp ${jpu_driver}/jpu.ko $obj_jpu_driver
+cp -rdvp jpu_driver ../../work/buildroot_initramfs_sysroot/root/
+
+

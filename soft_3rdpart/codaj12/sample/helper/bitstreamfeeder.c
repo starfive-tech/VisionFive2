@@ -45,6 +45,11 @@ extern void* BSFeederFrameSize_Create(const char* path);
 extern BOOL BSFeederFrameSize_Destroy(void* feeder);
 extern Int32 BSFeederFrameSize_Act(void* feeder, BSChunk* packet);
 
+extern void* BSFeederBuffer_Create(const char* path);
+extern BOOL BSFeederBuffer_Destroy(void* feeder);
+extern Int32 BSFeederBuffer_Act(void* feeder,BSChunk* chunk);
+extern BOOL BSFeederBuffer_Rewind(void* feeder);
+extern void BSFeederBuffer_SetFeedingSize(void* feeder,Uint32 feedingSize);
 /**
 * Abstract Bitstream Feeader Functions 
 */
@@ -60,6 +65,11 @@ BSFeeder BitstreamFeeder_Create(const char* path, FeedingMethod method, EndianMo
 #ifdef SUPPORT_FFMPEG
     case FEEDING_METHOD_FRAME_SIZE:
         feeder = BSFeederFrameSize_Create(path);
+        break;
+#endif
+#ifdef USE_FEEDING_METHOD_BUFFER
+    case FEEDING_METHOD_BUFFER:
+        feeder = BSFeederBuffer_Create(path);
         break;
 #endif
     default:
@@ -83,6 +93,15 @@ BSFeeder BitstreamFeeder_Create(const char* path, FeedingMethod method, EndianMo
     return (BSFeeder)handle;
 }
 
+Uint32 BitstreamFeeder_SetData(BSFeeder feeder, void *data, Uint32 size)
+{
+    BitstreamFeeder* bsf = (BitstreamFeeder*)feeder;
+    bsf->remainData = data;
+    bsf->remainDataSize = size;
+
+    return 0;
+}
+
 Uint32 BitstreamFeeder_Act(BSFeeder feeder, JpgDecHandle handle, jpu_buffer_t* bsBuffer)
 {
     BitstreamFeeder* bsf = (BitstreamFeeder*)feeder;
@@ -98,9 +117,9 @@ Uint32 BitstreamFeeder_Act(BSFeeder feeder, JpgDecHandle handle, jpu_buffer_t* b
     }
 
     JPU_DecGetBitstreamBuffer(handle, NULL/* rdPtr */, &wrPtr, &room);
-
+    JLOG(INFO, "wrptr address = %x\r\n", wrPtr);
     endian = bsf->endian;
-
+    JLOG(INFO, "endian = %d\r\n", endian);
     if (bsf->remainData == NULL) {
         chunk.size = bsBuffer->size; 
         chunk.data = malloc(chunk.size);
@@ -118,6 +137,11 @@ Uint32 BitstreamFeeder_Act(BSFeeder feeder, JpgDecHandle handle, jpu_buffer_t* b
             feedingSize = BSFeederFrameSize_Act(bsf->actualFeeder, &chunk);
             break;
 #endif
+#ifdef USE_FEEDING_METHOD_BUFFER
+        case FEEDING_METHOD_BUFFER:
+            feedingSize = BSFeederBuffer_Act(bsf->actualFeeder, &chunk);
+            break;
+#endif
         default:
             JLOG(ERR, "%s:%d Invalid method(%d)\n", __FUNCTION__, __LINE__, bsf->method);
             free(chunk.data);
@@ -125,6 +149,7 @@ Uint32 BitstreamFeeder_Act(BSFeeder feeder, JpgDecHandle handle, jpu_buffer_t* b
         }
     }
     else {
+        JLOG(INFO, "Get data from remain\r\n");
         chunk.data  = bsf->remainData;
         feedingSize = bsf->remainDataSize;
     }
@@ -161,11 +186,12 @@ Uint32 BitstreamFeeder_Act(BSFeeder feeder, JpgDecHandle handle, jpu_buffer_t* b
             rightSize = endAddr-wrPtr;
             leftSize  = (wrPtr+wSize) - endAddr;
             if (rightSize > 0) {
+                JLOG(INFO, "1 wrptr address = %x, addr = %p, size = %x\r\n", wrPtr, ptr, rightSize);
                 JpuWriteMem(wrPtr, ptr, rightSize, (int)endian);
             }
             wrPtr = base;
         }
-
+        JLOG(INFO, "2 wrptr address = %x, ptr = %p, rightsize = %x, size = %x\r\n", wrPtr, ptr, rightSize, leftSize);
         JpuWriteMem(wrPtr, ptr+rightSize, leftSize, (int)endian);
 
         JPU_DecUpdateBitstreamBuffer(handle, wSize);
@@ -174,11 +200,11 @@ Uint32 BitstreamFeeder_Act(BSFeeder feeder, JpgDecHandle handle, jpu_buffer_t* b
     if (TRUE == chunk.eos) {
         JPU_DecUpdateBitstreamBuffer(handle, 0);
     }
-
+    JLOG(INFO, "bsf->remainData = %p, chunk.data = %p\r\n", bsf->remainData, chunk.data);
     bsf->eos = chunk.eos;
-    if (NULL == bsf->remainData) 
-        free(chunk.data);
-
+    // if (NULL == bsf->remainData)
+    //     free(chunk.data);
+    JLOG(INFO, "%s out\r\n", __FUNCTION__);
     return feedingSize;
 }
 
@@ -211,14 +237,19 @@ BOOL BitstreamFeeder_Destroy(BSFeeder feeder)
         BSFeederFrameSize_Destroy(bsf->actualFeeder);
         break;
 #endif
+#ifdef USE_FEEDING_METHOD_BUFFER
+    case FEEDING_METHOD_BUFFER:
+        BSFeederBuffer_Destroy(bsf->actualFeeder);
+        break;
+#endif
     default:
         JLOG(ERR, "%s:%d Invalid method(%d)\n", __FUNCTION__, __LINE__, bsf->method);
         break;
     }
 
-    if (bsf->remainData) {
-        free(bsf->remainData);
-    }
+    // if (bsf->remainData) {
+    //     free(bsf->remainData);
+    // }
 
     free(bsf);
 
