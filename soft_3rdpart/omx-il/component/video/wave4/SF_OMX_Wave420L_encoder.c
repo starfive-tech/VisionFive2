@@ -12,6 +12,7 @@
 
 #define STREAM_READ_ALL_SIZE            (0)
 #define WAVE420L_CONFIG_FILE "/lib/firmware/encoder_defconfig.cfg"
+#define OMX_Command_StopThread OMX_CommandMax
 
 static Uint32 BitCodesizeInWord;
 static Uint16* pusBitCode;
@@ -340,9 +341,13 @@ static void CmdThread(void *args)
     void *ThreadRet;
 
     while(1){
+        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
         pCmd = (SF_OMX_CMD*)SF_Queue_Dequeue_Block(pImp->CmdQueue);
+        pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+        pthread_testcancel();
+        pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 
-        if(pCmd == NULL)
+        if(pCmd->Cmd == OMX_Command_StopThread)
             break;
 
         switch (pCmd->Cmd)
@@ -365,6 +370,8 @@ static void CmdThread(void *args)
                         SF_Queue_Enqueue(pImp->FillQueue, &pNull);
                         pthread_join(pImp->pProcessThread->pthread, &ThreadRet);
                         LOG(SF_LOG_INFO, "Encoder thread end %ld\r\n", (Uint64)ThreadRet);
+                        FlushBuffer(pSfOMXComponent,OMX_INPUT_PORT_INDEX);
+                        FlushBuffer(pSfOMXComponent,OMX_OUTPUT_PORT_INDEX);
                         SF_Queue_Flush(pImp->EmptyQueue);
                         SF_Queue_Flush(pImp->FillQueue);
                         pImp->currentState = OMX_StateIdle;
@@ -402,21 +409,32 @@ static void CmdThread(void *args)
             }
             pSfOMXComponent->callbacks->EventHandler(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData,
                                                     OMX_EventCmdComplete, OMX_CommandStateSet, pCmd->nParam, NULL);
+            LOG(SF_LOG_DEBUG, "complete cmd StateSet %d\r\n", pCmd->nParam);
             break;
+
         case OMX_CommandFlush:
-        {
-            OMX_U32 nPort = pCmd->nParam;
-            FlushBuffer(pSfOMXComponent, nPort);
+            FlushBuffer(pSfOMXComponent, pCmd->nParam);
             pSfOMXComponent->callbacks->EventHandler(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData,
                                                     OMX_EventCmdComplete, OMX_CommandFlush, pCmd->nParam, NULL);
-        }
+            LOG(SF_LOG_DEBUG, "complete cmd flush port %d\r\n", pCmd->nParam);
+            break;
+
         case OMX_CommandPortDisable:
+            if(pCmd->nParam < OMX_PORT_MAX)
+                pSfOMXComponent->portDefinition[pCmd->nParam].bEnabled = OMX_FALSE;
             pSfOMXComponent->callbacks->EventHandler(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData,
                                                     OMX_EventCmdComplete, OMX_CommandPortDisable, pCmd->nParam, NULL);
+            LOG(SF_LOG_DEBUG, "complete cmd disable port %d\r\n", pCmd->nParam);
             break;
+
         case OMX_CommandPortEnable:
+            if(pCmd->nParam < OMX_PORT_MAX)
+                pSfOMXComponent->portDefinition[pCmd->nParam].bEnabled = OMX_TRUE;
             pSfOMXComponent->callbacks->EventHandler(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData,
                                                     OMX_EventCmdComplete, OMX_CommandPortEnable, pCmd->nParam, NULL);
+            LOG(SF_LOG_DEBUG, "complete cmd enable port %d\r\n", pCmd->nParam);
+            break;
+
         default:
             break;
         }
@@ -454,6 +472,8 @@ static void EncoderThread(void *args)
     Uint32 interruptTimeout = VPU_ENC_TIMEOUT;
     Uint32 size;
     void* yuvFeeder = NULL;
+
+    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 
     instIdx = pEncConfig->instNum;
     coreIdx = pEncConfig->coreIdx;
@@ -649,6 +669,10 @@ static void EncoderThread(void *args)
         goto ERR_ENC_OPEN;
     }
 
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_testcancel();
+    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
     memset(&encParam, 0x00, sizeof(EncParam));
     encParam.skipPicture        = 0;
     encParam.quantParam         = pEncConfig->picQpY;
@@ -694,6 +718,7 @@ static void EncoderThread(void *args)
                 pEncOP->bitstreamBufferSize, encHeaderParam.size, pOutputBuffer->pBuffer, comparatorBitStream);
     Warp_LeaveLock(pImp, coreIdx);
     if (size == 0) {
+        LOG(SF_LOG_ERR, "fill header size 0, end\n");
         goto ERR_ENC_OPEN;
     }
     pOutputBuffer->nFilledLen = size;
@@ -718,14 +743,25 @@ static void EncoderThread(void *args)
 
     while(1){
         if(!pImp->bThreadRunning){
+            LOG(SF_LOG_DEBUG,"encoder thread end\n");
             break;
         }
 
         pInputBuffer = *(OMX_BUFFERHEADERTYPE**)SF_Queue_Dequeue_Block(pImp->EmptyQueue);
 
-        if(pInputBuffer == NULL || pInputBuffer->nFilledLen == 0){
+        if(pInputBuffer == NULL){
             pImp->bThreadRunning = 0;
+            LOG(SF_LOG_DEBUG, "null input buffer,end\n");
             break;
+        }
+        if(!pInputBuffer->nFilledLen){
+            LOG(SF_LOG_DEBUG, "end of stream,end\n");
+            pImp->bThreadRunning = 0;
+            EmptyBufferDone(pSfOMXComponent, pInputBuffer);
+            break;
+        }else if(pInputBuffer->nFlags == OMX_BUFFERFLAG_EOS){
+            LOG(SF_LOG_DEBUG, "end of stream,end\n");
+            encParam.srcEndFlag = 1;
         }
 
         LOG(SF_LOG_DEBUG, "get input buff %p index %d\r\n", pInputBuffer->pBuffer, pInputBuffer->nInputPortIndex);
@@ -788,6 +824,7 @@ static void EncoderThread(void *args)
 
                 if(pOutputBuffer == NULL){
                     pImp->bThreadRunning = 0;
+                    LOG(SF_LOG_DEBUG, "null output buffer,end\n");
                     goto ERR_ENC_OPEN;
                 }
 
@@ -855,6 +892,7 @@ static void EncoderThread(void *args)
 
             if(pOutputBuffer == NULL){
                 pImp->bThreadRunning = 0;
+                LOG(SF_LOG_DEBUG, "null output buffer,end\n");
                 goto ERR_ENC_OPEN;
             }
 
@@ -873,12 +911,15 @@ static void EncoderThread(void *args)
 
         if (outputInfo.reconFrameIndex == -1)       // end of encoding
         {
+            LOG(SF_LOG_DEBUG, "end of coding\n");
             break;
         }
 
     }
 
 ERR_ENC_OPEN:
+    FlushBuffer(pSfOMXComponent,OMX_INPUT_PORT_INDEX);
+    FlushBuffer(pSfOMXComponent,OMX_OUTPUT_PORT_INDEX);
     for (i = 0; i < regFrameBufCount; i++) {
         if (pImp->vbReconFrameBuf[i].size > 0) {
             Warp_vdi_free_dma_memory(pImp, coreIdx, &pImp->vbReconFrameBuf[i]);
@@ -905,6 +946,7 @@ static void FlushBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U32 nPortNumber)
 {
     SF_WAVE420L_IMPLEMEMT *pImp = (SF_WAVE420L_IMPLEMEMT *)pSfOMXComponent->componentImpl;
     OMX_BUFFERHEADERTYPE *pOMXBuffer = NULL;
+    OMX_BUFFERHEADERTYPE **ppBuffer = NULL;
 
     FunctionIn();
     switch (nPortNumber)
@@ -912,14 +954,16 @@ static void FlushBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U32 nPortNumber)
     case OMX_INPUT_PORT_INDEX:
         while (OMX_TRUE)
         {
-            pOMXBuffer = SF_Queue_Dequeue(pImp->EmptyQueue);
-            if (NULL == pOMXBuffer)
+            ppBuffer = SF_Queue_Dequeue(pImp->EmptyQueue);
+            if (NULL == ppBuffer)
             {
                 LOG(SF_LOG_INFO, "No more buffer in input port\r\n");
                 break;
             }
+            pOMXBuffer = *ppBuffer;
+            if(!pOMXBuffer)
+                continue;
             LOG(SF_LOG_INFO, "Flush Buffer %p\r\n", pOMXBuffer);
-            pOMXBuffer->nFilledLen = 0;
             pOMXBuffer->nFlags = OMX_BUFFERFLAG_EOS;
             EmptyBufferDone(pSfOMXComponent, pOMXBuffer);
         }
@@ -927,12 +971,15 @@ static void FlushBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U32 nPortNumber)
     case OMX_OUTPUT_PORT_INDEX:
         while (OMX_TRUE)
         {
-            pOMXBuffer = SF_Queue_Dequeue(pImp->FillQueue);
-            if (NULL == pOMXBuffer)
+            ppBuffer = SF_Queue_Dequeue(pImp->FillQueue);
+            if (NULL == ppBuffer)
             {
                 LOG(SF_LOG_INFO, "No more buffer in output port\r\n");
                 break;
             }
+            pOMXBuffer = *ppBuffer;
+            if(!pOMXBuffer)
+                continue;
             LOG(SF_LOG_INFO, "Flush Buffer %p\r\n", pOMXBuffer);
             pOMXBuffer->nFilledLen = 0;
             pOMXBuffer->nFlags = OMX_BUFFERFLAG_EOS;
@@ -962,7 +1009,7 @@ static OMX_ERRORTYPE SF_OMX_EmptyThisBuffer(
     SF_OMX_COMPONENT *pSfOMXComponent = (SF_OMX_COMPONENT *)pOMXComponent->pComponentPrivate;
     SF_WAVE420L_IMPLEMEMT *pImp = (SF_WAVE420L_IMPLEMEMT *)pSfOMXComponent->componentImpl;
 
-    LOG(SF_LOG_DEBUG, "nFilledLen = %d, nFlags = %d, pBuffer = %p\r\n", pBuffer->nFilledLen, pBuffer->nFlags, pBuffer->pBuffer);
+    LOG(SF_LOG_DEBUG, "bufheader %p nFilledLen = %d, nFlags = %d, pBuffer = %p\r\n", pBuffer, pBuffer->nFilledLen, pBuffer->nFlags, pBuffer->pBuffer);
 
     ret = SF_Queue_Enqueue(pImp->EmptyQueue, &pBuffer);
 EXIT:
@@ -987,7 +1034,7 @@ static OMX_ERRORTYPE SF_OMX_FillThisBuffer(
     OMX_COMPONENTTYPE *pOMXComponent = (OMX_COMPONENTTYPE *)hComponent;
     SF_OMX_COMPONENT *pSfOMXComponent = (SF_OMX_COMPONENT *)pOMXComponent->pComponentPrivate;
     SF_WAVE420L_IMPLEMEMT *pImp = (SF_WAVE420L_IMPLEMEMT *)pSfOMXComponent->componentImpl;
-    LOG(SF_LOG_DEBUG, "nFilledLen = %d, nFlags = %d, pBuffer = %p\r\n", pBuffer->nFilledLen, pBuffer->nFlags, pBuffer->pBuffer);
+    LOG(SF_LOG_DEBUG, "bufheader %p nFilledLen = %d, nFlags = %d, pBuffer = %p\r\n", pBuffer, pBuffer->nFilledLen, pBuffer->nFlags, pBuffer->pBuffer);
 
     ret = SF_Queue_Enqueue(pImp->FillQueue, &pBuffer);
 EXIT:
@@ -1132,8 +1179,8 @@ static OMX_ERRORTYPE SF_OMX_AllocateBuffer(
     }
 
     *ppBuffer = temp_bufferHeader;
-    LOG(SF_LOG_INFO, "nPortIndex = %d, pBuffer address = %p, nFilledLen = %d, nSizeBytes = %d\r\n",
-            nPortIndex, temp_bufferHeader->pBuffer, temp_bufferHeader->nFilledLen, nSizeBytes);
+    LOG(SF_LOG_INFO, "nPortIndex = %d, buffheader %p Buffer address = %p, nFilledLen = %d, nSizeBytes = %d\r\n",
+            nPortIndex, temp_bufferHeader, temp_bufferHeader->pBuffer, temp_bufferHeader->nFilledLen, nSizeBytes);
     FunctionOut();
     return ret;
 }
@@ -1651,15 +1698,16 @@ static OMX_ERRORTYPE SF_OMX_ComponentClear(SF_OMX_COMPONENT *pSfOMXComponent)
 {
     OMX_ERRORTYPE ret = OMX_ErrorNone;
     SF_WAVE420L_IMPLEMEMT *pImp = (SF_WAVE420L_IMPLEMEMT *)pSfOMXComponent->componentImpl;
+    SF_OMX_CMD cmd;
     void *pNull = NULL;
-    void *ThreadRet;
+    void *ThreadRet = NULL;
 
     FunctionIn();
 
     if(pImp->bThreadRunning)
     {
         pImp->bThreadRunning = 0;
-        // enqueue null mean encoder thread cycle end
+        /* enqueue null mean encoder thread cycle end */
         SF_Queue_Enqueue(pImp->EmptyQueue, &pNull);
         SF_Queue_Enqueue(pImp->FillQueue, &pNull);
         pthread_join(pImp->pProcessThread->pthread, &ThreadRet);
@@ -1669,6 +1717,9 @@ static OMX_ERRORTYPE SF_OMX_ComponentClear(SF_OMX_COMPONENT *pSfOMXComponent)
     }
 
     pImp->bCmdRunning = 0;
+    /* enqueue OMX_Command_StopThread mean cmd thread cycle end */
+    cmd.Cmd = OMX_Command_StopThread;
+    SF_Queue_Enqueue(pImp->CmdQueue, &cmd);
     pthread_cancel(pImp->pCmdThread->pthread);
 	pthread_join(pImp->pCmdThread->pthread, &ThreadRet);
     LOG(SF_LOG_INFO, "Cmd thread end %ld\r\n", (Uint64)ThreadRet);
