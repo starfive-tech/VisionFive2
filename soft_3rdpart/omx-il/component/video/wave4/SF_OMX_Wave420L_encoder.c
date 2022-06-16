@@ -722,6 +722,7 @@ static void EncoderThread(void *args)
         goto ERR_ENC_OPEN;
     }
     pOutputBuffer->nFilledLen = size;
+    pOutputBuffer->nFlags = OMX_BUFFERFLAG_CODECCONFIG;
     FillBufferDone(pSfOMXComponent, pOutputBuffer);
 
     memset(&yuvFeederInfo,   0x00, sizeof(YuvInfo));
@@ -835,6 +836,7 @@ static void EncoderThread(void *args)
                     goto ERR_ENC_OPEN;
                 }
                 pOutputBuffer->nFilledLen = size;
+                pOutputBuffer->nFlags = 0;
                 FillBufferDone(pSfOMXComponent, pOutputBuffer);
             }
 
@@ -906,6 +908,7 @@ static void EncoderThread(void *args)
                 goto ERR_ENC_OPEN;
             }
             pOutputBuffer->nFilledLen = size;
+            pOutputBuffer->nFlags = OMX_BUFFERFLAG_ENDOFFRAME;
             FillBufferDone(pSfOMXComponent, pOutputBuffer);
         }
 
