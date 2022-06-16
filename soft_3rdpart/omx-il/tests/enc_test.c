@@ -45,6 +45,8 @@ typedef struct EncodeTestContext
     char sOutputFormat[64];
     OMX_U32 nFrameBufferSize;
     OMX_U32 nBitrate;
+    OMX_U32 nFrameRate;
+    OMX_U32 nNumPFrame;
     OMX_BUFFERHEADERTYPE *pInputBufferArray[64];
     OMX_BUFFERHEADERTYPE *pOutputBufferArray[64];
     int msgid;
@@ -100,8 +102,18 @@ static OMX_ERRORTYPE event_handler(
 
 static void help()
 {
-    printf("./video_enc_test -i <input file> -o <output file> -w <width> -h <height> "
-           "-c <yuv/nv12/nv21> -s <h264/h265> -b <bitrate>\r\n");
+    printf("video_enc_test - omx video hardware encode unit test case\r\n\r\n");
+    printf("Usage:\r\n\r\n");
+    printf("./video_enc_test -i <input file>       input file \r\n");
+    printf("                 -o <output file>      output file \r\n");
+    printf("                 -w <width>            input width \r\n");
+    printf("                 -h <height>           input hight \r\n");
+    printf("                 -s <Srcformat>        stream format h264/h265 \r\n");
+    printf("                 -c <cformat>          color format i420/nv12/nv21 \r\n");
+    printf("                 -b <bitrate>          (optional) set bit rate \r\n");
+    printf("                 -v <frame rate>       (optional) set frame rate \r\n");
+    printf("                 -g <num>              (optional) Number of P frames between each I frame for h264 only \r\n\r\n");
+    printf("./video_enc_test --help: show this message\r\n");
 }
 
 static OMX_ERRORTYPE fill_output_buffer_done_handler(
@@ -211,14 +223,17 @@ int main(int argc, char **argv)
     struct option longOpt[] = {
         {"output", required_argument, NULL, 'o'},
         {"input", required_argument, NULL, 'f'},
-        {"color format", required_argument, NULL, 'c'},
-        {"stream format", required_argument, NULL, 's'},
-        {"bit rate", optional_argument, NULL, 'b'},
+        {"colorformat", required_argument, NULL, 'c'},
+        {"streamformat", required_argument, NULL, 's'},
+        {"bitrate", required_argument, NULL, 'b'},
+        {"framerate", required_argument, NULL, 'v'},
         {"width", required_argument, NULL, 'w'},
         {"height", required_argument, NULL, 'h'},
+        {"gop", required_argument, NULL, 'g'},
+        {"help", no_argument, NULL, 0},
         {NULL, no_argument, NULL, 0},
     };
-    char *shortOpt = "i:o:f:s:w:h:b:c:";
+    char *shortOpt = "i:o:f:s:w:h:b:v:c:g:";
     OMX_U32 c;
     OMX_S32 l;
 
@@ -270,6 +285,15 @@ int main(int argc, char **argv)
             printf("bit rate: %s\r\n", optarg);
             encodeTestContext->nBitrate = atoi(optarg);
             break;
+        case 'v':
+            printf("frame rate: %s\r\n", optarg);
+            encodeTestContext->nFrameRate = atoi(optarg);
+            break;
+        case 'g':
+            printf("P frames: %s\r\n", optarg);
+            encodeTestContext->nNumPFrame = atoi(optarg);
+            break;
+        case 0:
         default:
             help();
             return 0;
@@ -341,6 +365,9 @@ int main(int argc, char **argv)
         printf("unsupported color format: %s\r\n", encodeTestContext->sInputFormat);
         goto end;
     }
+    if(encodeTestContext->nFrameRate){
+        pInputPortDefinition.format.video.xFramerate = encodeTestContext->nFrameRate;
+    }
     OMX_SetParameter(hComponentEncoder, OMX_IndexParamPortDefinition, &pInputPortDefinition);
     OMX_GetParameter(hComponentEncoder, OMX_IndexParamPortDefinition, &pInputPortDefinition);
 
@@ -352,6 +379,15 @@ int main(int argc, char **argv)
     pOutputPortDefinition.format.video.nFrameHeight = height;
     pOutputPortDefinition.format.video.nBitrate = encodeTestContext->nBitrate;
     OMX_SetParameter(hComponentEncoder, OMX_IndexParamPortDefinition, &pOutputPortDefinition);
+
+    if(encodeTestContext->nNumPFrame){
+        OMX_VIDEO_PARAM_AVCTYPE avcType;
+        OMX_INIT_STRUCTURE(avcType);
+        avcType.nPortIndex = 1;
+        OMX_GetParameter(hComponentEncoder, OMX_IndexParamVideoAvc, &avcType);
+        avcType.nPFrames = encodeTestContext->nNumPFrame;
+        OMX_SetParameter(hComponentEncoder, OMX_IndexParamVideoAvc, &avcType);
+    }
 
     /*Alloc input buffer*/
     OMX_U32 nInputBufferSize = pInputPortDefinition.nBufferSize;

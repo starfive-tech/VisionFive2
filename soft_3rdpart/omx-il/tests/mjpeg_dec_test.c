@@ -105,7 +105,17 @@ static OMX_ERRORTYPE event_handler(
 
 static void help()
 {
-    printf("./omx_mjpeg_dec_test -i <input file> -o <output file> \r\n");
+    printf("omx_mjpeg_dec_test - omx mjpg hardware decode unit test case\r\n\r\n");
+    printf("Usage:\r\n\r\n");
+    printf("./omx_mjpeg_dec_test -i <input file>               input file \r\n");
+    printf("                     -o <output file>              output file\r\n");
+    printf("                     -f <format>                   nv12/nv21/i420/i422/nv16/nv61/yuyv/yvyu/uyvy/vyuy/i444/yuv444packed \r\n");
+    printf("                     --roi=<x>,<y>,<w>,<h>         (optional) roi coord and width/height(from left top)\r\n");
+    printf("                     --mirror=<0/1/2/3>            (optional) mirror 0(none), 1(V), 2(H), 3(VH)\r\n");
+    printf("                     --scaleH=<0/1/2/3>            (optional) Horizontal downscale: 0(none), 1(1/2), 2(1/4), 3(1/8)\r\n");
+    printf("                     --scaleV=<0/1/2/3>            (optional) Vertical downscale  : 0(none), 1(1/2), 2(1/4), 3(1/8)\r\n");
+    printf("                     --rotation=<0/90/180/270>     (optional) rotation 0, 90, 180, 270\r\n\r\n");
+    printf("./omx_mjpeg_dec_test --help: show this message\r\n");
 }
 
 static OMX_ERRORTYPE fill_output_buffer_done_handler(
@@ -197,6 +207,7 @@ int main(int argc, char **argv)
 {
     printf("=============================\r\n");
     OMX_S32 error;
+    FILE *fb;
     decodeTestContext = malloc(sizeof(DecodeTestContext));
     memset(decodeTestContext, 0, sizeof(DecodeTestContext));
 
@@ -217,9 +228,10 @@ int main(int argc, char **argv)
         {"mirror", required_argument, NULL, 'm'},
         {"scaleH", required_argument, NULL, 'H'},
         {"scaleV", required_argument, NULL, 'V'},
+        {"help", no_argument, NULL, 0},
         {NULL, no_argument, NULL, 0},
     };
-    char *shortOpt = "i:o:f:c:r:m:";
+    char *shortOpt = "i:o:f:c:r:m:H:V:";
     OMX_U32 c;
     OMX_S32 l;
     OMX_STRING val;
@@ -255,6 +267,7 @@ int main(int argc, char **argv)
             memcpy(decodeTestContext->sOutputFormat, optarg, strlen(optarg));
             break;
         case 'c':
+            printf("ROI: %s\r\n", optarg);
             val = strtok(optarg, ",");
             if (val == NULL) {
                 printf("Invalid ROI option: %s\n", optarg);
@@ -289,18 +302,22 @@ int main(int argc, char **argv)
             }
             break;
         case 'r':
+            printf("rotation: %s\r\n", optarg);
             decodeTestContext->Rotation = atoi(optarg);
             break;
         case 'm':
+            printf("mirror: %s\r\n", optarg);
             decodeTestContext->Mirror = atoi(optarg);
             break;
         case 'H':
+            printf("scaleH: %s\r\n", optarg);
             decodeTestContext->ScaleFactorH = atoi(optarg);
             break;
         case 'V':
+            printf("scaleV: %s\r\n", optarg);
             decodeTestContext->ScaleFactorV = atoi(optarg);
             break;
-        case 'h':
+        case 0:
         default:
             help();
             return -1;
@@ -518,6 +535,8 @@ int main(int argc, char **argv)
         OMX_EmptyThisBuffer(hComponentDecoder, pBuffer);
     }
 
+    fb = fopen(decodeTestContext->sOutputFilePath, "wb+");
+
     OMX_SendCommand(hComponentDecoder, OMX_CommandStateSet, OMX_StateExecuting, NULL);
 
     /*wait until decode finished*/
@@ -541,13 +560,10 @@ int main(int argc, char **argv)
         case 1:
         {
             OMX_BUFFERHEADERTYPE *pBuffer = data.pBuffer;
-            OMX_STRING sFilePath = decodeTestContext->sOutputFilePath;
             printf("write %lu buffers to file\r\n", pBuffer->nFilledLen);
-            FILE *fb = fopen(sFilePath, "ab+");
             size_t size = fwrite(pBuffer->pBuffer, 1, pBuffer->nFilledLen, fb);
             int error = ferror(fb);
             printf("write error = %d\r\n", error);
-            fclose(fb);
             printf("write %lu buffers finish\r\n", size);
             if ((pBuffer->nFlags) & (OMX_BUFFERFLAG_EOS == OMX_BUFFERFLAG_EOS))
             {
@@ -568,6 +584,7 @@ int main(int argc, char **argv)
 
 end:
     /*free resource*/
+    fclose(fb);
     OMX_FreeHandle(hComponentDecoder);
     OMX_Deinit();
 }
