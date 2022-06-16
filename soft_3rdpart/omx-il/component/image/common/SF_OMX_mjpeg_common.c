@@ -617,6 +617,16 @@ void CodaJ12FlushBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U32 nPortNumber)
         }
         break;
     case OMX_OUTPUT_PORT_INDEX:
+        for(int i = 0; i < MCA_MAX_INDEX; i++){
+            pOMXBuffer = pSfCodaj12Implement->mesCacheArr[i].pBuffer;
+            LOG(SF_LOG_INFO, "Flush Buffer %p\r\n", pOMXBuffer);
+            if (pOMXBuffer != NULL)
+            {
+                pOMXBuffer->nFilledLen = 0;
+                pOMXBuffer->nFlags = OMX_BUFFERFLAG_EOS;
+                pSfOMXComponent->callbacks->FillBufferDone(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData, pOMXBuffer);
+            }
+        }
         while (OMX_TRUE)
         {
             if (msgrcv(pSfCodaj12Implement->sOutputMessageQueue, (void *)&data, BUFSIZ, 0, IPC_NOWAIT) < 0)

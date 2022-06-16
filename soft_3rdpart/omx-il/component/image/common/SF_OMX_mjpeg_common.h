@@ -40,6 +40,8 @@
 #define CODAJ12_OUTPUT_BUF_NUMBER 4
 #define CODAJ12_INPUT_BUF_NUMBER 1
 
+#define MCA_MAX_INDEX 1
+
 typedef struct _SF_CODAJ12_FUNCTIONS
 {
     JpgRet (*JPU_Init)(void);
@@ -91,6 +93,13 @@ typedef struct _THREAD_HANDLE_TYPE {
     int                stack_size;
 } THREAD_HANDLE_TYPE;
 
+typedef struct Message
+{
+    long msg_type;
+    OMX_U32 msg_flag;
+    OMX_BUFFERHEADERTYPE *pBuffer;
+} Message;
+
 typedef struct _SF_CODAJ12_IMPLEMEMT
 {
     DecConfigParam *config;
@@ -106,19 +115,13 @@ typedef struct _SF_CODAJ12_IMPLEMEMT
     OMX_S32 sInputMessageQueue;
     OMX_S32 sOutputMessageQueue;
     OMX_S32 sBufferDoneQueue;
+    Message mesCacheArr[MCA_MAX_INDEX];
     OMX_HANDLETYPE pProcessThread;
     OMX_BOOL bThreadRunning;
     OMX_STATETYPE currentState;
     FrameFormat frameFormat;
     OMX_BOOL allocBufFlag;
 } SF_CODAJ12_IMPLEMEMT;
-
-typedef struct Message
-{
-    long msg_type;
-    OMX_U32 msg_flag;
-    OMX_BUFFERHEADERTYPE *pBuffer;
-} Message;
 
 enum port_index
 {

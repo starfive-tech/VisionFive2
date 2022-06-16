@@ -33,7 +33,7 @@ static OMX_ERRORTYPE SF_OMX_EmptyThisBuffer(
     SF_OMX_COMPONENT *pSfOMXComponent = (SF_OMX_COMPONENT *)pOMXComponent->pComponentPrivate;
     SF_CODAJ12_IMPLEMEMT *pSfCodaj12Implement = (SF_CODAJ12_IMPLEMEMT *)pSfOMXComponent->componentImpl;
 
-    LOG(SF_LOG_DEBUG, "nFilledLen = %d, nFlags = %d, pBuffer = %p\r\n", pBuffer->nFilledLen, pBuffer->nFlags, pBuffer->pBuffer);
+    LOG(SF_LOG_DEBUG, "nFilledLen = %d, nFlags = %d, header = %p, pBuffer = %p\r\n", pBuffer->nFilledLen, pBuffer->nFlags, pBuffer, pBuffer->pBuffer);
 
     if (pBuffer->nFilledLen == 0 || (pBuffer->nFlags & 0x1) == 0x1)
     {
@@ -78,9 +78,6 @@ EXIT:
     return ret;
 }
 
-#define MAX_INDEX 1
-#define MCA_MAX_INDEX 1
-Message mesCacheArr[MCA_MAX_INDEX];
 int MCAIndex = 0;
 int dataCount = 0;
 
@@ -100,7 +97,7 @@ static OMX_ERRORTYPE SF_OMX_FillThisBuffer(
     OMX_COMPONENTTYPE *pOMXComponent = (OMX_COMPONENTTYPE *)hComponent;
     SF_OMX_COMPONENT *pSfOMXComponent = (SF_OMX_COMPONENT *)pOMXComponent->pComponentPrivate;
     SF_CODAJ12_IMPLEMEMT *pSfCodaj12Implement = (SF_CODAJ12_IMPLEMEMT *)pSfOMXComponent->componentImpl;
-    LOG(SF_LOG_DEBUG, "nFilledLen = %d, nFlags = %d, pBuffer = %p\r\n", pBuffer->nFilledLen, pBuffer->nFlags, pBuffer->pBuffer);
+    LOG(SF_LOG_DEBUG, "nFilledLen = %d, nFlags = %d, header = %p, pBuffer = %p\r\n", pBuffer->nFilledLen, pBuffer->nFlags, pBuffer, pBuffer->pBuffer);
     // if (pSfCodaj12Implement->functions->Queue_Enqueue(&pSfCodaj12Implement->decodeBufferQueue, (void *)pBuffer->pBuffer) == FALSE)
     // {
     //     return OMX_ErrorInsufficientResources;
@@ -113,17 +110,17 @@ static OMX_ERRORTYPE SF_OMX_FillThisBuffer(
     // TODO start:
     // Temporary store one buff here to prevent the buff from being refill too soon.
     // It is a workaround for issue and should be fixed further.
-    MCAIndex = (dataCount++)%MCA_MAX_INDEX;
-    if(dataCount < MCA_MAX_INDEX)
+    MCAIndex = (dataCount)%MCA_MAX_INDEX;
+    if(dataCount++ < MCA_MAX_INDEX)
     {
-        mesCacheArr[MCAIndex] = data;
+        pSfCodaj12Implement->mesCacheArr[MCAIndex] = data;
         FunctionOut();
         return ret;
     }
     else
     {
-        outputData = mesCacheArr[MCAIndex];
-        mesCacheArr[MCAIndex] = data;
+        outputData = pSfCodaj12Implement->mesCacheArr[MCAIndex];
+        pSfCodaj12Implement->mesCacheArr[MCAIndex] = data;
     }
     // TODO end
 
@@ -247,8 +244,8 @@ static OMX_ERRORTYPE SF_OMX_AllocateBuffer(
         return OMX_ErrorInsufficientResources;
     }
     *ppBuffer = temp_bufferHeader;
-    LOG(SF_LOG_INFO, "nPortIndex = %d, pBuffer address = %p, nFilledLen = %d, nSizeBytes = %d\r\n",
-            nPortIndex, temp_bufferHeader->pBuffer, temp_bufferHeader->nFilledLen, nSizeBytes);
+    LOG(SF_LOG_INFO, "nPortIndex = %d, header = %p, pBuffer address = %p, nFilledLen = %d, nSizeBytes = %d\r\n",
+            nPortIndex, temp_bufferHeader, temp_bufferHeader->pBuffer, temp_bufferHeader->nFilledLen, nSizeBytes);
     FunctionOut();
     return ret;
 }
@@ -943,8 +940,8 @@ static OMX_BOOL FillBufferDone(SF_OMX_COMPONENT *pSfOMXComponent, OMX_BUFFERHEAD
         LOG(SF_LOG_WARN, "Decoding fps: %d \r\n", fps);
     }
 
-    LOG(SF_LOG_PERF, "OMX finish one buffer, address = %p, size = %d, nTimeStamp = %d, nFlags = %X\r\n",
-            pBuffer->pBuffer, pBuffer->nFilledLen, pBuffer->nTimeStamp, pBuffer->nFlags);
+    LOG(SF_LOG_PERF, "OMX finish one buffer, header = %p, address = %p, size = %d, nTimeStamp = %d, nFlags = %X\r\n",
+            pBuffer, pBuffer->pBuffer, pBuffer->nFilledLen, pBuffer->nTimeStamp, pBuffer->nFlags);
     // Following comment store data loal
     // {
     //     FILE *fb = fopen("./out.bcp", "ab+");
