@@ -129,12 +129,6 @@ typedef struct jpu_clkgen_t {
 } jpu_clkgen_t;
 #endif
 
-struct reset_control_bulk_data jpu_resets[] = {
-		{ .id = "rst_axi" },
-		{ .id = "rst_core" },
-		{ .id = "rst_apb" },
-};
-
 struct clk_bulk_data jpu_clks[] = {
 		{ .id = "axi_clk" },
 		{ .id = "core_clk" },
@@ -154,8 +148,7 @@ typedef struct jpu_clk_t {
 	jpu_clkgen_t core_clk;
 #else
 	struct clk_bulk_data *clks;
-	struct reset_control_bulk_data *resets;
-	int nr_rstcs;
+	struct reset_control *resets;
 	int nr_clks;
 #endif
 	struct device *dev;
@@ -1266,7 +1259,7 @@ static void jpu_clk_disable(jpu_clk_t *clk)
 
 static int jpu_hw_reset(void)
 {
-    return reset_control_bulk_reset(s_jpu_clk->nr_rstcs, s_jpu_clk->resets);
+    return reset_control_reset(s_jpu_clk->resets);
 }
 
 static int jpu_of_clk_get(struct platform_device *pdev, jpu_clk_t *jpu_clk)
@@ -1275,14 +1268,14 @@ static int jpu_of_clk_get(struct platform_device *pdev, jpu_clk_t *jpu_clk)
 	int ret;
 
 	jpu_clk->dev = dev;
-	jpu_clk->resets = jpu_resets;
 	jpu_clk->clks = jpu_clks;
-	jpu_clk->nr_rstcs = ARRAY_SIZE(jpu_resets);
 	jpu_clk->nr_clks = ARRAY_SIZE(jpu_clks);
 
-	ret = devm_reset_control_bulk_get_exclusive(dev, jpu_clk->nr_rstcs, jpu_clk->resets);
-	if (ret)
+	jpu_clk->resets = devm_reset_control_array_get_exclusive(dev);
+	if (IS_ERR(jpu_clk->resets)) {
+		ret = PTR_ERR(jpu_clk->resets);
 		dev_err(dev, "faied to get jpu reset controls\n");
+	}
 
 	ret = devm_clk_bulk_get(dev, jpu_clk->nr_clks, jpu_clk->clks);
 	if (ret)
@@ -1327,7 +1320,7 @@ static int jpu_clk_enable(jpu_clk_t *clk)
 	if (ret)
 		dev_err(clk->dev, "enable clk error.\n");
 
-	ret = reset_control_bulk_deassert(clk->nr_rstcs, clk->resets);
+	ret = reset_control_deassert(clk->resets);
 	if (ret)
 		dev_err(clk->dev, "deassert jpu error.\n");
 
@@ -1339,7 +1332,7 @@ static void jpu_clk_disable(jpu_clk_t *clk)
 {
 	int ret;
 
-	ret = reset_control_bulk_assert(clk->nr_rstcs, clk->resets);
+	ret = reset_control_assert(clk->resets);
 	if (ret)
 		dev_err(clk->dev, "assert jpu error.\n");
 
