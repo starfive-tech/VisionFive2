@@ -7,7 +7,7 @@
 	images {
 		firmware {
 			description = "u-boot";
-			data = /incbin/("../work/opensbi/platform/starfive/firmware/fw_payload.bin");
+			data = /incbin/("../work/opensbi/platform/generic/firmware/fw_payload.bin");
 			type = "firmware";
 			arch = "riscv";
 			os = "u-boot";
