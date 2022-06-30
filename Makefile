@@ -4,8 +4,8 @@ ABI ?= lp64d
 #TARGET_BOARD is JH7110 or NULL
 SOC := JH7110
 BOARD_FLAGS	:=
-HWBOARD ?= evb
-HWBOARD_FLAG ?= HWBOARD_EVB
+HWBOARD ?= visionfive2
+HWBOARD_FLAG ?= HWBOARD_VISIONFIVE2
 
 srcdir := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 srcdir := $(srcdir:/=)
@@ -99,8 +99,8 @@ all: check_arg $(fit) $(vfat_image) $(uboot_fit) $(spl_bin_normal_out)
 	@echo
 
 check_arg:
-ifeq ( , $(filter $(HWBOARD), visionfive evb fpga))
-	$(error board $(HWBOARD) is not supported, BOARD=[visionfive | evb | fpga(deflault)])
+ifeq ( , $(filter $(HWBOARD), visionfive2 evb fpga))
+	$(error board $(HWBOARD) is not supported, BOARD=[visionfive2 | evb | fpga(deflault)])
 endif
 
 # TODO: depracated for now
@@ -111,15 +111,29 @@ endif
 #$(target_gcc): $(buildroot_initramfs_tar)
 #endif
 
-.PHONY: visionfive evb fpga
+.PHONY: visionfive2 evb fpga
 
-visionfive: HWBOARD := visionfive
-visionfive: all
-visionfive: HWBOARD_FLAG := HWBOARD_VISIONFIVE
+visionfive2: HWBOARD := visionfive2
+visionfive2: HWBOARD_FLAG := HWBOARD_VISIONFIVE2
+visionfive2: uboot_config := starfive_$(HWBOARD)_defconfig
+visionfive2: uboot_dtb_file := $(wrkdir)/u-boot/arch/riscv/dts/starfive_$(HWBOARD).dtb
+visionfive2: linux_defconfig := $(linux_srcdir)/arch/riscv/configs/starfive_visionfive2_defconfig
+visionfive2: uboot_fit := $(wrkdir)/$(HWBOARD)_fw_payload.img
+visionfive2: vfat_image := $(wrkdir)/starfive-$(HWBOARD)-vfat.part
+visionfive2: its_file=$(confdir)/$(HWBOARD)-fit-image.its
+visionfive2: uboot_its_file=$(confdir)/$(HWBOARD)-uboot-fit-image.its
+visionfive2: all
 
 evb: HWBOARD := evb
-evb: all
 evb: HWBOARD_FLAG := HWBOARD_EVB
+evb: uboot_config := starfive_$(HWBOARD)_defconfig
+evb: uboot_dtb_file := $(wrkdir)/u-boot/arch/riscv/dts/starfive_$(HWBOARD).dtb
+evb: linux_defconfig := $(linux_srcdir)/arch/riscv/configs/starfive_jh7110_defconfig
+evb: uboot_fit := $(wrkdir)/$(HWBOARD)_fw_payload.img
+evb: vfat_image := $(wrkdir)/starfive-$(HWBOARD)-vfat.part
+evb: its_file=$(confdir)/$(HWBOARD)-fit-image.its
+evb: uboot_its_file=$(confdir)/$(HWBOARD)-uboot-fit-image.its
+evb: all
 
 fpga: HWBOARD := fpga
 fpga: all
@@ -306,7 +320,7 @@ $(spl_bin_normal_out): $(spl_tool_srcdir) $(uboot)
 	rm -f $(spl_tool_srcdir)/u-boot-spl.bin*
 
 $(uboot_fit): $(sbi_bin) $(uboot_its_file) $(uboot)
-	$(uboot_wrkdir)/tools/mkimage -f $(uboot_its_file) -A riscv -O u-boot -T firmware $@
+	$(uboot_wrkdir)/tools/mkimage -f $(uboot_its_file) -A riscv -O u-boot -T firmware $(uboot_fit)
 
 $(rootfs): $(buildroot_rootfs_ext)
 	cp $< $@
@@ -323,7 +337,7 @@ uboot_fit: $(uboot_fit)
 clean:
 	rm -rf work/u-boot
 	rm -rf work/opensbi
-	rm -f work/starfive-*-vfat.part
+	rm -f work/*-vfat.part
 	rm -f work/image.fit
 	rm -f work/*_fw_payload.img
 	rm -f work/initramfs.cpio.gz
