@@ -32,6 +32,7 @@
 #include <linux/reset.h>
 #include <linux/version.h>
 #include <linux/of.h>
+#include <linux/pm_runtime.h>
 #include <soc/sifive/sifive_l2_cache.h>
 
 #include "../../../vpuapi/vpuconfig.h"
@@ -52,11 +53,6 @@
 /* definitions to be changed as customer  configuration */
 /* if you want to have clock gating scheme frame by frame */
 //#define VPU_SUPPORT_CLOCK_CONTROL
-
-#define STARFIVE_VPU_PMU
-#ifdef STARFIVE_VPU_PMU
-#include <soc/starfive/jh7110_pmu.h>
-#endif
 
 /* if clktree is work,try this...*/
 #define STARFIVE_VPU_SUPPORT_CLOCK_CONTROL
@@ -1532,17 +1528,23 @@ MODULE_LICENSE("GPL");
 module_init(vpu_init);
 module_exit(vpu_exit);
 
-#ifdef STARFIVE_VPU_PMU
-static void vpu_pmu_enable(bool enable)
+static int vpu_pmu_enable(struct device *dev)
 {
-	starfive_power_domain_set(POWER_DOMAIN_VENC, enable);
+	int ret;
+
+	pm_runtime_enable(dev);
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0)
+		dev_err(dev, "failed to get pm runtime: %d\n", ret);
+
+	return ret;
 }
-#else
-static void vpu_pmu_enable(bool enable)
+
+static void vpu_pmu_disable(struct device *dev)
 {
-	return;
+	pm_runtime_put_sync(dev);
+	pm_runtime_disable(dev);
 }
-#endif
 
 #ifndef STARFIVE_VPU_SUPPORT_CLOCK_CONTROL
 
@@ -1736,7 +1738,7 @@ static int vpu_clk_enable(struct vpu_clk_t *clk)
 	if (clk == NULL || IS_ERR(clk))
 		return -1;
 
-	vpu_pmu_enable(true);
+	vpu_pmu_enable(clk->dev);
 	vpu_clk_control(clk, true);
 	if (clk->noc_ctrl == true)
 		vpu_noc_vdec_bus_control(clk, true);
@@ -1751,7 +1753,7 @@ void vpu_clk_disable(struct vpu_clk_t *clk)
 		return;
 
 	vpu_clk_control(clk, false);
-	vpu_pmu_enable(false);
+	vpu_pmu_disable(clk->dev);
 	if (clk->noc_ctrl == true)
 		vpu_noc_vdec_bus_control(clk, false);
 
@@ -1822,7 +1824,7 @@ static int vpu_clk_enable(vpu_clk_t *clk)
 {
 	int ret;
 
-	vpu_pmu_enable(true);
+	vpu_pmu_enable(clk->dev);
 	ret = clk_bulk_prepare_enable(clk->nr_clks, clk->clks);
 	if (ret)
 		dev_err(clk->dev, "enable clk error.\n");
@@ -1844,7 +1846,7 @@ static void vpu_clk_disable(vpu_clk_t *clk)
 		dev_err(clk->dev, "assert vpu error.\n");
 
 	clk_bulk_disable_unprepare(clk->nr_clks, clk->clks);
-	vpu_pmu_enable(false);
+	vpu_pmu_disable(clk->dev);
 }
 
 #endif /*STARFIVE_VPU_SUPPORT_CLOCK_CONTROL*/
