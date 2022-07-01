@@ -24,6 +24,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
+#include <linux/pm_runtime.h>
 #include <linux/wait.h>
 #include <linux/list.h>
 #include <linux/clk.h>
@@ -52,13 +53,6 @@
 //#define JPU_SUPPORT_CLOCK_CONTROL
 #define JPU_SUPPORT_ISR
 //#define JPU_IRQ_CONTROL
-
-/* jpu pmu */
-#define STARFIVE_JPU_PMU
-
-#ifdef STARFIVE_JPU_PMU
-#include <soc/starfive/jh7110_pmu.h>
-#endif
 
 /* if clktree is work,try this...*/
 #define STARFIVE_JPU_SUPPORT_CLOCK_CONTROL
@@ -1053,17 +1047,23 @@ MODULE_LICENSE("GPL");
 module_init(jpu_init);
 module_exit(jpu_exit);
 
-#ifdef STARFIVE_JPU_PMU
-static void jpu_pmu_enable(bool enable)
+static int jpu_pmu_enable(struct device *dev)
 {
-	starfive_power_domain_set(POWER_DOMAIN_JPU, enable);
+	int ret;
+
+	pm_runtime_enable(dev);
+	ret = pm_runtime_get_sync(dev);
+	if (ret < 0)
+		dev_err(dev, "failed to get pm runtime: %d\n", ret);
+
+	return ret;
 }
-#else
-static void jpu_pmu_enable(bool enable)
+
+static void jpu_pmu_disable(struct device *dev)
 {
-	return;
+	pm_runtime_put_sync(dev);
+	pm_runtime_disable(dev);
 }
-#endif
 
 #ifndef STARFIVE_JPU_SUPPORT_CLOCK_CONTROL
 #define CLK_ENABLE_DATA		1
@@ -1237,7 +1237,7 @@ static int jpu_clk_enable(jpu_clk_t *clk)
 	if (clk == NULL || IS_ERR(clk))
 		return -1;
 
-	jpu_pmu_enable(true);
+	jpu_pmu_enable(clk->dev);
 	jpu_clk_control(clk, true);
 
 	DPRINTK("[VPUDRV] vpu_clk_enable\n");
@@ -1250,7 +1250,7 @@ static void jpu_clk_disable(jpu_clk_t *clk)
 		return;
 
 	jpu_clk_control(clk, false);
-	jpu_pmu_enable(false);
+	jpu_pmu_disable(clk->dev);
 
 	DPRINTK("[VPUDRV] vpu_clk_disable\n");
 }
@@ -1315,7 +1315,7 @@ static int jpu_clk_enable(jpu_clk_t *clk)
 {
 	int ret;
 
-	jpu_pmu_enable(true);
+	jpu_pmu_enable(clk->dev);
 	ret = clk_bulk_prepare_enable(clk->nr_clks, clk->clks);
 	if (ret)
 		dev_err(clk->dev, "enable clk error.\n");
@@ -1337,6 +1337,6 @@ static void jpu_clk_disable(jpu_clk_t *clk)
 		dev_err(clk->dev, "assert jpu error.\n");
 
 	clk_bulk_disable_unprepare(clk->nr_clks, clk->clks);
-	jpu_pmu_enable(false);
+	jpu_pmu_disable(clk->dev);
 }
 #endif /* STARFIVE_JPU_SUPPORT_CLOCK_CONTROL */
