@@ -219,11 +219,15 @@ linux-menuconfig: $(linux_wrkdir)/.config
 	$(MAKE) -C $(linux_srcdir) O=$(dir $<) ARCH=riscv savedefconfig
 	cp $(dir $<)defconfig $(linux_defconfig)
 
+# Note: opensbi generic platform default FW_TEXT_START is 0x80000000
+#     For JH7110, need to specify the FW_TEXT_START to 0x40000000
+#     Otherwise, the fw_payload.bin downloading via jtag will not run.
+#     not affect the evb_fw_payload.img for its file has FW_TEXT_START
 $(sbi_bin): $(uboot) $(vmlinux)
 	rm -rf $(sbi_wrkdir)
 	mkdir -p $(sbi_wrkdir)
 	cd $(sbi_wrkdir) && O=$(sbi_wrkdir) CFLAGS="-mabi=$(ABI) -march=$(ISA)" ${MAKE} -C $(sbi_srcdir) CROSS_COMPILE=$(CROSS_COMPILE) \
-		PLATFORM=generic FW_PAYLOAD_PATH=$(uboot) FW_FDT_PATH=$(uboot_dtb_file)
+		PLATFORM=generic FW_PAYLOAD_PATH=$(uboot) FW_FDT_PATH=$(uboot_dtb_file) FW_TEXT_START=0x40000000
 
 $(fit): $(sbi_bin) $(vmlinux_bin) $(uboot) $(its_file) ${initramfs}
 	$(uboot_wrkdir)/tools/mkimage -f $(its_file) -A riscv -O linux -T flat_dt $@
