@@ -152,7 +152,6 @@ $(buildroot_rootfs_ext): $(buildroot_srcdir) $(buildroot_rootfs_wrkdir)/.config 
 
 .PHONY: buildroot_rootfs
 buildroot_rootfs: $(buildroot_rootfs_ext)
-	cp $< $@
 
 .PHONY: buildroot_rootfs-menuconfig
 buildroot_rootfs-menuconfig: $(buildroot_rootfs_wrkdir)/.config $(buildroot_srcdir)
@@ -220,11 +219,15 @@ linux-menuconfig: $(linux_wrkdir)/.config
 	$(MAKE) -C $(linux_srcdir) O=$(dir $<) ARCH=riscv savedefconfig
 	cp $(dir $<)defconfig $(linux_defconfig)
 
+# Note: opensbi generic platform default FW_TEXT_START is 0x80000000
+#     For JH7110, need to specify the FW_TEXT_START to 0x40000000
+#     Otherwise, the fw_payload.bin downloading via jtag will not run.
+#     not affect the evb_fw_payload.img for its file has FW_TEXT_START
 $(sbi_bin): $(uboot) $(vmlinux)
 	rm -rf $(sbi_wrkdir)
 	mkdir -p $(sbi_wrkdir)
 	cd $(sbi_wrkdir) && O=$(sbi_wrkdir) CFLAGS="-mabi=$(ABI) -march=$(ISA)" ${MAKE} -C $(sbi_srcdir) CROSS_COMPILE=$(CROSS_COMPILE) \
-		PLATFORM=generic FW_PAYLOAD_PATH=$(uboot) FW_FDT_PATH=$(uboot_dtb_file)
+		PLATFORM=generic FW_PAYLOAD_PATH=$(uboot) FW_FDT_PATH=$(uboot_dtb_file) FW_TEXT_START=0x40000000
 
 $(fit): $(sbi_bin) $(vmlinux_bin) $(uboot) $(its_file) ${initramfs}
 	$(uboot_wrkdir)/tools/mkimage -f $(its_file) -A riscv -O linux -T flat_dt $@
@@ -324,24 +327,28 @@ qemu-rootfs: $(qemu) $(sbi_bin) $(vmlinux) $(initramfs) $(rootfs)
 .PHONY: uboot
 uboot: $(uboot)
 
-# Relevant partition type codes
-SPL		= 2E54B353-1271-4842-806F-E436D6AF6985
-VFAT            = EBD0A0A2-B9E5-4433-87C0-68B6B72699C7
-LINUX		= 0FC63DAF-8483-4772-8E79-3D69D8477DE4
-UBOOT		= 5B193300-FC78-40CD-8002-E86C45580B47
-UBOOTENV	= a09354ac-cd63-11e8-9aff-70b3d592f0fa
-UBOOTDTB	= 070dd1a8-cd64-11e8-aa3d-70b3d592f0fa
-UBOOTFIT	= 04ffcafa-cd65-11e8-b974-70b3d592f0fa
+# Relevant partition type codes with GUID
+SPL         = 2E54B353-1271-4842-806F-E436D6AF6985
+VFAT        = EBD0A0A2-B9E5-4433-87C0-68B6B72699C7
+LINUX       = 0FC63DAF-8483-4772-8E79-3D69D8477DE4
+UBOOT       = 5B193300-FC78-40CD-8002-E86C45580B47
+UBOOTENV    = a09354ac-cd63-11e8-9aff-70b3d592f0fa
+UBOOTDTB    = 070dd1a8-cd64-11e8-aa3d-70b3d592f0fa
+UBOOTFIT    = 04ffcafa-cd65-11e8-b974-70b3d592f0fa
 
-SPL_START=2048
-SPL_END=6143
-UBOOT_START=6144
-UBOOT_END=16385
-UBOOT_SIZE=12288
-VFAT_START=16386
-VFAT_END=425985
-VFAT_SIZE=204800
-ROOT_START=425986
+# Note: The following are the sector number used to partition
+#   The default sector size is 512 Bytes
+#   The partition start should be align on 2048-sector boundaries
+# expand the vfat size to 300+M for the vpu/jpu or other debug
+SPL_START   = 2048
+SPL_END     = 6143
+UBOOT_START = 6144
+UBOOT_END   = 16383
+UBOOT_SIZE  = $(shell expr $(UBOOT_END) - $(UBOOT_START) + 1)
+VFAT_START  = 16384
+VFAT_END    = 614399
+VFAT_SIZE   = $(shell expr $(VFAT_END) - $(VFAT_START) + 1)
+ROOT_START  = 614400
 
 $(vfat_image): $(fit) $(confdir)/jh7110_uEnv.txt
 	@if [ `du --apparent-size --block-size=512 $(uboot) | cut -f 1` -ge $(UBOOT_SIZE) ]; then \
@@ -355,11 +362,11 @@ $(vfat_image): $(fit) $(confdir)/jh7110_uEnv.txt
 .PHONY: format-boot-loader
 format-boot-loader: $(sbi_bin) $(uboot) $(fit) $(vfat_image)
 	@test -b $(DISK) || (echo "$(DISK): is not a block device"; exit 1)
-	/sbin/sgdisk --clear  \
-		--new=1:$(SPL_START):$(SPL_END)  	--change-name=1:"spl"	--typecode=1:$(SPL)   \
-		--new=2:$(UBOOT_START):$(UBOOT_END)     --change-name=2:uboot	--typecode=2:$(UBOOT) \
-		--new=3:$(VFAT_START):$(VFAT_END)     --change-name=3:image	--typecode=2:$(VFAT) \
-		--new=4:$(ROOT_START):0 		--change-name=4:root	--typecode=4:$(LINUX) \
+	sudo /sbin/sgdisk --clear  \
+		--new=1:$(SPL_START):$(SPL_END)     --change-name=1:"spl"   --typecode=1:$(SPL)   \
+		--new=2:$(UBOOT_START):$(UBOOT_END) --change-name=2:"uboot" --typecode=2:$(UBOOT) \
+		--new=3:$(VFAT_START):$(VFAT_END)   --change-name=3:"image" --typecode=3:$(VFAT)  \
+		--new=4:$(ROOT_START):0             --change-name=4:"root"  --typecode=4:$(LINUX) \
 		$(DISK)
 	-/sbin/partprobe
 	@sleep 1
@@ -382,26 +389,27 @@ else
 	@echo Error: Could not find bootloader partition for $(DISK)
 	@exit 1
 endif
-	#dd if=$(spl_payload)   of=$(PART1) bs=4096
-	dd if=$(uboot_fit) of=$(PART2) bs=4096
-	dd if=$(vfat_image) of=$(PART3) bs=4096
+#	sudo dd if=$(spl_payload)   of=$(PART1) bs=4096
+	sudo dd if=$(uboot_fit)  of=$(PART2) bs=4096
+	sudo dd if=$(vfat_image) of=$(PART3) bs=4096
+	sync; sleep 1;
 
 #starfive image
 format-rootfs-image: format-boot-loader
 	@echo "Done setting up basic initramfs boot. We will now try to install"
 	@echo "a Debian snapshot to the Linux partition, which requires sudo"
 	@echo "you can safely cancel here"
-	/sbin/mke2fs -t ext4 $(PART4)
+	sudo /sbin/mke2fs -t ext4 $(PART4)
 	-mkdir -p tmp-mnt
 	-mkdir -p tmp-rootfs
 	-sudo mount $(PART4) tmp-mnt && \
 		sudo mount -o loop $(buildroot_rootfs_ext) tmp-rootfs&& \
 		sudo cp -fr tmp-rootfs/* tmp-mnt/
+	sync; sleep 1;
 	sudo umount tmp-mnt
 	sudo umount tmp-rootfs
 	rmdir tmp-mnt
 	rmdir tmp-rootfs
-
 
 #usb config
 format-usb-disk: $(sbi_bin) $(uboot) $(fit) $(vfat_image)
