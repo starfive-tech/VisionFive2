@@ -1,0 +1,39 @@
+#! /bin/sh
+
+usage() {
+	echo "Usage: $0 [srctree]" >&2
+	exit 1
+}
+
+cd "${1:-.}" || usage
+echo "#! /bin/sh"
+echo ""
+echo "cat /proc/version"
+
+if head=`git rev-parse --verify --short HEAD 2>/dev/null`; then
+
+	atag="`git describe 2>/dev/null`"
+
+	# Show -g<commit> if we have no tag, or just the tag
+	# otherwise.
+	if [ -z "${atag}" ] ; then
+	    atag=$atag"-g"${head}
+	fi
+
+	# Check for uncommitted changes
+	if git diff-index --name-only HEAD | grep -v "^scripts/package" \
+	    | read dummy; then
+        atag=$atag"-dirty"
+	fi
+    echo "echo \"$atag\""
+
+fi
+
+jh7110_flag=JH7110
+
+for atag in $(git tag --merge HEAD --sort=-taggerdate | grep "${jh7110_flag}")
+do
+    echo "echo \"$atag\""
+    exit
+done
+
