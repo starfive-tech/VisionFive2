@@ -83,6 +83,7 @@ uboot_defconfig := $(uboot_srcdir)/configs/$(uboot_config)
 rootfs := $(wrkdir)/rootfs.bin
 
 target_gcc := $(CROSS_COMPILE)gcc
+version := $(wrkdir)/version
 
 .PHONY: all check_arg
 
@@ -139,6 +140,11 @@ fpga: HWBOARD := fpga
 fpga: all
 fpga: HWBOARD_FLAG := HWBOARD_FPGA
 
+$(version):
+	cd $(linux_srcdir) && \
+	sh $(confdir)/version > $(version)
+	chmod 777 $(version)
+
 $(buildroot_initramfs_wrkdir)/.config: $(buildroot_srcdir)
 #	rm -rf $(dir $@)
 	mkdir -p $(dir $@)
@@ -163,9 +169,12 @@ $(buildroot_rootfs_wrkdir)/.config: $(buildroot_srcdir) $(buildroot_initramfs_ta
 	cp $(buildroot_rootfs_config) $@
 	$(MAKE) -C $< RISCV=$(RISCV) PATH=$(RVPATH) O=$(buildroot_rootfs_wrkdir) olddefconfig
 
-$(buildroot_rootfs_ext): $(buildroot_srcdir) $(buildroot_rootfs_wrkdir)/.config $(target_gcc) $(buildroot_rootfs_config)
+$(buildroot_rootfs_ext): $(buildroot_srcdir) $(buildroot_rootfs_wrkdir)/.config $(target_gcc) $(buildroot_rootfs_config) $(version)	
 	mkdir -p $(buildroot_rootfs_wrkdir)/target/lib/
 	cp -r $(module_install_path)/lib/modules $(buildroot_rootfs_wrkdir)/target/lib/
+	$(MAKE) -C $< RISCV=$(RISCV) PATH=$(RVPATH) O=$(buildroot_rootfs_wrkdir)
+	cp $(version) $(buildroot_rootfs_wrkdir)/target/usr/bin/version
+	rm -rf $(buildroot_rootfs_ext)
 	$(MAKE) -C $< RISCV=$(RISCV) PATH=$(RVPATH) O=$(buildroot_rootfs_wrkdir)
 
 .PHONY: buildroot_rootfs
@@ -231,8 +240,9 @@ initrd: $(initramfs)
 $(initramfs).d: $(buildroot_initramfs_sysroot)
 	$(linux_srcdir)/usr/gen_initramfs_list.sh -l $(confdir)/initramfs.txt $(buildroot_initramfs_sysroot) > $@
 
-$(initramfs): $(buildroot_initramfs_sysroot) $(vmlinux) vpudriver-build
+$(initramfs): $(buildroot_initramfs_sysroot) $(vmlinux) vpudriver-build $(version)
 	cp -r $(module_install_path)/lib/modules $(buildroot_initramfs_sysroot)/lib/
+	cp $(version) $(buildroot_initramfs_sysroot)/usr/bin/version && \
 	cd $(linux_wrkdir) && \
 		$(linux_srcdir)/usr/gen_initramfs_list.sh \
 		-o $@ -u $(shell id -u) -g $(shell id -g) \
@@ -343,6 +353,7 @@ clean:
 	rm -f work/initramfs.cpio.gz
 	rm -f work/linux/vmlinux*
 	rm -f work/u-boot-spl.bin.normal.out
+	rm -f work/version
 
 .PHONY: distclean
 distclean:
