@@ -16,13 +16,14 @@ else
         echo "    $0";
         echo "    $0 initramfs";
         echo "    $0 rootfs";
+        exit 1
     fi
 fi
 echo "$Target_DIR"
 
 if [ ! -d $Target_DIR ]; then
     echo "Warning: need building the usdk firstly: $1"
-    exit
+    exit 1
 fi
 
 ################################################################

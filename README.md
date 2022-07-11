@@ -180,6 +180,9 @@ Please insert the TF card to the host and run command `df -h` to check the devic
 ```
 $ make -jx
 $ make buildroot_rootfs -jx
+$ ./build_soft_3rdpart.sh rootfs
+$ rm work/buildroot_rootfs/images/rootfs.ext*
+$ make buildroot_rootfs -jx
 $ make DISK=/dev/sdX format-rootfs-image && sync
 ```
 
