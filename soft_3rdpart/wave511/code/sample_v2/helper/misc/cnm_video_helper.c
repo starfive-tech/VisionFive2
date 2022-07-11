@@ -965,7 +965,8 @@ Uint32 StoreYuvImageBurst(
     osal_free(pSrc);
     return totSize;
 #else
-    if (is10bit != TRUE  && is422 != TRUE && isPack != TRUE && interLeave != TRUE) {
+    // if dec video format is I420 NV21 NV12, just dump it
+    if (is10bit != TRUE  && is422 != TRUE && isPack != TRUE) {
         osal_memcpy(pDst, pSrc, SrcSize);
         osal_free(pSrc);
         return totSize;
