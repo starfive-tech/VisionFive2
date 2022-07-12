@@ -73,7 +73,8 @@ uboot_dtb_file := $(wrkdir)/u-boot/arch/riscv/dts/starfive_$(HWBOARD).dtb
 
 uboot := $(uboot_wrkdir)/u-boot.bin
 
-spl_payload :=$(wrkdir)/u-boot-spl.bin.normal.out
+spl_tool_srcdir :=$(CURDIR)/soft_3rdpart/spl_tool/
+spl_bin_normal_out :=$(wrkdir)/u-boot-spl.bin.normal.out
 
 uboot_config := starfive_$(HWBOARD)_defconfig
 
@@ -84,7 +85,7 @@ target_gcc := $(CROSS_COMPILE)gcc
 
 .PHONY: all check_arg
 
-all: check_arg $(fit) $(vfat_image) $(uboot_fit)
+all: check_arg $(fit) $(vfat_image) $(uboot_fit) $(spl_bin_normal_out)
 	@echo
 	@echo "This image has been generated for an ISA of $(ISA) and an ABI of $(ABI)"
 	@echo "Find the image in work/image.fit, which should be copied to an MSDOS boot partition 1"
@@ -280,6 +281,13 @@ $(uboot): $(uboot_srcdir) $(target_gcc)
 	$(MAKE) -C $(uboot_srcdir) O=$(uboot_wrkdir) $(uboot_config)
 	$(MAKE) -C $(uboot_srcdir) O=$(uboot_wrkdir) CROSS_COMPILE=$(CROSS_COMPILE)
 
+$(spl_bin_normal_out): $(spl_tool_srcdir) $(uboot)
+	cd $(spl_tool_srcdir) && \
+	./create_sbl $(uboot_wrkdir)/spl/u-boot-spl.bin 0x01010101 && \
+	cd -
+	cp $(spl_tool_srcdir)/u-boot-spl.bin.normal.out $(spl_bin_normal_out)
+	rm -f $(spl_tool_srcdir)/u-boot-spl.bin*
+
 $(uboot_fit): $(sbi_bin) $(uboot_its_file) $(uboot)
 	$(uboot_wrkdir)/tools/mkimage -f $(uboot_its_file) -A riscv -O u-boot -T firmware $@
 
@@ -303,6 +311,7 @@ clean:
 	rm -f work/*_fw_payload.img
 	rm -f work/initramfs.cpio.gz
 	rm -f work/linux/vmlinux*
+	rm -f work/u-boot-spl.bin.normal.out
 
 .PHONY: distclean
 distclean:
@@ -360,7 +369,7 @@ $(vfat_image): $(fit) $(confdir)/jh7110_uEnv.txt
 	PATH=$(RVPATH) MTOOLS_SKIP_CHECK=1 mcopy -i $(vfat_image) $(confdir)/jh7110_uEnv.txt ::jh7110_uEnv.txt
 
 .PHONY: format-boot-loader
-format-boot-loader: $(sbi_bin) $(uboot) $(fit) $(vfat_image)
+format-boot-loader: $(sbi_bin) $(uboot) $(fit) $(vfat_image) $(spl_bin_normal_out)
 	@test -b $(DISK) || (echo "$(DISK): is not a block device"; exit 1)
 	sudo /sbin/sgdisk --clear  \
 		--new=1:$(SPL_START):$(SPL_END)     --change-name=1:"spl"   --typecode=1:$(SPL)   \
@@ -389,9 +398,9 @@ else
 	@echo Error: Could not find bootloader partition for $(DISK)
 	@exit 1
 endif
-#	sudo dd if=$(spl_payload)   of=$(PART1) bs=4096
-	sudo dd if=$(uboot_fit)  of=$(PART2) bs=4096
-	sudo dd if=$(vfat_image) of=$(PART3) bs=4096
+#	sudo dd if=$(spl_bin_normal_out) of=$(PART1) bs=4096
+	sudo dd if=$(uboot_fit)          of=$(PART2) bs=4096
+	sudo dd if=$(vfat_image)         of=$(PART3) bs=4096
 	sync; sleep 1;
 
 #starfive image
