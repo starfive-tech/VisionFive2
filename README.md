@@ -10,7 +10,7 @@ image with a Opensbi binary, linux kernel, device tree, ramdisk and rootdisk for
 ### Ubuntu 16.04/18.04/20.04 x86_64 host
 
 - Status: Working
-- Build dependencies: `build-essential git autoconf automake autotools texinfo bison xxd curl flex gawk gdisk gperf libgmp-dev libmpfr-dev libmpc-dev libz-dev libssl-dev libncurses-dev libtool patchutils python screen texinfo unzip zlib1g-dev libyaml-dev`
+- Build dependencies: `build-essential g++ git autoconf automake autotools texinfo bison xxd curl flex gawk gdisk gperf libgmp-dev libmpfr-dev libmpc-dev libz-dev libssl-dev libncurses-dev libtool patchutils python screen texinfo unzip zlib1g-dev libyaml-dev`
 - Additional build deps for **QEMU**: `libglib2.0-dev libpixman-1-dev`
 - Additional build deps for **Spike**: `device-tree-compiler`
 - tools require for  **format-boot-loader** target: `mtools`
@@ -51,6 +51,7 @@ Then the below target files will be generated, copy files to tftp server workspa
 ```
 work/image.fit
 work/evb_fw_payload.img
+work/u-boot-spl.bin.normal.out
 
 work/initramfs.cpio.gz
 work/linux/arch/riscv/boot/Image.gz
