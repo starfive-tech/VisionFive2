@@ -32,7 +32,11 @@ buildroot_rootfs_config := $(confdir)/buildroot_rootfs_config
 
 linux_srcdir := $(srcdir)/linux
 linux_wrkdir := $(wrkdir)/linux
-linux_defconfig := $(linux_srcdir)/arch/riscv/configs/starfive_jh7110_defconfig
+ifeq ($(HWBOARD), evb)
+	linux_defconfig := $(linux_srcdir)/arch/riscv/configs/starfive_jh7110_defconfig
+else
+	linux_defconfig := $(linux_srcdir)/arch/riscv/configs/starfive_visionfive2_defconfig
+endif
 
 vmlinux := $(linux_wrkdir)/vmlinux
 vmlinux_stripped := $(linux_wrkdir)/vmlinux-stripped
@@ -401,7 +405,7 @@ VFAT_END    = 614399
 VFAT_SIZE   = $(shell expr $(VFAT_END) - $(VFAT_START) + 1)
 ROOT_START  = 614400
 
-$(vfat_image): $(fit) $(confdir)/jh7110_uEnv.txt
+$(vfat_image): $(fit) $(confdir)/jh7110_uEnv.txt $(confdir)/vf2_uEnv.txt
 	@if [ `du --apparent-size --block-size=512 $(uboot) | cut -f 1` -ge $(UBOOT_SIZE) ]; then \
 		echo "Uboot is too large for partition!!\nReduce uboot or increase partition size"; \
 		 exit 1; fi
@@ -409,6 +413,7 @@ $(vfat_image): $(fit) $(confdir)/jh7110_uEnv.txt
 	/sbin/mkfs.vfat $(vfat_image)
 	PATH=$(RVPATH) MTOOLS_SKIP_CHECK=1 mcopy -i $(vfat_image) $(fit) ::starfiveu.fit
 	PATH=$(RVPATH) MTOOLS_SKIP_CHECK=1 mcopy -i $(vfat_image) $(confdir)/jh7110_uEnv.txt ::jh7110_uEnv.txt
+	PATH=$(RVPATH) MTOOLS_SKIP_CHECK=1 mcopy -i $(vfat_image) $(confdir)/vf2_uEnv.txt ::vf2_uEnv.txt
 
 .PHONY: format-boot-loader
 format-boot-loader: $(sbi_bin) $(uboot) $(fit) $(vfat_image) $(spl_bin_normal_out)
