@@ -1,6 +1,6 @@
 # StarFiveTech Freedom Unleashed SDK
 
-This builds a complete RISC-V cross-compile toolchain for the `StarFiveTech` `JH7110` SoC. It also builds U-boot SPL, U-boot and a flattened image tree (FIT) image with a Opensbi binary, linux kernel, device tree, ramdisk image and rootfs image for the `JH7110 EVB` board.
+This builds a complete RISC-V cross-compile toolchain for the `StarFiveTech` `JH7110` SoC. It also builds U-boot SPL, U-boot and a flattened image tree (FIT) image with a Opensbi binary, linux kernel, device tree, ramdisk image and rootfs image for the `JH7110 VisionFive2` board.
 
 ## Prerequisites
 
@@ -25,10 +25,10 @@ $ sudo apt-get install git-lfs
 
 ## Fetch Code Instructions ##
 
-Checkout this repository  (e.g.: branch `jh7110-devel`). Then checkout all of the linked submodules using:
+Checkout this repository  (e.g.: branch `vf2-515-devel`). Then checkout all of the linked submodules using:
 
-	$ git clone git@192.168.110.45:sdk/freelight-u-sdk.git
-	$ git checkout --track origin/jh7110-devel
+	$ git clone git@192.168.110.45:sbc/visionfive.git
+	$ git checkout --track origin/vf2-515-devel
 	$ git submodule update --init --recursive
 
 In case someone run `git clone git@gitlab.starfivetech.com:sdk/freelight-u-sdk.git`, recommend to add the below at the tail of the /etc/hosts to fix the network domain issue:
@@ -42,9 +42,9 @@ This will take some time and require around 7GB of disk space. Some modules may 
 For user who build the release tag version, the above command is enough. For developer, need to switch the 5 submodules `buildroot`, `u-boot`, `linux`, `opensbi`, `soft_3rdpart` to correct branch manually, or refer to `.gitmodule`
 
 ```
-$ cd buildroot && git checkout jh7110-devel && cd ..
-$ cd u-boot && git checkout jh7110-master && cd ..
-$ cd linux && git checkout jh7110-5.15.y-devel && cd ..
+$ cd buildroot && git checkout --track origin/vf2-devel && cd ..
+$ cd u-boot && git checkout --track origin/vf2-devel && cd ..
+$ cd linux && git checkout --track origin/vf2-515-devel && cd ..
 $ cd opensbi && git checkout master && cd ..
 $ cd soft_3rdpart && git checkout jh7110-devel && cd ..
 ```
@@ -59,7 +59,7 @@ Then the below target files will be generated, copy files to tftp server workspa
 
 ```
 work/
-├── evb_fw_payload.img
+├── visionfive2_fw_payload.img
 ├── image.fit
 ├── initramfs.cpio.gz
 ├── u-boot-spl.bin.normal.out
@@ -73,17 +73,13 @@ work/
     │       │   ├── jh7110-evb-overlay-spi.dtbo
     │       │   ├── jh7110-evb-overlay-uart4-emmc.dtbo
     │       │   └── jh7110-evb-overlay-uart5-pwm.dtbo
-    │       ├── jh7110-evb-can-pdm-pwmdac.dtb
-    │       ├── jh7110-evb.dtb
-    │       ├── jh7110-evb-dvp-rgb2hdmi.dtb
-    │       ├── jh7110-evb-i2s-ac108.dtb
-    │       ├── jh7110-evb-pcie-i2s-sd.dtb
-    │       ├── jh7110-evb-spi-uart2.dtb
-    │       ├── jh7110-evb-uart1-rgb2hdmi.dtb
-    │       ├── jh7110-evb-uart4-emmc-spdif.dtb
-    │       ├── jh7110-evb-uart5-pwm-i2c-tdm.dtb
-    │       ├── jh7110-evb-usbdevice.dtb
-    │       ├── jh7110-fpga.dtb
+    │       ├── jh7110-visionfive-v2-A10.dtb
+    │       ├── jh7110-visionfive-v2-A11.dtb
+    │       ├── jh7110-visionfive-v2-ac108.dtb
+    │       ├── jh7110-visionfive-v2.dtb
+    │       ├── jh7110-visionfive-v2-wm8960.dtb
+    │       ├── vf2-overlay
+    │       │   └── vf2-overlay-uart3-i2c.dtbo
     └── Image.gz
 ```
 
@@ -108,22 +104,22 @@ $ make -C ./work/buildroot_rootfs/ O=./work/buildroot_rootfs ffmpeg-rebuild    #
 $ make vpudriver-build # build wave511/wave420l/codaj12 driver
 ```
 
-## Running on JH7110 EVB Board via Network
+## Running on JH7110 VisionFive2 Board via Network
 
-After the JH7110 EVB Board is properly connected to the serial port cable, network cable and power cord, turn on the power from the wall power socket to power and you will see the startup information as follows:
+After the JH7110 VisionFive2 Board is properly connected to the serial port cable, network cable and power cord, turn on the power from the wall power socket to power and you will see the startup information as follows:
 
 ```
 U-Boot 2021.10 (Oct 10 2022 - 22:49:48 +0800)
 
 CPU:   rv64imacu
-Model: StarFive JH7110 EVB
+Model: StarFive VisionFive V2
 DRAM:  4 GiB
 MMC:   sdio0@16010000: 0
 Loading Environment from SPIFlash... SF: Detected gd25lq128 with page size 256 Bytes, erase size 4 KiB, total 16 MiB
 In:    serial@10000000
 Out:   serial@10000000
 Err:   serial@10000000
-Model: StarFive JH7110 EVB
+Model: StarFive VisionFive V2
 Net:   eth0: ethernet@16030000, eth1: ethernet@16040000
 Hit any key to stop autoboot:  0 
 StarFive #
@@ -131,7 +127,7 @@ StarFive #
 
 Then press any key to stop and enter uboot terminal, there are two way to boot the board
 
-#### 1. Running image.fit with the default dtb `jh7110-evb.dtb`
+#### 1. Running image.fit with the default dtb `jh7110-visionfive-v2.dtb`
 
 transfer image.fit through TFTP:
 
@@ -164,7 +160,7 @@ Password: starfive
 
 #### 2. Running the other dtb with the Image.gz and initramfs.cpio.gz
 
-If we want to loading the other dtb, e.g. `jh7110-evb-pcie-i2s-sd.dtb`, follow the below
+If we want to loading the other dtb, e.g. `jh7110-vf2-xxx.dtb`, follow the below
 
 Step1: set enviroment parameter:
 
@@ -176,7 +172,7 @@ setenv kernel_comp_addr_r 0xb0000000;setenv kernel_comp_size 0x10000000;
 Step2: upload files to ddr:
 
 ```
-tftpboot ${fdt_addr_r} jh7110-evb-pcie-i2s-sd.dtb;
+tftpboot ${fdt_addr_r} jh7110-vf2-xxx.dtb;
 tftpboot ${kernel_addr_r} Image.gz;
 tftpboot ${ramdisk_addr_r} initramfs.cpio.gz;
 ```
