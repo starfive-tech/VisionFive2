@@ -1309,7 +1309,7 @@ Int32 writeCustomHeader(int coreIdx, EncOpenParam *encOP, vpu_buffer_t *vbCustom
         vui.vui_parameters_presesent_flag = 1;
         vui.vui_timing_info_present_flag = 1;
         vui.vui_num_units_in_tick = 1000;
-        vui.vui_time_scale = 60*1000.0;			
+        vui.vui_time_scale = (encOP->frameRateInfo)*1000.0;
         vui.vui_hrd_parameters_present_flag = 1;	
         vui.def_disp_win_left_offset = 1;
         vui.def_disp_win_right_offset = 1;
@@ -1429,7 +1429,7 @@ Int32 writeCustomHeader(int coreIdx, EncOpenParam *encOP, vpu_buffer_t *vbCustom
             }
         }
 
-        EncodeVUI(&hrd, &vui, pRbspBuf, VUI_HRD_RBSP_BUF_SIZE, &rbspByteSize, &rbspBitSize, 60);
+        EncodeVUI(&hrd, &vui, pRbspBuf, VUI_HRD_RBSP_BUF_SIZE, &rbspByteSize, &rbspBitSize, encOP->frameRateInfo);
         encOP->vuiRbspDataSize = rbspBitSize;
         vdi_write_memory(coreIdx, encOP->vuiRbspDataAddr, pRbspBuf,  rbspByteSize, encOP->streamEndian);
         osal_free(pRbspBuf);

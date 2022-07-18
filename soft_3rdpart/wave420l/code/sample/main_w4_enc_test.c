@@ -413,7 +413,7 @@ int TestEncoder(TestEncConfig *param)
         }
     }
 #ifdef TEST_ENCODE_CUSTOM_HEADER
-    if (allocateSeiNalDataBuf(coreIdx, encConfig, &vbSeiNal[0], fbAllocInfo.num) == FALSE) {
+    if (allocateSeiNalDataBuf(coreIdx, &vbSeiNal[0], fbAllocInfo.num) == FALSE) {
         goto ERR_ENC_OPEN;
     }
 #endif
@@ -535,7 +535,7 @@ int TestEncoder(TestEncConfig *param)
 
         setCtuQpMap(coreIdx, &encConfig, encOP, vbCtuQp[srcFrameIdx].phys_addr, &ctuQpMapBuf[0], srcFrameWidth, srcFrameHeight, &encParam, MAX_CTU_NUM);
 #ifdef TEST_ENCODE_CUSTOM_HEADER
-        if (writeSeiNalData(coreIdx, handle, encOP.streamEndian, vbSeiNal[srcFrameIdx].phys_addr, &hrd) == FALSE) {
+        if (writeSeiNalData(handle, encOP.streamEndian, vbSeiNal[srcFrameIdx].phys_addr, &hrd) == FALSE) {
             goto ERR_ENC_OPEN;
         }
 #endif
