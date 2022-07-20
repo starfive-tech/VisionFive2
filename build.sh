@@ -22,16 +22,17 @@ echo $0 $1
 #default
 cpu_numb_input="1"
 
+#interactive input cpu number
+num=`cat /proc/cpuinfo | grep "processor" | wc -l`
+
 if [ $1 ]
 then
 	#cmdline para input cpu processor number
 	echo $1
 	cpu_numb_input=$1
 else
-	#interactive input cpu number
-	num=`cat /proc/cpuinfo | grep "processor" | wc -l`
-	printf "please input the cpu number to perform concurrent build, choose 1 ~ $num:\n"
 
+	printf "please input the cpu number to perform concurrent build, choose 1 ~ $num:\n"
 	read cpu_numb_input
 	if (( $cpu_numb_input > $num ))
 	then
@@ -44,9 +45,6 @@ else
 		echo "input < 1 error, exit"
 		exit 1
 	fi
-
-	echo ""
-	echo "make -j$cpu_numb_input"
 fi
 
 printf ${COLOR_NORMAL}
@@ -55,25 +53,48 @@ printf ${COLOR_NORMAL}
 #rm -rf work/
 
 # clean kernel built
-make clean
+#make clean
 
 tag=`git describe`
 echo "make -j$cpu_numb_input > build.$tag.log"
-make -j$cpu_numb_input > build.$tag.log
+make -j$cpu_numb_input | tee build.$tag.log 
+
+if (( $? > 0 ))
+then
+	echo "build failed! exit!"
+	exit 1
+fi
 
 echo "./build_soft_3rdpart.sh >>  build.$tag.log"
-./build_soft_3rdpart.sh >>  build.$tag.log
+./build_soft_3rdpart.sh | tee -a build.$tag.log
+
+if (( $? > 0 ))
+then
+	echo "build 3rd part software failed! exit!"
+	exit 1
+fi
+
 
 echo "rm initramfs, than rebuild"
-rm -rf work/initramfs.cpio.gz
+rm -rf work/initramfs.cpio.gz | tee -a build.$tag.log
 
 echo "make -j$cpu_numb_input >> build.$tag.log"
-make -j$cpu_numb_input >> build.$tag.log
+make -j$cpu_numb_input | tee -a build.$tag.log
+
+if (( $? > 0 ))
+then
+	echo "build failed! exit!"
+	exit 1
+else
+	echo "build images success!!!"
+fi
+
 
 
 echo ""
-echo "Rootfs & Kernel version string:"
-strings work/image.fit | grep "JH7110_51"
+echo "Rootfs & Kernel version string:" | tee -a build.$tag.log
+strings work/image.fit | grep "JH7110_51" | tee -a build.$tag.log
+
 echo ""
-echo "u-boot version string:"
-strings work/u-boot/u-boot.bin | grep "JH7110_51"
+echo "u-boot version string:" | tee -a build.$tag.log
+strings work/u-boot/u-boot.bin | grep "JH7110_51" | tee -a build.$tag.log
