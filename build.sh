@@ -22,7 +22,7 @@ echo $0 $1
 #default
 cpu_numb_input="1"
 
-#interactive input cpu number
+#real cpu number
 num=`cat /proc/cpuinfo | grep "processor" | wc -l`
 
 if [ $1 ]
@@ -34,17 +34,18 @@ else
 
 	printf "please input the cpu number to perform concurrent build, choose 1 ~ $num:\n"
 	read cpu_numb_input
-	if (( $cpu_numb_input > $num ))
-	then
-		echo "input > $num  error, exit"
-		exit 1
-	fi
 
-	if (( $cpu_numb_input  <  1 ))
-	then
-		echo "input < 1 error, exit"
-		exit 1
-	fi
+fi
+
+if (( $cpu_numb_input > $num ))
+then
+	echo "input > $num  error, exit"
+	exit 1
+fi
+if (( $cpu_numb_input  <  1 ))
+then
+	echo "input < 1 error, exit"
+	exit 1
 fi
 
 printf ${COLOR_NORMAL}
