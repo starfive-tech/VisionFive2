@@ -1057,6 +1057,11 @@ int setWaveEncOpenParam(EncOpenParam *pEncOP, TestEncConfig *pEncConfig, ENC_CFG
     param->timeScale            = pCfg->hevcCfg.timeScale;
     param->numTicksPocDiffOne   = pCfg->hevcCfg.numTicksPocDiffOne;
 
+    if(pCfg->hevcCfg.frameRate) {
+        param->numUnitsInTick	= 1000;
+        param->timeScale	= (pCfg->hevcCfg.frameRate)*1000;
+    }
+
     param->vuiParam.vuiParamFlags       = pCfg->hevcCfg.vuiParam.vuiParamFlags;
     param->vuiParam.vuiAspectRatioIdc   = pCfg->hevcCfg.vuiParam.vuiAspectRatioIdc;
     param->vuiParam.vuiSarSize          = pCfg->hevcCfg.vuiParam.vuiSarSize;

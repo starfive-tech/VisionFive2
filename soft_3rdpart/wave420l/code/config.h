@@ -65,9 +65,9 @@
 //------------------------------------------------------------------------------
 // WAVE420
 //------------------------------------------------------------------------------
-//#define SUPPORT_ENCODE_CUSTOM_HEADER    // to make VUI/HRD/SEI data
+#define SUPPORT_ENCODE_CUSTOM_HEADER    // to make VUI/HRD/SEI data
 #ifdef SUPPORT_ENCODE_CUSTOM_HEADER
-//#define TEST_ENCODE_CUSTOM_HEADER
+#define TEST_ENCODE_CUSTOM_HEADER
 #endif
 
 
