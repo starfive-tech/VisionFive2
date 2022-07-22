@@ -26,8 +26,14 @@
 #ifndef __CODA9_FUNCTION_H__
 #define __CODA9_FUNCTION_H__
 
-#include "vpuapi.h"
-#include "../product.h"
+#ifdef USE_FEEDING_METHOD_BUFFER
+    #include "wave511/vpuapi/vpuapi.h"
+    #include "wave511/vpuapi/product.h"
+#else
+    #include "vpuapi.h"
+    #include "../product.h"
+#endif
+
 
 #ifdef __cplusplus
 extern "C" {

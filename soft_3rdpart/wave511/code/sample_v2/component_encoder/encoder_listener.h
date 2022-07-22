@@ -23,8 +23,13 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "cnm_app.h"
-#include "misc/bw_monitor.h"
+#ifdef USE_FEEDING_METHOD_BUFFER
+    #include "wave511/sample_v2/component/cnm_app.h"
+    #include "wave511/sample_v2/helper/misc/bw_monitor.h"
+#else
+    #include "cnm_app.h"
+    #include "misc/bw_monitor.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {

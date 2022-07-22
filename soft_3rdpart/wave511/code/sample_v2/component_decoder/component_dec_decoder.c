@@ -375,7 +375,6 @@ static BOOL DoReset(ComponentImpl* com)
     return TRUE;
 }
 
-
 static BOOL Decode(ComponentImpl* com, PortContainerES* in, PortContainerDisplay* out)
 {
     DecoderContext*                 ctx           = (DecoderContext*)com->context;
@@ -590,6 +589,9 @@ static CNMComponentParamRet GetParameterDecoder(ComponentImpl* from, ComponentIm
         else {
             fbNum->linearNum = 0;
         }
+#ifdef USE_FEEDING_METHOD_BUFFER
+        fbNum->linearNum = 10;
+#endif
         break;
     case GET_PARAM_DEC_BITSTREAM_BUF_POS:
         if (ctx->state < DEC_STATE_INIT_SEQ) return CNM_COMPONENT_PARAM_NOT_READY;

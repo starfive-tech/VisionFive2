@@ -25,8 +25,14 @@
 #ifndef __JPU_YUV_FEEDER_H__
 #define __JPU_YUV_FEEDER_H__
 
-#include "jpuapi.h"
-#include "datastructure.h"
+#ifdef USE_FEEDING_METHOD_BUFFER
+    #include "codaj12/jpuapi/jpuapi.h"
+    #include "codaj12/sample/helper/datastructure.h"
+#else
+    #include "jpuapi.h"
+    #include "datastructure.h"
+#endif
+
 
 #define SOURCE_YUV                  0
 

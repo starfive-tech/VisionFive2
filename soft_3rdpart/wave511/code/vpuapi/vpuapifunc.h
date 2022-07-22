@@ -26,7 +26,11 @@
 #ifndef VPUAPI_UTIL_H_INCLUDED
 #define VPUAPI_UTIL_H_INCLUDED
 
-#include "vpuapi.h"
+#ifdef USE_FEEDING_METHOD_BUFFER
+    #include "wave511/vpuapi/vpuapi.h"
+#else
+    #include "vpuapi.h"
+#endif
 
 // COD_STD
 enum {

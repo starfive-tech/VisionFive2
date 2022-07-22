@@ -40,6 +40,16 @@ static struct termios initial_settings, new_settings;
 static int peek_character = -1;
 #endif
 
+#define ANSI_COLOR_ERR      "\x1b[31m"       // RED
+#define ANSI_COLOR_TRACE    "\x1b[32m"       // GREEN
+#define ANSI_COLOR_WARN     "\x1b[33m"       // YELLOW
+#define ANSI_COLOR_BLUE     "\x1b[34m"       // BLUE
+#define ANSI_COLOR_INFO     ""
+// For future
+#define ANSI_COLOR_MAGENTA  "\x1b[35m"       // MAGENTA
+#define ANSI_COLOR_CYAN     "\x1b[36m"       // CYAN
+#define ANSI_COLOR_RESET    "\x1b[0m"        // RESET
+
 static int log_colors[MAX_LOG_LEVEL] = {
 	0,
 	TERM_COLOR_R|TERM_COLOR_G|TERM_COLOR_B|TERM_COLOR_BRIGHT, 	//INFO
@@ -51,6 +61,7 @@ static int log_colors[MAX_LOG_LEVEL] = {
 static unsigned log_decor = LOG_HAS_TIME | LOG_HAS_FILE | LOG_HAS_MICRO_SEC |
 			    LOG_HAS_NEWLINE |
 			    LOG_HAS_SPACE | LOG_HAS_COLOR;
+static int max_log_level = ERR;
 static FILE *fpLog  = NULL;
 
 #ifdef WIN32
@@ -78,6 +89,16 @@ void DeInitLog()
     }
 }
 
+void SetMaxLogLevel(int level)
+{
+	max_log_level = level;
+}
+
+int GetMaxLogLevel()
+{
+	return max_log_level;
+}
+
 void SetLogColor(int level, int color)
 {
 	log_colors[level] = color;
@@ -102,6 +123,25 @@ void LogMsg(int level, const char *format, ...)
 {
 	va_list ptr;
 	char logBuf[MAX_PRINT_LENGTH] = {0};
+    char*   prefix = "";
+    char*   postfix= "";
+
+    if (level > max_log_level)
+        return;
+#if defined(SUPPORT_SW_UART) || defined(SUPPORT_SW_UART_V2)
+	pthread_mutex_lock(&s_log_mutex);
+#endif
+
+    if ((log_decor & LOG_HAS_COLOR)) {
+        postfix = ANSI_COLOR_RESET;
+        switch (level) {
+        case INFO:  prefix = ANSI_COLOR_INFO;  break;
+        case ERR:   prefix = ANSI_COLOR_ERR "[ERROR]";   break;
+        case TRACE: prefix = ANSI_COLOR_TRACE; break;
+        case WARN:  prefix = ANSI_COLOR_WARN"[WARN ]";  break;
+        default:    prefix = "";               break;
+        }
+    }
 
 	va_start( ptr, format );
 #if defined(WIN32) || defined(__MINGW32__)
@@ -137,6 +177,8 @@ void LogMsg(int level, const char *format, ...)
 	}
 	puts(logBuf);
 #else
+    fputs(prefix,  stderr);
+    fputs(postfix, stderr);
     fprintf(stderr, logBuf);
     //fputs(logBuf, stderr);
 #endif

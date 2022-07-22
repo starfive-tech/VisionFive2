@@ -26,7 +26,11 @@
 #ifndef CNM_FPGA_H_INCLUDED
 #define CNM_FPGA_H_INCLUDED
 
-#include "jputypes.h"
+#ifdef USE_FEEDING_METHOD_BUFFER
+    #include "codaj12/jpuapi/jputypes.h"
+#else
+    #include "jputypes.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {

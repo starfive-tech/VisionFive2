@@ -163,3 +163,104 @@ BOOL BitstreamReader_Destroy(
     return TRUE;
 }
 
+BitstreamReader BufferStreamReader_Create(
+    Uint32      type,
+    EndianMode  endian,
+    EncHandle*  handle
+    )
+{
+    AbstractBitstreamReader* reader;
+
+    reader = (AbstractBitstreamReader*)osal_malloc(sizeof(AbstractBitstreamReader));
+
+    reader->handle  = handle;
+    reader->type    = type;
+    reader->endian  = endian;
+
+    return reader;
+}
+
+Uint32 BufferStreamReader_Act(
+    BitstreamReader reader,
+    PhysicalAddress bitstreamBuffer,
+    Uint32          bitstreamBufferSize,
+    Uint32          streamReadSize,
+    Uint8*          pBuffer,
+    Comparator      comparator
+    )
+{
+    AbstractBitstreamReader* absReader = (AbstractBitstreamReader*)reader;
+    EncHandle       *handle;
+    RetCode         ret = RETCODE_SUCCESS;
+    PhysicalAddress paRdPtr;
+    PhysicalAddress paWrPtr;
+    int             size = 0;
+    Int32           loadSize = 0;
+    PhysicalAddress paBsBufStart = bitstreamBuffer;
+    PhysicalAddress paBsBufEnd   = bitstreamBuffer+bitstreamBufferSize;
+    Uint32          coreIdx;
+
+    if (reader == NULL) {
+
+        VLOG(ERR, "%s:%d Invalid handle\n", __FUNCTION__, __LINE__);
+        return 0;
+    }
+
+    handle = absReader->handle;
+    coreIdx = VPU_HANDLE_CORE_INDEX(*handle);
+
+    ret = VPU_EncGetBitstreamBuffer(*handle, &paRdPtr, &paWrPtr, &size);
+    if (size > 0) {
+        if (streamReadSize > 0) {
+            if ((Uint32)size < streamReadSize) {
+                loadSize = size;
+            }
+            else {
+                loadSize = streamReadSize;
+            }
+        }
+        else {
+            loadSize = size;
+        }
+
+        if (absReader->type == BUFFER_MODE_TYPE_RINGBUFFER) {
+            if ((paRdPtr+loadSize) > paBsBufEnd) {
+                Uint32   room;
+                room = paBsBufEnd - paRdPtr;
+                vdi_read_memory(coreIdx, paRdPtr, pBuffer, room,  absReader->endian);
+                vdi_read_memory(coreIdx, paBsBufStart, pBuffer+room, (loadSize-room), absReader->endian);
+            }
+            else {
+                vdi_read_memory(coreIdx, paRdPtr, pBuffer, loadSize, absReader->endian);
+            }
+        }
+        else {
+            /* Linebuffer */
+            vdi_read_memory(coreIdx, paRdPtr, pBuffer, loadSize, absReader->endian);
+        }
+
+        ret = VPU_EncUpdateBitstreamBuffer(*handle, loadSize);
+        if( ret != RETCODE_SUCCESS ) {
+            VLOG(ERR, "VPU_EncUpdateBitstreamBuffer failed Error code is 0x%x \n", ret );
+            return 0;
+        }
+    }
+
+    return loadSize;
+}
+
+BOOL BufferStreamReader_Destroy(
+    BitstreamReader reader
+    )
+{
+    AbstractBitstreamReader* absReader = (AbstractBitstreamReader*)reader;
+
+    if (reader == NULL) {
+        VLOG(ERR, "%s:%d Invalid handle\n", __FUNCTION__, __LINE__);
+        return FALSE;
+    }
+
+    osal_free(absReader);
+
+    return TRUE;
+}

@@ -26,7 +26,12 @@
 #ifndef __PBU_H__
 #define __PBU_H__
 
-#include <vputypes.h>
+#ifdef USE_FEEDING_METHOD_BUFFER
+    #include "wave511/vpuapi/vputypes.h"
+#else
+    #include <vputypes.h>
+#endif
+
 
 typedef void* spp_enc_context;
 

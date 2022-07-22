@@ -1118,6 +1118,82 @@ void ReleaseVideoMemory(
     }
 }
 
+BOOL AllocateLinerBuffer(
+    DecHandle       decHandle,
+    vpu_buffer_t    *pvb,
+    Uint32          size
+)
+{
+    Uint32 coreIndex = VPU_HANDLE_CORE_INDEX(decHandle);
+    if (vdi_allocate_dma_memory(coreIndex, pvb, DEC_FB_LINEAR, decHandle->instIndex) < 0) {
+        VLOG(ERR, "%s:%d fail to allocate frame buffer\n", __FUNCTION__, __LINE__);
+        return FALSE;
+    }
+    return TRUE;
+}
+
+FrameBufferAllocInfo frameBufferAllocInfo;
+
+void *AllocateDecFrameBuffer2(DecHandle decHandle, TestDecConfig* config, Uint32 size, FrameBuffer* retFbArray, vpu_buffer_t* retFbAddrs)
+{
+    RetCode                 ret;
+    vpu_buffer_t            *vb = retFbAddrs;
+    Uint32                  coreIndex = VPU_HANDLE_CORE_INDEX(decHandle);
+
+    vb->size = size;
+    frameBufferAllocInfo.num = 1;
+
+    vdi_allocate_dma_memory(coreIndex, vb, DEC_FB_LINEAR, decHandle->instIndex);
+    VLOG(INFO, "base = %lx virt_addr = %lx phys_addr = %lx\r\n", vb->base, vb->virt_addr, vb->phys_addr);
+    retFbArray->bufY  = vb->phys_addr;
+    retFbArray->bufCb = (PhysicalAddress)-1;
+    retFbArray->bufCr = (PhysicalAddress)-1;
+    retFbArray->updateFbInfo = TRUE;
+    retFbArray->size  = size;
+    // width = 0 not effect right now
+    retFbArray->width = 0;
+    ret = VPU_DecAllocateFrameBuffer(decHandle, frameBufferAllocInfo, retFbArray);
+    if (ret != RETCODE_SUCCESS) {
+        VLOG(ERR, "%s:%d failed to VPU_DecAllocateFrameBuffer() ret:%d\n",
+            __FUNCTION__, __LINE__, ret);
+        ReleaseVideoMemory(decHandle, vb, 1);
+        return NULL;
+    }
+    return (void *)vb->virt_addr;
+}
+
+BOOL AttachDecDMABuffer(DecHandle decHandle, TestDecConfig* config, Uint64 virtAddress, Uint32 size, FrameBuffer* retFbArray, vpu_buffer_t* retFbAddrs)
+{
+    RetCode                 ret;
+    Uint32                  coreIndex = VPU_HANDLE_CORE_INDEX(decHandle);
+    vpu_buffer_t            *vb = retFbAddrs;
+
+    vb->virt_addr = virtAddress;
+    vb->size = size;
+    frameBufferAllocInfo.num = 1;
+
+    vdi_virt_to_phys(coreIndex, vb);
+
+    vdi_attach_dma_memory(coreIndex, vb);
+    VLOG(INFO, "base addr = %lx virt addr= %lx phys addr = %x\r\n", vb->base, vb->virt_addr, vb->phys_addr);
+
+    retFbArray->bufY  = vb->phys_addr;
+    retFbArray->bufCb = (PhysicalAddress)-1;
+    retFbArray->bufCr = (PhysicalAddress)-1;
+    retFbArray->updateFbInfo = TRUE;
+    retFbArray->size  = size;
+    // width = 0 not effect right now
+    retFbArray->width = 0;
+    ret = VPU_DecAllocateFrameBuffer(decHandle, frameBufferAllocInfo, retFbArray);
+    if (ret != RETCODE_SUCCESS) {
+        VLOG(ERR, "%s:%d failed to VPU_DecAllocateFrameBuffer() ret:%d\n",
+            __FUNCTION__, __LINE__, ret);
+        ReleaseVideoMemory(decHandle, vb, 1);
+        return FALSE;
+    }
+    return TRUE;
+}
+
 BOOL AllocateDecFrameBuffer(
     DecHandle       decHandle,
     TestDecConfig*  config,
@@ -1182,7 +1258,13 @@ BOOL AllocateDecFrameBuffer(
             return FALSE;
         }
     }
-
+#ifdef USE_FEEDING_METHOD_BUFFER
+    *retStride     = seqInfo.picWidth;
+    framebufStride = CalcStride(seqInfo.picWidth, seqInfo.picHeight, format, config->cbcrInterleave, config->mapType, FALSE);
+    framebufHeight = seqInfo.picHeight;
+    framebufSize   = VPU_GetFrameBufSize(decHandle, decHandle->coreIdx, framebufStride, framebufHeight,
+                                            config->mapType, format, config->cbcrInterleave, pDramCfg);
+#else
     if (config->bitFormat == STD_VP9) {
         framebufStride = CalcStride(VPU_ALIGN64(seqInfo.picWidth), seqInfo.picHeight, format, config->cbcrInterleave, config->mapType, TRUE);
         framebufHeight = VPU_ALIGN64(seqInfo.picHeight);
@@ -1211,7 +1293,7 @@ BOOL AllocateDecFrameBuffer(
         framebufSize   = VPU_GetFrameBufSize(decHandle, decHandle->coreIdx, framebufStride, framebufHeight,
                                              config->mapType, format, config->cbcrInterleave, pDramCfg);
     }
-
+#endif
     osal_memset((void*)&fbAllocInfo, 0x00, sizeof(fbAllocInfo));
     osal_memset((void*)retFbArray,   0x00, sizeof(FrameBuffer)*totalFbCount);
     fbAllocInfo.format          = format;
@@ -1308,6 +1390,15 @@ BOOL AllocateDecFrameBuffer(
         }
         framebufSize = VPU_GetFrameBufSize(decHandle, coreIndex, linearStride, fbHeight, (TiledMapType)mapType, outFormat, config->cbcrInterleave, pDramCfg);
 
+        fbAllocInfo.nv21    = config->nv21;
+        fbAllocInfo.format  = outFormat;
+        fbAllocInfo.num     = linearFbCount;
+        fbAllocInfo.mapType = (TiledMapType)mapType;
+        fbAllocInfo.stride  = linearStride;
+        fbAllocInfo.height  = fbHeight;
+#ifdef USE_FEEDING_METHOD_BUFFER
+        memcpy(&frameBufferAllocInfo, &fbAllocInfo, sizeof(frameBufferAllocInfo));
+#endif
         for (idx=linearFbStartIdx; idx<totalFbCount; idx++) {
             pvb = &retFbAddrs[idx];
             pvb->size = framebufSize;
@@ -1324,13 +1415,6 @@ BOOL AllocateDecFrameBuffer(
             retFbArray[idx].width = picWidth;
         }
 
-        fbAllocInfo.nv21    = config->nv21;
-        fbAllocInfo.format  = outFormat;
-        fbAllocInfo.num     = linearFbCount;
-        fbAllocInfo.mapType = (TiledMapType)mapType;
-        fbAllocInfo.stride  = linearStride;
-        fbAllocInfo.height  = fbHeight;
-
         ret = VPU_DecAllocateFrameBuffer(decHandle, fbAllocInfo, &retFbArray[linearFbStartIdx]);
         if (ret != RETCODE_SUCCESS) {
             VLOG(ERR, "%s:%d failed to VPU_DecAllocateFrameBuffer() ret:%d\n",
@@ -1338,6 +1422,7 @@ BOOL AllocateDecFrameBuffer(
             ReleaseVideoMemory(decHandle, retFbAddrs, totalFbCount);
             return FALSE;
         }
+
     }
 
     return TRUE;

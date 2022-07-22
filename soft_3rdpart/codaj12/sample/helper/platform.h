@@ -25,7 +25,11 @@
 #ifndef __JPU_PLATFORM_H__
 #define __JPU_PLATFORM_H__
 
-#include "jputypes.h"
+#ifdef USE_FEEDING_METHOD_BUFFER
+    #include "codaj12/jpuapi/jputypes.h"
+#else
+    #include "jputypes.h"
+#endif
 /************************************************************************/
 /* JpuMutex                                                                */
 /************************************************************************/

@@ -26,8 +26,13 @@
 #ifndef __WAVE5_FUNCTION_H__
 #define __WAVE5_FUNCTION_H__
 
-#include "vpuapi.h"
-#include "product.h"
+#ifdef USE_FEEDING_METHOD_BUFFER
+    #include "wave511/vpuapi/vpuapi.h"
+    #include "wave511/vpuapi/product.h"
+#else
+    #include "vpuapi.h"
+    #include "product.h"
+#endif
 
 #define WAVE5_TEMPBUF_OFFSET                (1024*1024)
 #define WAVE5_TEMPBUF_SIZE                  (1024*1024)

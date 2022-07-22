@@ -22,8 +22,12 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include "../config.h"
 
+#ifdef USE_FEEDING_METHOD_BUFFER
+    #include "codaj12/config.h"
+#else
+    #include "../config.h"
+#endif
 
 #ifndef NPT_REGDEFINE_H_INCLUDED
 #define NPT_REGDEFINE_H_INCLUDED

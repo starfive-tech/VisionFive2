@@ -26,11 +26,19 @@
 #ifndef VPUAPI_H_INCLUDED
 #define VPUAPI_H_INCLUDED
 
-#include "vpuconfig.h"
-#include "vputypes.h"
-#include "../vdi/vdi.h"
-#include "../vdi/vdi_osal.h"
-#include "vpuerror.h"
+#ifdef USE_FEEDING_METHOD_BUFFER
+    #include "wave511/vpuapi/vpuconfig.h"
+    #include "wave511/vpuapi/vputypes.h"
+    #include "wave511/vdi/vdi.h"
+    #include "wave511/vdi/vdi_osal.h"
+    #include "wave511/vpuapi/vpuerror.h"
+#else
+    #include "vpuconfig.h"
+    #include "vputypes.h"
+    #include "../vdi/vdi.h"
+    #include "../vdi/vdi_osal.h"
+    #include "vpuerror.h"
+#endif
 
 
 

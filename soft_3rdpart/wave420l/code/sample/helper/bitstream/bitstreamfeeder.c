@@ -86,9 +86,11 @@ extern Int32 BSFeederFrameSize_Act(
     BSChunk*    packet
     );
 
+#ifdef SUPPORT_FFMPEG_DEMUX
 extern BOOL BSFeederFrameSize_Rewind(
     void*       feeder
     );
+#endif
 
 extern void* BSFeederSizePlusEs_Create(
     const char* path
@@ -445,9 +447,11 @@ BOOL BitstreamFeeder_Rewind(
     case FEEDING_METHOD_FIXED_SIZE:
         success = BSFeederFixedSize_Rewind(bsf->actualFeeder);
         break;
+#ifdef SUPPORT_FFMPEG_DEMUX
     case FEEDING_METHOD_FRAME_SIZE:
         success = BSFeederFrameSize_Rewind(bsf->actualFeeder);
         break;
+#endif
     case FEEDING_METHOD_SIZE_PLUS_ES:
         success = BSFeederSizePlusEs_Rewind(bsf->actualFeeder);
         break;

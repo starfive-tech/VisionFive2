@@ -26,9 +26,15 @@
 #ifndef JPUAPI_H_INCLUDED
 #define JPUAPI_H_INCLUDED
 
-#include "jpuconfig.h"
-#include "../jdi/jdi.h"
-#include "jputypes.h"
+#ifdef USE_FEEDING_METHOD_BUFFER
+    #include "codaj12/jpuapi/jpuconfig.h"
+    #include "codaj12/jdi/jdi.h"
+    #include "codaj12/jpuapi/jputypes.h"
+#else
+    #include "jpuconfig.h"
+    #include "../jdi/jdi.h"
+    #include "jputypes.h"
+#endif
 
 /* _n: number, _s: significance */
 #define JPU_CEIL(_s, _n)        (((_n)+(_s-1))&~(_s-1))
@@ -1047,6 +1053,11 @@ This means the stream ends.
     JpgRet JPU_DecStartOneFrame(
         JpgDecHandle handle,
         JpgDecParam *param );
+
+    JpgRet JPU_DecStartOneFrameBySerialNum(
+        JpgDecHandle handle,
+        JpgDecParam *param,
+        int bufferIndex );
 /**
 * @brief
 Application can get the information of output of decoding. The information

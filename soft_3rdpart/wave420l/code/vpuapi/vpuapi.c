@@ -17,6 +17,7 @@
 #include "vpuapifunc.h"
 #include "product.h"
 #include "wave/common/common_regdefine.h"
+#include "wave/wave5/wave5.h"
             
 
 #ifdef BIT_CODE_FILE_PATH

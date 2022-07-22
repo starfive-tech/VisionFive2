@@ -26,10 +26,17 @@
 #ifndef JPUHELPER_H_INCLUDED
 #define JPUHELPER_H_INCLUDED
 
-#include "jpulog.h"
-#include "jpuapi.h"
-#include "cnm_fpga.h"
-#include "yuv_feeder.h"
+#ifdef USE_FEEDING_METHOD_BUFFER
+    #include "codaj12/jpuapi/jpuapi.h"
+    #include "codaj12/sample/helper/jpulog.h"
+    #include "codaj12/sample/helper/cnm_fpga.h"
+    #include "codaj12/sample/helper/yuv_feeder.h"
+#else
+    #include "jpulog.h"
+    #include "jpuapi.h"
+    #include "cnm_fpga.h"
+    #include "yuv_feeder.h"
+#endif
 
 #define MAX_FILE_PATH    256
 
@@ -54,6 +61,9 @@ typedef struct {
 typedef enum {
     FEEDING_METHOD_FIXED_SIZE,
     FEEDING_METHOD_FRAME_SIZE,      /*!<< use FFMPEG demuxer */
+#ifdef USE_FEEDING_METHOD_BUFFER
+    FEEDING_METHOD_BUFFER,
+#endif
     FEEDING_METHOD_MAX
 } FeedingMethod;
 

@@ -26,7 +26,11 @@
 #ifndef __CNM_VIDEO_MEMORY_ALLOCATOR_H_
 #define __CNM_VIDEO_MEMORY_ALLOCATOR_H_
 
-#include "vputypes.h"
+#ifdef USE_FEEDING_METHOD_BUFFER
+    #include "wave511/vpuapi/vputypes.h"
+#else
+    #include <vputypes.h>
+#endif
 
 typedef struct _video_mm_info_struct {
 unsigned long   total_pages; 

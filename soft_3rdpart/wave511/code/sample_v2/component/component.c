@@ -26,6 +26,7 @@
 #include <string.h>
 #include "component.h"
 #include "cnm_app.h"
+#include <sys/prctl.h>
 
 #ifdef PLATFORM_NON_OS
 BOOL supportThread = FALSE;
@@ -367,6 +368,7 @@ static void DoYourJob(ComponentImpl* com)
     /* Check if connected components are terminated */
     sinkComponent = (ComponentImpl*)com->sinkPort.connectedComponent;
     if (sinkComponent && sinkComponent->terminate == TRUE) {
+        printf("%s skin terminate\r\n",com->name);
         com->terminate = TRUE;
     }
 
@@ -378,11 +380,12 @@ static void DoYourJob(ComponentImpl* com)
 static void DoThreadWork(void* arg)
 {
     ComponentImpl* com = (ComponentImpl*)arg;
-
+    prctl(PR_SET_NAME, com->name);
     while (com->terminate == FALSE) {
         DoYourJob(com);
         osal_msleep(2); // To yield schedule
     }
+    ComponentNotifyListeners(com, COMPONENT_EVENT_TERMINATED, NULL);
 
     com->state = COMPONENT_STATE_TERMINATED;
 }

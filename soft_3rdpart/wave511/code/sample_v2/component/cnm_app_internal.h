@@ -26,7 +26,11 @@
 #ifndef __CNM_APP_INTERNAL_H__
 #define __CNM_APP_INTERNAL_H__
 
-#include "vputypes.h"
+#ifdef USE_FEEDING_METHOD_BUFFER
+    #include "wave511/vpuapi/vputypes.h"
+#else
+    #include "vputypes.h"
+#endif
 
 #define MAX_TASKS_IN_APP            8
 #define MAX_COMPONENTS_IN_TASK      6

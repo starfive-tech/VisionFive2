@@ -668,6 +668,67 @@ static long vpu_ioctl(struct file *filp, u_int cmd, u_long arg)
     struct vpu_drv_context_t *dev = (struct vpu_drv_context_t *)filp->private_data;
 
     switch (cmd) {
+    case VDI_IOCTL_GET_PHYSICAL_MEMORY:
+        {
+            vpudrv_buffer_pool_t *vbp = NULL;
+            void *user_address = NULL;
+            struct task_struct *my_struct = NULL;
+            struct mm_struct *mm = NULL;
+            unsigned long address = 0;
+            pgd_t *pgd = NULL;
+            if ((ret = down_interruptible(&s_vpu_sem)) == 0) {
+                vbp = kzalloc(sizeof(*vbp), GFP_KERNEL);
+                if (!vbp) {
+                    up(&s_vpu_sem);
+                    return -ENOMEM;
+                }
+                ret = copy_from_user(&(vbp->vb), (vpudrv_buffer_t *)arg, sizeof(vpudrv_buffer_t));
+                if (ret) {
+                    kfree(vbp);
+                    up(&s_vpu_sem);
+                    return -EFAULT;
+                }
+
+                user_address = (void *)vbp->vb.virt_addr;
+                my_struct = get_current();
+                mm = my_struct->mm;
+                address = (unsigned long)user_address;
+                pgd = pgd_offset(mm, address);
+
+                if (!pgd_none(*pgd) && !pgd_bad(*pgd)) {
+                    p4d_t *p4d = p4d_offset(pgd, address);
+                    pud_t *pud = pud_offset(p4d, address);
+                    if (!pud_none(*pud) && !pud_bad(*pud)) {
+                        pmd_t *pmd = pmd_offset(pud, address);
+                        if (!pmd_none(*pmd) && !pmd_bad(*pmd)) {
+                            pte_t *pte = pte_offset_map(pmd, address);
+                            if (!pte_none(*pte)) {
+                                struct page *pg = pte_page(*pte);
+                                unsigned long phys = page_to_phys(pg);
+                                unsigned long virt = (unsigned long)phys_to_virt(phys);
+                                printk("phy address = %lx, virt = %lx\r\n", phys, virt);
+                                vbp->vb.phys_addr = phys;
+                                vbp->vb.base = virt;
+                            }
+                            pte_unmap(pte);
+                        }
+                    }
+                }
+                ret = copy_to_user((void __user *)arg, &(vbp->vb), sizeof(vpudrv_buffer_t));
+                if (ret) {
+                    kfree(vbp);
+                    ret = -EFAULT;
+                    up(&s_vpu_sem);
+                    break;
+                }
+                vbp->filp = filp;
+                spin_lock(&s_vpu_lock);
+                list_add(&vbp->list, &s_vbp_head);
+                spin_unlock(&s_vpu_lock);
+                up(&s_vpu_sem);
+            }
+        }
+        break;
     case VDI_IOCTL_ALLOCATE_PHYSICAL_MEMORY:
         {
             vpudrv_buffer_pool_t *vbp;

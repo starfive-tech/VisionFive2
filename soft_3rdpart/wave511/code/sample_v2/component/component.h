@@ -26,9 +26,16 @@
 #ifndef _COMPONENT_H_
 #define _COMPONENT_H_
 
-#include "config.h"
-#include "vpuapifunc.h"
-#include "main_helper.h"
+#ifdef USE_FEEDING_METHOD_BUFFER
+    #include "wave511/config.h"
+    #include "wave511/vpuapi/vpuapifunc.h"
+    #include "wave511/sample_v2/helper/main_helper.h"
+#else
+    #include "config.h"
+    #include "vpuapifunc.h"
+    #include "main_helper.h"
+#endif
+
 
 #define MAX_QUEUE_NUM 5
 
@@ -136,6 +143,40 @@ typedef struct PortContainerClock {
     BOOL    last;
     Uint32  type;
 } PortContainerClock;
+
+/** @ingroup buf */
+typedef struct PortContainerExternal
+{
+    Uint32 nSize;              /**< size of the structure in bytes */
+    Uint8* pBuffer;            /**< Pointer to actual block of memory
+                                     that is acting as the buffer */
+    Uint32 nAllocLen;          /**< size of the buffer allocated, in bytes */
+    Uint32 nFilledLen;         /**< number of bytes currently in the
+                                     buffer */
+    Uint32 nOffset;            /**< start offset of valid data in bytes from
+                                     the start of the buffer */
+    void*  pAppPrivate;        /**< pointer to any data the application
+                                     wants to associate with this buffer */
+    Uint32 nBufferIndex;
+    Uint32 nTickCount;         /**< Optional entry that the component and
+                                     application can update with a tick count
+                                     when they access the component.  This
+                                     value should be in microseconds.  Since
+                                     this is a value relative to an arbitrary
+                                     starting point, this value cannot be used
+                                     to determine absolute time.  This is an
+                                     optional entry and not all components
+                                     will update it.*/
+    Uint64 nTimeStamp;       /**< Timestamp corresponding to the sample
+                                     starting at the first logical sample
+                                     boundary in the buffer. Timestamps of
+                                     successive samples within the buffer may
+                                     be inferred by adding the duration of the
+                                     of the preceding buffer to the timestamp
+                                     of the preceding buffer.*/
+    Uint32  nFlags;           /**< buffer specific flags */
+    Uint32  index;
+} PortContainerExternal;
 
 typedef struct PortContainerES {
     Uint32          packetNo;
@@ -298,6 +339,7 @@ typedef struct {
 /* ------------------------------------------------ */
 #define COMPONENT_EVENT_SLEEP                   (1ULL<<0)       /*!<< The third parameter of listener is NULL. */
 #define COMPONENT_EVENT_WAKEUP                  (1ULL<<1)       /*!<< The third parameter of listener is NULL. */
+#define COMPONENT_EVENT_TERMINATED              (1ULL<<2)
 #define COMPONENT_EVENT_COMMON_ALL              0xffffULL
 /* ------------------------------------------------ */
 /* ---------------- DECODER EVENTS ---------------- */
@@ -313,6 +355,8 @@ typedef struct {
 #define COMPONENT_EVENT_DEC_DECODED_ALL         (1ULL<<24)      /*!<< The third parameter of listener is a pointer of CNMComListenerDecClose . */
 #define COMPONENT_EVENT_DEC_CLOSE               (1ULL<<25)      /*!<< The third parameter of listener is NULL. */
 #define COMPONENT_EVENT_DEC_RESET_DONE          (1ULL<<26)      /*!<< The third parameter of listener is NULL. */
+#define COMPONENT_EVENT_DEC_EMPTY_BUFFER_DONE   (1ULL<<27)
+#define COMPONENT_EVENT_DEC_FILL_BUFFER_DONE    (1ULL<<28)
 #define COMPONENT_EVENT_DEC_ALL                 0xffff0000ULL
 
 /* ------------------------------------------------ */
@@ -398,6 +442,8 @@ typedef struct CNMComListenerDecClose {
 #define COMPONENT_EVENT_ENC_ENCODED_ALL             (1ULL<<42)      /*!<< The third parameter of listener is a pointer of EncHandle. */
 #define COMPONENT_EVENT_ENC_RESET                   (1ULL<<43)      /*!<< The third parameter of listener is a pointer of EncHandle. */
 #define COMPONENT_EVENT_CODA9_ENC_MAKE_HEADER       (1ULL<<44)      /*!<< The third parameter of listener is a pointer of CNMComListenerEncDone. */
+#define COMPONENT_EVENT_ENC_EMPTY_BUFFER_DONE       (1ULL<<45)
+#define COMPONENT_EVENT_ENC_FILL_BUFFER_DONE        (1ULL<<46)
 #define COMPONENT_EVENT_ENC_ALL                     0xffff00000000ULL
 
 /* ------------------------------------------------ */

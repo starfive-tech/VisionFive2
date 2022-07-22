@@ -335,7 +335,7 @@ BOOL TestEncoder(
     JLOG(INFO, "framebuffer stride = %d, width = %d, height = %d\n", frameBuf[0].stride, framebufWidth, framebufHeight);
     JLOG(INFO, "framebuffer format = %d, packed format = %d, Interleave = %d\n", srcFrameFormat, encOP.packedFormat, encOP.chromaInterleave);
 
-    sprintf(yuvPath, "%s/%s", encConfig.strYuvDir, encConfig.yuvFileName);
+    snprintf(yuvPath, sizeof(yuvPath), "%s/%s", encConfig.strYuvDir, encConfig.yuvFileName);
     GetSourceYuvAttributes(encOP, &sourceAttr);
     if ((yuvFeeder=YuvFeeder_Create(YUV_FEEDER_MODE_NORMAL, yuvPath, sourceAttr, encOP.frameEndian, NULL)) == NULL) {
         goto ERR_ENC_OPEN;

@@ -93,7 +93,7 @@ CFLAGS  += -DSUPPORT_FFMPEG_DEMUX
 LDLIBS  += -lavformat -lavcodec -lavutil -lswresample
 LDFLAGS += -L./ffmpeg/lib/$(PLATFORM)
 ifneq ($(USE_32BIT), yes)
-LDLIBS  += -lz
+#LDLIBS  += -lz
 endif #USE_32BIT
 endif #USE_FFMPEG
 

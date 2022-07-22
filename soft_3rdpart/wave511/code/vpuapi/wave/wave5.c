@@ -27,6 +27,7 @@
 #include "wave/wave5.h"
 #include "vpuerror.h"
 #include "wave/wave5_regdefine.h"
+#include "misc/debug.h"
 
 Uint32 Wave5VpuIsInit(Uint32 coreIdx)
 {

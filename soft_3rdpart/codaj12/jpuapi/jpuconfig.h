@@ -25,7 +25,11 @@
 #ifndef _JPU_CONFIG_H_
 #define _JPU_CONFIG_H_
 
-#include "../config.h"
+#ifdef USE_FEEDING_METHOD_BUFFER
+    #include "codaj12/config.h"
+#else
+    #include "../config.h"
+#endif
 
 #define MAX_NUM_JPU_CORE                1
 #define MAX_NUM_INSTANCE                4

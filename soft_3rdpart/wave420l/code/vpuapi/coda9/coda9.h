@@ -156,6 +156,8 @@ extern RetCode Coda9VpuEncGiveCommand(
     CodecCommand    cmd, 
     void*           param
     );
+
+extern RetCode Coda9VpuDecCpbFlush(CodecInst* instance);
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

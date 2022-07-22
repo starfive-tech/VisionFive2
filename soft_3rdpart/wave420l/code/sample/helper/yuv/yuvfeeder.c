@@ -47,6 +47,104 @@ BOOL loaderYuvFeeder_Configure(
     YuvInfo        yuv
 );
 
+static BOOL bufferYuvFeeder_Create(
+    YuvFeederImpl *impl,
+    const char*   path,
+    Uint32        packed,
+    Uint32        fbStride,
+    Uint32        fbHeight)
+{
+    yuvContext*   ctx;
+
+    if ((ctx=(yuvContext*)osal_malloc(sizeof(yuvContext))) == NULL) {
+
+        return FALSE;
+    }
+
+    osal_memset(ctx, 0, sizeof(yuvContext));
+
+    impl->context = ctx;
+
+    return TRUE;
+}
+
+static BOOL bufferYuvFeeder_Destory(
+    YuvFeederImpl *impl
+    )
+{
+    yuvContext*    ctx = (yuvContext*)impl->context;
+
+    osal_free(ctx);
+    return TRUE;
+}
+
+
+static BOOL bufferYuvFeeder_Feed(
+    YuvFeederImpl*  impl,
+    Int32           coreIdx,
+    FrameBuffer*    fb,
+    size_t          picWidth,
+    size_t          picHeight,
+    void*           arg
+    )
+{
+    yuvContext* ctx = (yuvContext*)impl->context;
+    Uint8*      pYuv = arg;
+    size_t      frameSize;
+    size_t      frameSizeY;
+    size_t      frameSizeC;
+    Int32       bitdepth=0;
+    Int32       yuv3p4b=0;
+    Int32       packedFormat=0;
+    Uint32      outWidth=0;
+    Uint32      outHeight=0;
+
+    CalcYuvSize(fb->format, picWidth, picHeight, fb->cbcrInterleave, &frameSizeY, &frameSizeC, &frameSize, &bitdepth, &packedFormat, &yuv3p4b);
+
+
+    if (fb->mapType == LINEAR_FRAME_MAP ) {
+        outWidth  = (yuv3p4b&&packedFormat==0) ? ((picWidth+31)/32)*32  : picWidth;
+        outHeight = (yuv3p4b) ? ((picHeight+7)/8)*8 : picHeight;
+
+        if ( yuv3p4b  && packedFormat) {
+            outWidth = ((picWidth*2)+2)/3*4;
+        }
+        else if(packedFormat) {
+            outWidth *= 2;           // 8bit packed mode(YUYV) only. (need to add 10bit cases later)
+            if (bitdepth != 0)      // 10bit packed
+                outWidth *= 2;
+        }
+        LoadYuvImageBurstFormat(coreIdx, pYuv, outWidth, outHeight, fb, ctx->srcPlanar);
+    }
+    else {
+        TiledMapConfig  mapConfig;
+
+        osal_memset((void*)&mapConfig, 0x00, sizeof(TiledMapConfig));
+        if (arg != NULL) {
+            osal_memcpy((void*)&mapConfig, arg, sizeof(TiledMapConfig));
+        }
+
+        LoadTiledImageYuvBurst(coreIdx, pYuv, picWidth, picHeight, fb, mapConfig);
+    }
+
+    return TRUE;
+}
+
+static BOOL bufferYuvFeeder_Configure(
+    YuvFeederImpl* impl,
+    Uint32         cmd,
+    YuvInfo        yuv
+    )
+{
+    yuvContext* ctx = (yuvContext*)impl->context;
+    UNREFERENCED_PARAMETER(cmd);
+
+    ctx->fbStride       = yuv.srcStride;
+    ctx->cbcrInterleave = yuv.cbcrInterleave;
+    ctx->srcPlanar      = yuv.srcPlanar;
+
+    return TRUE;
+}
 
 static BOOL yuvYuvFeeder_Create(
     YuvFeederImpl *impl,
@@ -190,8 +288,8 @@ YuvFeeder YuvFeeder_Create(
     YuvFeederImpl     *impl;
     BOOL              success = FALSE;
 
-    if (srcFilePath == NULL) {
-        VLOG(ERR, "%s:%d src path is NULL\n", __FUNCTION__, __LINE__);
+    if ((type != SOURCE_YUV_WITH_BUFFER) && (srcFilePath == NULL)) {
+        VLOG(ERR, "%s:%d src path is NULL, tpye %d\n", __FUNCTION__, __LINE__, type);
         return NULL;
     }
 
@@ -213,6 +311,16 @@ YuvFeeder YuvFeeder_Create(
         impl->Feed      = &loaderYuvFeeder_Feed;
         impl->Destroy   = &loaderYuvFeeder_Destory;
         impl->Configure = &loaderYuvFeeder_Configure;
+        if ((success=impl->Create(impl, srcFilePath, yuvInfo.packedFormat, yuvInfo.srcStride, yuvInfo.srcHeight)) == TRUE) {
+            impl->Configure(impl, 0, yuvInfo);
+        }
+        break;
+    case SOURCE_YUV_WITH_BUFFER:
+        impl = osal_malloc(sizeof(YuvFeederImpl));
+        impl->Create    = &bufferYuvFeeder_Create;
+        impl->Feed      = &bufferYuvFeeder_Feed;
+        impl->Destroy   = &bufferYuvFeeder_Destory;
+        impl->Configure = &bufferYuvFeeder_Configure;
         if ((success=impl->Create(impl, srcFilePath, yuvInfo.packedFormat, yuvInfo.srcStride, yuvInfo.srcHeight)) == TRUE) {
             impl->Configure(impl, 0, yuvInfo);
         }

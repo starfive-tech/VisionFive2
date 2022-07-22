@@ -530,6 +530,46 @@ int jdi_read_memory(unsigned long addr, unsigned char *data, int len, int endian
     return len;
 }
 
+int jdi_attach_dma_memory(jpu_buffer_t *vb)
+{
+    jdi_info_t *jdi;
+    int i;
+    jpudrv_buffer_t jdb;
+
+    jdi = &s_jdi_info;
+
+    if(!jdi || jdi->jpu_fd==-1 || jdi->jpu_fd == 0x00)
+        return -1;
+
+    memset(&jdb, 0x00, sizeof(jpudrv_buffer_t));
+
+    jdb.virt_addr = vb->virt_addr;
+    if (ioctl(jdi->jpu_fd, JDI_IOCTL_GET_PHYSICAL_MEMORY, &jdb) < 0)
+    {
+        JLOG(ERR, "[JDI] fail to jdi_allocate_dma_memory size=%d\n", vb->size);
+        return -1;
+    }
+
+    vb->phys_addr = (unsigned long)jdb.phys_addr;
+    vb->base = (unsigned long)jdb.base;
+
+    jdi_lock();
+    for (i=0; i<MAX_JPU_BUFFER_POOL; i++)
+    {
+        if (jdi->jpu_buffer_pool[i].inuse == 0)
+        {
+            jdi->jpu_buffer_pool[i].jdb = jdb;
+            jdi->jpu_buffer_pool_count++;
+            jdi->jpu_buffer_pool[i].inuse = 1;
+            break;
+        }
+    }
+    jdi_unlock();
+    JLOG(INFO, "[JDI] jdi_attach_dma_memory, physaddr=%p, virtaddr=%p~%p, size=%d\n",
+         vb->phys_addr, vb->virt_addr, vb->virt_addr + vb->size, vb->size);
+    return 0;
+}
+
 int jdi_allocate_dma_memory(jpu_buffer_t *vb)
 {
     jdi_info_t *jdi;

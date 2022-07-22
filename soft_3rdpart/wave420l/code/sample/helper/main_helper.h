@@ -10,6 +10,7 @@
 #include "vpuapifunc.h"
 #include "vpuapi.h"
 #include "vputypes.h"
+#include "misc/debug.h"
 #ifdef PLATFORM_QNX
     #include <sys/stat.h>
 #endif
@@ -841,6 +842,7 @@ BOOL BitstreamFeeder_SetAutoUpdate(
 /************************************************************************/
 #define SOURCE_YUV                  0
 #define SOURCE_YUV_WITH_LOADER      2
+#define SOURCE_YUV_WITH_BUFFER      3
 
 #define JPEG_CREATE      0x01        //!<< This command is followed by yuvInfo structure.
 typedef struct {
@@ -990,6 +992,34 @@ BOOL BitstreamReader_Destroy(
     BitstreamReader reader
     );
 
+/*!
+ * \param   type                0: Linebuffer, 1: Ringbuffer
+ * \param   path                output filepath.
+ * \param   endian              Endianness of bitstream buffer
+ * \param   handle              Pointer of encoder handle
+ */
+BitstreamReader BufferStreamReader_Create(
+    Uint32    type,
+    EndianMode  endian,
+    EncHandle*  handle
+    );
+
+/*!
+ * \param   bitstreamBuffer     base address of bitstream buffer
+ * \param   bitstreamBufferSize size of bitstream buffer
+ */
+Uint32 BufferStreamReader_Act(
+    BitstreamReader reader,
+    PhysicalAddress bitstreamBuffer,
+    Uint32        bitstreamBufferSize,
+    Uint32        defaultsize,
+    Uint8*          pBuffer,
+    Comparator      comparator
+    );
+
+BOOL BufferStreamReader_Destroy(
+    BitstreamReader reader
+    );
 /************************************************************************/
 /* Binary Reader                                                           */
 /************************************************************************/
@@ -1797,6 +1827,9 @@ Int32 writeSeiNalData(
     PhysicalAddress prefixSeiNalAddr,
     hrd_t *hrd
     );
+int calcScale(int x);
+BOOL EncodeVUI(hrd_t *hrd, vui_t *vui, Uint8 *pBuffer, Uint32 bufferSize, Uint32 *pByteSize, Uint32 *pBitSize, double dframeRate);
+Uint32 EncodePrefixSEI( sei_active_parameter_t *sap, sei_pic_timing_t *spt, sei_buffering_period_t *sbp, hrd_t *hrd, Uint8 *pBuffer, Uint32 bufferSize);
 #endif
 void setEncBgMode(
     EncParam *encParam, 

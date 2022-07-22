@@ -26,9 +26,17 @@
 #ifndef _VDI_H_
 #define _VDI_H_
 
-#include "mm.h"
-#include "vpuconfig.h"
-#include "vputypes.h"
+#ifdef USE_FEEDING_METHOD_BUFFER
+    #include "wave511/vdi/mm.h"
+    #include "wave511/vpuapi/vpuconfig.h"
+    #include "wave511/vpuapi/vputypes.h"
+#else
+    #include "mm.h"
+    #include "vpuconfig.h"
+    #include "vputypes.h"
+#endif
+
+
 
 /************************************************************************/
 /* COMMON REGISTERS                                                     */
@@ -107,7 +115,8 @@ extern "C" {
     void vdi_free_dma_memory(unsigned long core_idx, vpu_buffer_t *vb, int memTypes, int instIndex);
     int vdi_get_sram_memory(unsigned long core_idx, vpu_buffer_t *vb);
     int vdi_dettach_dma_memory(unsigned long core_idx, vpu_buffer_t *vb);
-
+    void* vdi_map_virt2(unsigned long core_idx, int size, PhysicalAddress bufY);
+    int vdi_virt_to_phys(unsigned long core_idx, vpu_buffer_t *vb);
 
 #ifdef SUPPORT_MULTI_INST_INTR
     int vdi_wait_interrupt(unsigned long coreIdx, unsigned int instIdx, int timeout);
@@ -142,6 +151,7 @@ extern "C" {
     int vdi_clear_memory(unsigned long core_idx, PhysicalAddress addr, int len, int endian);
     int vdi_write_memory(unsigned long core_idx, PhysicalAddress addr, unsigned char *data, int len, int endian);
     int vdi_read_memory(unsigned long core_idx, PhysicalAddress addr, unsigned char *data, int len, int endian);
+    int vdi_read_memory2(unsigned long core_idx, PhysicalAddress addr, unsigned char **ppdata, int len, int endian);
 
 
     int vdi_lock(unsigned long core_idx);

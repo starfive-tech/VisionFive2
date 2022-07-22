@@ -25,11 +25,24 @@
 #ifndef _LOG_H_
 #define _LOG_H_
 
-#include "jputypes.h"
+#ifdef USE_FEEDING_METHOD_BUFFER
+    #include "codaj12/jpuapi/jputypes.h"
+#else
+    #include "jputypes.h"
+#endif
 
 
 
-enum {NONE=0, INFO, WARN, ERR, TRACE, MAX_LOG_LEVEL};
+enum
+{
+    ERR=0,
+    WARN,
+    TRACE,
+    INFO,
+    DEBUG,
+    MAX_LOG_LEVEL
+};
+
 enum
 {
     LOG_HAS_DAY_NAME   =    1, /**< Include day name [default: no] 	      */
