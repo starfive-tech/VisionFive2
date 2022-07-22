@@ -1287,9 +1287,9 @@ Int32 writeHrdRbsp(int coreIdx, TestEncConfig *encConfig, EncOpenParam *encOP, v
 #ifdef TEST_ENCODE_CUSTOM_HEADER
 Int32 writeCustomHeader(int coreIdx, EncOpenParam *encOP, vpu_buffer_t *vbCustomHeader, hrd_t *hrd)
 {
-    Int32 rbspBitSize;
+    Uint32 rbspBitSize;
     Uint8 *pRbspBuf;
-    Int32 rbspByteSize;
+    Uint32 rbspByteSize;
     vui_t vui;
 
     encOP->encodeVuiRbsp = 1;
@@ -1429,7 +1429,7 @@ Int32 writeCustomHeader(int coreIdx, EncOpenParam *encOP, vpu_buffer_t *vbCustom
             }
         }
 
-        EncodeVUI(&hrd, &vui, pRbspBuf, VUI_HRD_RBSP_BUF_SIZE, &rbspByteSize, &rbspBitSize, encOP->frameRateInfo);
+        EncodeVUI(hrd, &vui, pRbspBuf, VUI_HRD_RBSP_BUF_SIZE, &rbspByteSize, &rbspBitSize, encOP->frameRateInfo);
         encOP->vuiRbspDataSize = rbspBitSize;
         vdi_write_memory(coreIdx, encOP->vuiRbspDataAddr, pRbspBuf,  rbspByteSize, encOP->streamEndian);
         osal_free(pRbspBuf);
@@ -1483,7 +1483,7 @@ Int32 writeSeiNalData(EncHandle handle, int streamEndian, PhysicalAddress prefix
         buffering_period_sei.nal_initial_cpb_removal_delay[0] = 2229;
         buffering_period_sei.nal_initial_cpb_removal_offset[0] = 0;
 
-        seiByteSize = EncodePrefixSEI(&active_parameter_sei, &pic_timing_sei, &buffering_period_sei, &hrd, pSeiBuf, SEI_NAL_DATA_BUF_SIZE);
+        seiByteSize = EncodePrefixSEI(&active_parameter_sei, &pic_timing_sei, &buffering_period_sei, hrd, pSeiBuf, SEI_NAL_DATA_BUF_SIZE);
         seiDataEnc.prefixSeiDataSize = seiByteSize;
         vdi_write_memory(handle->coreIdx, seiDataEnc.prefixSeiNalAddr, pSeiBuf, seiDataEnc.prefixSeiDataSize, streamEndian);
 

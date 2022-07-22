@@ -1827,6 +1827,9 @@ Int32 writeSeiNalData(
     PhysicalAddress prefixSeiNalAddr,
     hrd_t *hrd
     );
+int calcScale(int x);
+BOOL EncodeVUI(hrd_t *hrd, vui_t *vui, Uint8 *pBuffer, Uint32 bufferSize, Uint32 *pByteSize, Uint32 *pBitSize, double dframeRate);
+Uint32 EncodePrefixSEI( sei_active_parameter_t *sap, sei_pic_timing_t *spt, sei_buffering_period_t *sbp, hrd_t *hrd, Uint8 *pBuffer, Uint32 bufferSize);
 #endif
 void setEncBgMode(
     EncParam *encParam, 
