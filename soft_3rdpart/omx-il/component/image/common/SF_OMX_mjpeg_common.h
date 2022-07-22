@@ -10,6 +10,7 @@
 #include "OMX_Index.h"
 #include "OMX_IndexExt.h"
 #include "SF_OMX_Core.h"
+#include "sf_thread.h"
 #include "codaj12/jpuapi/jpuapi.h"
 #include "codaj12/jpuapi/jpuapifunc.h"
 #include "codaj12/sample/main_helper.h"
@@ -86,13 +87,6 @@ typedef struct _SF_CODAJ12_FUNCTIONS
     void (*SetMaxLogLevel)(int level);
 } SF_CODAJ12_FUNCTIONS;
 
-typedef struct _THREAD_HANDLE_TYPE {
-    pthread_t          pthread;
-    pthread_attr_t     attr;
-    struct sched_param schedparam;
-    int                stack_size;
-} THREAD_HANDLE_TYPE;
-
 typedef struct Message
 {
     long msg_type;
@@ -116,7 +110,7 @@ typedef struct _SF_CODAJ12_IMPLEMEMT
     OMX_S32 sOutputMessageQueue;
     OMX_S32 sBufferDoneQueue;
     Message mesCacheArr[MCA_MAX_INDEX];
-    OMX_HANDLETYPE pProcessThread;
+    THREAD_HANDLE_TYPE *pProcessThread;
     OMX_BOOL bThreadRunning;
     OMX_STATETYPE currentState;
     FrameFormat frameFormat;
@@ -139,7 +133,6 @@ OMX_ERRORTYPE GetStateMjpegCommon(OMX_IN OMX_HANDLETYPE hComponent, OMX_OUT OMX_
 OMX_ERRORTYPE InitMjpegStructorCommon(SF_OMX_COMPONENT *hComponent);
 OMX_BOOL AttachOutputBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U8* pBuffer, OMX_U32 nSizeBytes);
 OMX_U8* AllocateOutputBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U32 nSizeBytes);
-OMX_ERRORTYPE CreateThread(OMX_HANDLETYPE *threadHandle, OMX_PTR function_name, OMX_PTR argument);
 void ThreadExit(void *value_ptr);
 void CodaJ12FlushBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U32 nPortNumber);
 

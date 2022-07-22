@@ -11,6 +11,9 @@
 #include "OMX_Index.h"
 #include "OMX_IndexExt.h"
 #include "SF_OMX_Core.h"
+#include "sf_queue.h"
+#include "sf_thread.h"
+#include "sf_semaphore.h"
 #include "wave511/sample_v2/component/component.h"
 #include "wave511/sample_v2/component_encoder/encoder_listener.h"
 #include "wave511/sample_v2/component_decoder/decoder_listener.h"
@@ -30,6 +33,7 @@
 #define DEFAULT_FRAME_HEIGHT 2160
 #define DEFAULT_VIDEO_INPUT_BUFFER_SIZE (DEFAULT_FRAME_WIDTH * DEFAULT_FRAME_HEIGHT) / 2
 #define DEFAULT_VIDEO_OUTPUT_BUFFER_SIZE (DEFAULT_FRAME_WIDTH * DEFAULT_FRAME_HEIGHT * 3) / 2
+#define MAX_INDEX 1
 
 typedef struct _SF_COMPONENT_FUNCTIONS
 {
@@ -109,6 +113,13 @@ typedef struct _SF_WAVE5_IMPLEMEMT
     void *lsnCtx;
     Uint16 *pusBitCode;
     CodStd bitFormat;
+    OMX_BOOL rev_eos;
+    SF_Queue *CmdQueue;
+    SF_Queue *pauseQ;
+    THREAD_HANDLE_TYPE *pCmdThread;
+    OMX_BOOL bCmdRunning;
+    OMX_U64 frame_array[MAX_INDEX];
+    OMX_U32 frame_array_index;
     OMX_VIDEO_PARAM_AVCTYPE AVCComponent[2];
     OMX_VIDEO_PARAM_HEVCTYPE HEVCComponent[2];
 }SF_WAVE5_IMPLEMEMT;

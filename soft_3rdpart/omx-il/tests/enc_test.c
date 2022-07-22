@@ -47,12 +47,15 @@ typedef struct EncodeTestContext
     OMX_U32 nBitrate;
     OMX_U32 nFrameRate;
     OMX_U32 nNumPFrame;
+    OMX_STATETYPE comState;
     OMX_BUFFERHEADERTYPE *pInputBufferArray[64];
     OMX_BUFFERHEADERTYPE *pOutputBufferArray[64];
     int msgid;
 } EncodeTestContext;
 EncodeTestContext *encodeTestContext;
 static OMX_S32 FillInputBuffer(EncodeTestContext *encodeTestContext, OMX_BUFFERHEADERTYPE *pInputBuffer);
+
+static OMX_BOOL disableEVnt;
 
 static OMX_ERRORTYPE event_handler(
     OMX_HANDLETYPE hComponent,
@@ -74,6 +77,10 @@ static OMX_ERRORTYPE event_handler(
         OMX_GetParameter(pEncodeTestContext->hComponentEncoder, OMX_IndexParamPortDefinition, &pOutputPortDefinition);
         OMX_U32 nOutputBufferSize = pOutputPortDefinition.nBufferSize;
         OMX_U32 nOutputBufferCount = pOutputPortDefinition.nBufferCountMin;
+
+        printf("enable output port and alloc buffer\n");
+        OMX_SendCommand(pEncodeTestContext->hComponentEncoder, OMX_CommandPortEnable, 1, NULL);
+
         for (int i = 0; i < nOutputBufferCount; i++)
         {
             OMX_BUFFERHEADERTYPE *pBuffer = NULL;
@@ -91,6 +98,25 @@ static OMX_ERRORTYPE event_handler(
         if (msgsnd(pEncodeTestContext->msgid, (void *)&data, sizeof(data) - sizeof(data.msg_type), 0) == -1)
         {
             fprintf(stderr, "msgsnd failed\n");
+        }
+    }
+    break;
+    case OMX_EventCmdComplete:
+    {
+        switch ((OMX_COMMANDTYPE)(nData1))
+        {
+        case OMX_CommandStateSet:
+        {
+            pEncodeTestContext->comState = (OMX_STATETYPE)(nData2);
+        }
+        case OMX_CommandPortDisable:
+        {
+            if (nData2 == 1)
+                disableEVnt = OMX_TRUE;
+        }
+        break;
+        default:
+        break;
         }
     }
     break;
@@ -329,11 +355,11 @@ int main(int argc, char **argv)
     printf("get handle %s\r\n", encodeTestContext->sOutputFormat);
     if (strstr(encodeTestContext->sOutputFormat, "h264") != NULL)
     {
-        OMX_GetHandle(&hComponentEncoder, "sf.enc.encoder.h264", encodeTestContext, &callbacks);
+        OMX_GetHandle(&hComponentEncoder, "OMX.sf.video_encoder.avc", encodeTestContext, &callbacks);
     }
     else if (strstr(encodeTestContext->sOutputFormat, "h265") != NULL)
     {
-        OMX_GetHandle(&hComponentEncoder, "sf.enc.encoder.h265", encodeTestContext, &callbacks);
+        OMX_GetHandle(&hComponentEncoder, "OMX.sf.video_encoder.hevc", encodeTestContext, &callbacks);
     }
     if (hComponentEncoder == NULL)
     {
@@ -393,6 +419,12 @@ int main(int argc, char **argv)
     OMX_U32 nInputBufferSize = pInputPortDefinition.nBufferSize;
     OMX_U32 nInputBufferCount = pInputPortDefinition.nBufferCountActual;
 
+    disableEVnt = OMX_FALSE;
+    OMX_SendCommand(hComponentEncoder, OMX_CommandPortDisable, 1, NULL);
+    printf("wait for output port disable\r\n");
+    while (!disableEVnt);
+    printf("output port disabled\r\n");
+
     OMX_SendCommand(hComponentEncoder, OMX_CommandStateSet, OMX_StateIdle, NULL);
 
     for (int i = 0; i < nInputBufferCount; i++)
@@ -400,10 +432,19 @@ int main(int argc, char **argv)
         OMX_BUFFERHEADERTYPE *pBuffer = NULL;
         OMX_AllocateBuffer(hComponentEncoder, &pBuffer, 0, NULL, nInputBufferSize);
         encodeTestContext->pInputBufferArray[i] = pBuffer;
-        /*Fill Input Buffer*/
-        FillInputBuffer(encodeTestContext, pBuffer);
-        OMX_EmptyThisBuffer(hComponentEncoder, pBuffer);
     }
+
+    printf("wait for Component idle\r\n");
+    while (encodeTestContext->comState != OMX_StateIdle);
+    printf("Component in idle\r\n");
+
+    for (int i = 0; i < nInputBufferCount; i++)
+    {
+        /*Fill Input Buffer*/
+        FillInputBuffer(encodeTestContext, encodeTestContext->pInputBufferArray[i]);
+        OMX_EmptyThisBuffer(hComponentEncoder, encodeTestContext->pInputBufferArray[i]);
+    }
+
     fb = fopen(encodeTestContext->sOutputFilePath, "wb+");
 
     OMX_SendCommand(hComponentEncoder, OMX_CommandStateSet, OMX_StateExecuting, NULL);

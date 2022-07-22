@@ -155,6 +155,8 @@ typedef struct PortContainerExternal
                                      buffer */
     Uint32 nOffset;            /**< start offset of valid data in bytes from
                                      the start of the buffer */
+    void*  pAppPrivate;        /**< pointer to any data the application
+                                     wants to associate with this buffer */
     Uint32 nBufferIndex;
     Uint32 nTickCount;         /**< Optional entry that the component and
                                      application can update with a tick count
@@ -173,6 +175,7 @@ typedef struct PortContainerExternal
                                      of the preceding buffer to the timestamp
                                      of the preceding buffer.*/
     Uint32  nFlags;           /**< buffer specific flags */
+    Uint32  index;
 } PortContainerExternal;
 
 typedef struct PortContainerES {
@@ -336,6 +339,7 @@ typedef struct {
 /* ------------------------------------------------ */
 #define COMPONENT_EVENT_SLEEP                   (1ULL<<0)       /*!<< The third parameter of listener is NULL. */
 #define COMPONENT_EVENT_WAKEUP                  (1ULL<<1)       /*!<< The third parameter of listener is NULL. */
+#define COMPONENT_EVENT_TERMINATED              (1ULL<<2)
 #define COMPONENT_EVENT_COMMON_ALL              0xffffULL
 /* ------------------------------------------------ */
 /* ---------------- DECODER EVENTS ---------------- */

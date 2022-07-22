@@ -122,22 +122,29 @@ OMX_API OMX_ERRORTYPE OMX_APIENTRY OMX_GetHandle(
 
     for (i = 0; i < SF_OMX_COMPONENT_NUM; i++)
     {
-        pSf_omx_component = sf_omx_component_list[i];
-        if (pSf_omx_component == NULL)
+        if (sf_omx_component_list[i] == NULL)
         {
             ret = OMX_ErrorBadParameter;
             goto EXIT;
         }
-        if (strcmp(cComponentName, pSf_omx_component->componentName) == 0)
+        if (strcmp(cComponentName, sf_omx_component_list[i]->componentName) == 0)
         {
+            pSf_omx_component = malloc(sizeof(SF_OMX_COMPONENT));
+            if (!pSf_omx_component)
+            {
+                goto EXIT;
+            }
+            memcpy(pSf_omx_component, sf_omx_component_list[i], sizeof(SF_OMX_COMPONENT));
             ret = pSf_omx_component->SF_OMX_ComponentConstructor(pSf_omx_component);
             if (ret != OMX_ErrorNone)
             {
+                free(pSf_omx_component);
                 goto EXIT;
             }
             *pHandle = pSf_omx_component->pOMXComponent;
             pSf_omx_component->callbacks = pCallBacks;
             pSf_omx_component->pAppData = pAppData;
+            pSf_omx_component->state = OMX_StateLoaded;
             break;
         }
     }
@@ -153,6 +160,10 @@ OMX_API OMX_ERRORTYPE OMX_APIENTRY OMX_FreeHandle(OMX_IN OMX_HANDLETYPE hCompone
     SF_OMX_COMPONENT *pSfOMXComponent = (SF_OMX_COMPONENT *)pOMXComponent->pComponentPrivate;
     FunctionIn();
     ret = pSfOMXComponent->SF_OMX_ComponentClear(pSfOMXComponent);
+    if (!ret)
+    {
+        free(pSfOMXComponent);
+    }
 
     FunctionOut();
     return ret;
@@ -223,88 +234,28 @@ OMX_API OMX_ERRORTYPE OMX_GetRolesOfComponent(
     OMX_ERRORTYPE ret = OMX_ErrorNone;
     FunctionIn();
 
+#if 0 //todo
+    for (int i = 0; i < SF_OMX_COMPONENT_NUM; i ++)
+    {
+        if (sf_omx_component_list[i] == NULL)
+        {
+            break;
+        }
+        if (strcmp(sf_omx_component_list[i]->componentName, compName) == 0)
+        {
+            *pNumRoles = 1;
+            if (roles != NULL) {
+                strcpy((OMX_STRING)roles[0], sf_omx_component_list[i]->componentRule);
+            }
+            LOG(SF_LOG_INFO,"Get component %s, Role = %s\r\n", sf_omx_component_list[i]->componentName, sf_omx_component_list[i]->componentRule)
+        }
+    }
+#endif
+
     FunctionOut();
     return ret;
 }
 
-OMX_ERRORTYPE ClearOMXBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_BUFFERHEADERTYPE *pBuffer)
-{
-    OMX_U32 i = 0;
-    for (i = 0; i < sizeof(pSfOMXComponent->pBufferArray) / sizeof(pSfOMXComponent->pBufferArray[0]); i++)
-    {
-        if (pSfOMXComponent->pBufferArray[i] == pBuffer)
-        {
-            pSfOMXComponent->pBufferArray[i] = NULL;
-            LOG(SF_LOG_DEBUG, "Clear OMX buffer %p at index %d\r\n", pBuffer, i);
-            return OMX_ErrorNone;
-        }
-    }
-    if (i == sizeof(pSfOMXComponent->pBufferArray) / sizeof(pSfOMXComponent->pBufferArray[0]))
-    {
-        LOG(SF_LOG_ERR, "Could Not found omx buffer!\r\n");
-    }
-    return OMX_ErrorBadParameter;
-}
-
-OMX_U32 GetOMXBufferCount(SF_OMX_COMPONENT *pSfOMXComponent)
-{
-    OMX_U32 i = 0;
-    OMX_U32 count = 0;
-    for (i = 0; i < sizeof(pSfOMXComponent->pBufferArray) / sizeof(pSfOMXComponent->pBufferArray[0]); i++)
-    {
-        if (pSfOMXComponent->pBufferArray[i] != NULL)
-        {
-            LOG(SF_LOG_DEBUG, "find OMX buffer %p at index %d\r\n", pSfOMXComponent->pBufferArray[i], i);
-            count++;
-        }
-    }
-
-    return count;
-}
-
-OMX_ERRORTYPE StoreOMXBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_BUFFERHEADERTYPE *pBuffer)
-{
-    OMX_U32 i = 0;
-    for (i = 0; i < sizeof(pSfOMXComponent->pBufferArray) / sizeof(pSfOMXComponent->pBufferArray[0]); i++)
-    {
-        if (pSfOMXComponent->pBufferArray[i] == NULL)
-        {
-            pSfOMXComponent->pBufferArray[i] = pBuffer;
-            LOG(SF_LOG_DEBUG, "Store OMX buffer %p at index %d\r\n", pBuffer, i);
-            return OMX_ErrorNone;
-        }
-    }
-    if (i == sizeof(pSfOMXComponent->pBufferArray))
-    {
-        LOG(SF_LOG_ERR, "Buffer arrary full!\r\n");
-    }
-    return OMX_ErrorInsufficientResources;
-}
-
-OMX_BUFFERHEADERTYPE *GetOMXBufferByAddr(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U8 *pAddr)
-{
-    OMX_U32 i = 0;
-    OMX_BUFFERHEADERTYPE *pOMXBuffer;
-    FunctionIn();
-    LOG(SF_LOG_INFO, "ADDR=%p\r\n", pAddr);
-    for (i = 0; i < sizeof(pSfOMXComponent->pBufferArray) / sizeof(pSfOMXComponent->pBufferArray[0]); i++)
-    {
-        pOMXBuffer = pSfOMXComponent->pBufferArray[i];
-        LOG(SF_LOG_DEBUG, "Compare OMX buffer %p at index %d with addr %p\r\n", pOMXBuffer, i, pAddr);
-        if (pOMXBuffer == NULL)
-        {
-            continue;
-        }
-        if (pOMXBuffer->pBuffer == pAddr)
-        {
-            return pOMXBuffer;
-        }
-    }
-    LOG(SF_LOG_ERR, "could not find buffer!\r\n");
-
-    FunctionOut();
-    return NULL;
-}
 void SF_LogMsgAppend(int level, const char *format, ...)
 {
     va_list ptr;

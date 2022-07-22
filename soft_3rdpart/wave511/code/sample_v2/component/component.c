@@ -368,6 +368,7 @@ static void DoYourJob(ComponentImpl* com)
     /* Check if connected components are terminated */
     sinkComponent = (ComponentImpl*)com->sinkPort.connectedComponent;
     if (sinkComponent && sinkComponent->terminate == TRUE) {
+        printf("%s skin terminate\r\n",com->name);
         com->terminate = TRUE;
     }
 
@@ -384,6 +385,7 @@ static void DoThreadWork(void* arg)
         DoYourJob(com);
         osal_msleep(2); // To yield schedule
     }
+    ComponentNotifyListeners(com, COMPONENT_EVENT_TERMINATED, NULL);
 
     com->state = COMPONENT_STATE_TERMINATED;
 }

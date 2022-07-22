@@ -353,7 +353,7 @@ static OMX_ERRORTYPE SF_OMX_GetParameter(
     }
     default:
     {
-        ret = OMX_ErrorNotImplemented;
+        ret = OMX_ErrorUnsupportedIndex;
         break;
     }
     }
@@ -617,6 +617,7 @@ static OMX_ERRORTYPE SF_OMX_SetParameter(
             pPort->format.video.eColorFormat = portFormat->eColorFormat;
         break;
     }
+    case OMX_IndexParamImageInit:
     case OMX_IndexParamVideoInit:
     {
         OMX_PORT_PARAM_TYPE *portParam = (OMX_PORT_PARAM_TYPE *)ComponentParameterStructure;
@@ -629,6 +630,7 @@ static OMX_ERRORTYPE SF_OMX_SetParameter(
         break;
 
     default:
+        ret = OMX_ErrorUnsupportedIndex;
         break;
     }
 
@@ -1411,7 +1413,7 @@ static OMX_ERRORTYPE SF_OMX_SendCommand(
     switch (Cmd)
     {
     case OMX_CommandStateSet:
-        pSfOMXComponent->nextState = nParam;
+        pSfOMXComponent->state = nParam;
         LOG(SF_LOG_INFO, "OMX dest state = %X, current state = %X\r\n", nParam, pSfCodaj12Implement->currentState);
         switch (nParam)
         {
@@ -1593,7 +1595,7 @@ static OMX_ERRORTYPE SF_OMX_ComponentClear(SF_OMX_COMPONENT *pSfOMXComponent)
 
 //TODO happer
 SF_OMX_COMPONENT sf_dec_decoder_mjpeg = {
-    .componentName = "sf.dec.decoder.mjpeg",
+    .componentName = "OMX.sf.video_decoder.mjpeg",
     .libName = "libcodadec.so",
     .pOMXComponent = NULL,
     .SF_OMX_ComponentConstructor = SF_OMX_ComponentConstructor,

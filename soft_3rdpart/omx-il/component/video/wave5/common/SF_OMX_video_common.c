@@ -13,7 +13,7 @@ OMX_ERRORTYPE GetStateCommon(OMX_IN OMX_HANDLETYPE hComponent, OMX_OUT OMX_STATE
     OMX_COMPONENTTYPE *pOMXComponent = NULL;
     SF_OMX_COMPONENT *pSfOMXComponent = NULL;
     ComponentState state;
-    OMX_STATETYPE nextState;
+    OMX_STATETYPE comState;
     SF_WAVE5_IMPLEMEMT *pSfVideoImplement = NULL;
     FunctionIn();
     if (hComponent == NULL)
@@ -24,14 +24,19 @@ OMX_ERRORTYPE GetStateCommon(OMX_IN OMX_HANDLETYPE hComponent, OMX_OUT OMX_STATE
     pOMXComponent = (OMX_COMPONENTTYPE *)hComponent;
     pSfOMXComponent = pOMXComponent->pComponentPrivate;
     pSfVideoImplement = (SF_WAVE5_IMPLEMEMT *)pSfOMXComponent->componentImpl;
-    nextState = pSfOMXComponent->nextState;
+    comState = pSfOMXComponent->state;
     state = pSfVideoImplement->functions->ComponentGetState(pSfVideoImplement->hSFComponentExecoder);
     LOG(SF_LOG_INFO, "state = %d\r\n", state);
 
     switch (state)
     {
     case COMPONENT_STATE_CREATED:
-        *pState = OMX_StateIdle;
+        if (comState == OMX_StateLoaded)
+        {
+            *pState = OMX_StateLoaded;
+        }else{
+            *pState = OMX_StateIdle;
+        }
         break;
     case COMPONENT_STATE_NONE:
     case COMPONENT_STATE_TERMINATED:
@@ -39,9 +44,9 @@ OMX_ERRORTYPE GetStateCommon(OMX_IN OMX_HANDLETYPE hComponent, OMX_OUT OMX_STATE
         break;
     case COMPONENT_STATE_PREPARED:
     case COMPONENT_STATE_EXECUTED:
-        if (nextState == OMX_StateIdle || nextState == OMX_StateExecuting || nextState == OMX_StatePause)
+        if (comState == OMX_StateIdle || comState == OMX_StateExecuting || comState == OMX_StatePause)
         {
-            *pState = nextState;
+            *pState = comState;
         }
         break;
     default:
@@ -194,7 +199,7 @@ OMX_ERRORTYPE InitComponentStructorCommon(SF_OMX_COMPONENT *pSfOMXComponent)
         }
     }
 
-    if (strstr(pSfOMXComponent->componentName, "sf.enc") != NULL)
+    if (strstr(pSfOMXComponent->componentName, "sf.video_encoder") != NULL)
     {
         pSfVideoImplement->testConfig = malloc(sizeof(TestEncConfig));
         if (pSfVideoImplement->testConfig == NULL)
@@ -214,7 +219,7 @@ OMX_ERRORTYPE InitComponentStructorCommon(SF_OMX_COMPONENT *pSfOMXComponent)
         memset(pSfVideoImplement->lsnCtx, 0, sizeof(EncListenerContext));
         pSfVideoImplement->functions->SetDefaultEncTestConfig(pSfVideoImplement->testConfig);
     }
-    else if (strstr(pSfOMXComponent->componentName, "sf.dec") != NULL)
+    else if (strstr(pSfOMXComponent->componentName, "sf.video_decoder") != NULL)
     {
         pSfVideoImplement->testConfig = malloc(sizeof(TestDecConfig));
         if (pSfVideoImplement->testConfig == NULL)
@@ -241,11 +246,11 @@ OMX_ERRORTYPE InitComponentStructorCommon(SF_OMX_COMPONENT *pSfOMXComponent)
         goto ERROR;
     }
 
-    if (strstr(pSfOMXComponent->componentName, "264") != NULL)
+    if (strstr(pSfOMXComponent->componentName, "avc") != NULL)
     {
         pSfVideoImplement->bitFormat = STD_AVC;
     }
-    else if (strstr(pSfOMXComponent->componentName, "265") != NULL)
+    else if (strstr(pSfOMXComponent->componentName, "hevc") != NULL)
     {
         pSfVideoImplement->bitFormat = STD_HEVC;
     }
@@ -306,6 +311,7 @@ OMX_ERRORTYPE InitComponentStructorCommon(SF_OMX_COMPONENT *pSfOMXComponent)
         pHEVCComponent->nPortIndex = i;
         pHEVCComponent->nKeyFrameInterval = 30;
         pHEVCComponent->eProfile = OMX_VIDEO_HEVCProfileMain;
+        pSfOMXComponent->assignedBufferNum[i] = 0;
     }
 
     pSfOMXComponent->portDefinition[0].eDir = OMX_DirInput;
@@ -320,13 +326,44 @@ OMX_ERRORTYPE InitComponentStructorCommon(SF_OMX_COMPONENT *pSfOMXComponent)
     pSfOMXComponent->portDefinition[1].nBufferCountActual = VPU_OUTPUT_BUF_NUMBER;
     pSfOMXComponent->portDefinition[1].nBufferCountMin = VPU_OUTPUT_BUF_NUMBER;
 
+    /* Set componentVersion */
+    pSfOMXComponent->componentVersion.s.nVersionMajor = VERSIONMAJOR_NUMBER;
+    pSfOMXComponent->componentVersion.s.nVersionMinor = VERSIONMINOR_NUMBER;
+    pSfOMXComponent->componentVersion.s.nRevision     = REVISION_NUMBER;
+    pSfOMXComponent->componentVersion.s.nStep         = STEP_NUMBER;
+    /* Set specVersion */
+    pSfOMXComponent->specVersion.s.nVersionMajor = VERSIONMAJOR_NUMBER;
+    pSfOMXComponent->specVersion.s.nVersionMinor = VERSIONMINOR_NUMBER;
+    pSfOMXComponent->specVersion.s.nRevision     = REVISION_NUMBER;
+    pSfOMXComponent->specVersion.s.nStep         = STEP_NUMBER;
+    /* Input port */
+
     memset(pSfOMXComponent->pBufferArray, 0, sizeof(pSfOMXComponent->pBufferArray));
-    pSfOMXComponent->memory_optimization = OMX_TRUE;
+    pSfOMXComponent->memory_optimization = OMX_FALSE;
+
+    memset(pSfOMXComponent->markType, 0, sizeof(pSfOMXComponent->markType));
+    pSfOMXComponent->propagateMarkType.hMarkTargetComponent = NULL;
+    pSfOMXComponent->propagateMarkType.pMarkData = NULL;
+
+    for (int i = 0; i < 2; i++)
+    {
+        ret = SF_SemaphoreCreate(&pSfOMXComponent->portSemaphore[i]);
+        if (ret)
+            goto ERROR;
+        ret = SF_SemaphoreCreate(&pSfOMXComponent->portUnloadSemaphore[i]);
+        if (ret)
+            goto ERROR;
+    }
 
     FunctionOut();
 EXIT:
     return ret;
 ERROR:
+    for (int i = 0; i < 2; i++)
+    {
+        SF_SemaphoreTerminate(pSfOMXComponent->portSemaphore[i]);
+        SF_SemaphoreTerminate(pSfOMXComponent->portUnloadSemaphore[i]);
+    }
     if (pSfOMXComponent->pOMXComponent)
     {
         free(pSfOMXComponent->pOMXComponent);
@@ -368,20 +405,23 @@ OMX_ERRORTYPE FlushBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U32 nPort)
     if (nPort == 0)
     {
         ComponentImpl *pFeederComponent = (ComponentImpl *)(pSfVideoImplement->hSFComponentFeeder);
-        OMX_U32 inputQueueCount = pSfVideoImplement->functions->Queue_Get_Cnt(pFeederComponent->srcPort.inputQ);
-        LOG(SF_LOG_PERF, "Flush %d buffers on inputPort\r\n", inputQueueCount);
-        if (inputQueueCount > 0)
+        if (pFeederComponent)
         {
-            PortContainerExternal *input = NULL;
-            while ((input = (PortContainerExternal*)pSfVideoImplement->functions->ComponentPortGetData(&pFeederComponent->srcPort)) != NULL)
+            OMX_U32 inputQueueCount = pSfVideoImplement->functions->Queue_Get_Cnt(pFeederComponent->srcPort.inputQ);
+            LOG(SF_LOG_PERF, "Flush %d buffers on inputPort\r\n", inputQueueCount);
+            if (inputQueueCount > 0)
             {
-                if (strstr(pSfOMXComponent->componentName, "sf.dec") != NULL)
+                PortContainerExternal *input = NULL;
+                while ((input = (PortContainerExternal*)pSfVideoImplement->functions->ComponentPortGetData(&pFeederComponent->srcPort)) != NULL)
                 {
-                    pSfVideoImplement->functions->ComponentNotifyListeners(pFeederComponent, COMPONENT_EVENT_DEC_EMPTY_BUFFER_DONE, (void *)input);
-                }
-                else if (strstr(pSfOMXComponent->componentName, "sf.enc") != NULL)
-                {
-                    pSfVideoImplement->functions->ComponentNotifyListeners(pFeederComponent, COMPONENT_EVENT_ENC_EMPTY_BUFFER_DONE, (void *)input);
+                    if (strstr(pSfOMXComponent->componentName, "sf.video_decoder") != NULL)
+                    {
+                        pSfVideoImplement->functions->ComponentNotifyListeners(pFeederComponent, COMPONENT_EVENT_DEC_EMPTY_BUFFER_DONE, (void *)input);
+                    }
+                    else if (strstr(pSfOMXComponent->componentName, "sf.video_encoder") != NULL)
+                    {
+                        pSfVideoImplement->functions->ComponentNotifyListeners(pFeederComponent, COMPONENT_EVENT_ENC_EMPTY_BUFFER_DONE, (void *)input);
+                    }
                 }
             }
         }
@@ -389,22 +429,25 @@ OMX_ERRORTYPE FlushBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U32 nPort)
     else if (nPort == 1)
     {
         ComponentImpl *pRendererComponent = (ComponentImpl *)(pSfVideoImplement->hSFComponentRender);
-        OMX_U32 OutputQueueCount = pSfVideoImplement->functions->Queue_Get_Cnt(pRendererComponent->sinkPort.inputQ);
-        LOG(SF_LOG_PERF, "Flush %d buffers on outputPort\r\n", OutputQueueCount);
-        if (OutputQueueCount > 0)
+        if (pRendererComponent)
         {
-            PortContainerExternal *output = NULL;
-            while ((output = (PortContainerExternal*)pSfVideoImplement->functions->ComponentPortGetData(&pRendererComponent->sinkPort)) != NULL)
+            OMX_U32 OutputQueueCount = pSfVideoImplement->functions->Queue_Get_Cnt(pRendererComponent->sinkPort.inputQ);
+            LOG(SF_LOG_PERF, "Flush %d buffers on outputPort\r\n", OutputQueueCount);
+            if (OutputQueueCount > 0)
             {
-                output->nFlags = 0x1;
-                output->nFilledLen = 0;
-                if (strstr(pSfOMXComponent->componentName, "sf.dec") != NULL)
+                PortContainerExternal *output = NULL;
+                while ((output = (PortContainerExternal*)pSfVideoImplement->functions->ComponentPortGetData(&pRendererComponent->sinkPort)) != NULL)
                 {
-                    pSfVideoImplement->functions->ComponentNotifyListeners(pRendererComponent, COMPONENT_EVENT_DEC_FILL_BUFFER_DONE, (void *)output);
-                }
-                else if (strstr(pSfOMXComponent->componentName, "sf.enc") != NULL)
-                {
-                    pSfVideoImplement->functions->ComponentNotifyListeners(pRendererComponent, COMPONENT_EVENT_ENC_FILL_BUFFER_DONE, (void *)output);
+                    output->nFlags = 0x1;
+                    output->nFilledLen = 0;
+                    if (strstr(pSfOMXComponent->componentName, "sf.video_decoder") != NULL)
+                    {
+                        pSfVideoImplement->functions->ComponentNotifyListeners(pRendererComponent, COMPONENT_EVENT_DEC_FILL_BUFFER_DONE, (void *)output);
+                    }
+                    else if (strstr(pSfOMXComponent->componentName, "sf.video_encoder") != NULL)
+                    {
+                        pSfVideoImplement->functions->ComponentNotifyListeners(pRendererComponent, COMPONENT_EVENT_ENC_FILL_BUFFER_DONE, (void *)output);
+                    }
                 }
             }
         }
