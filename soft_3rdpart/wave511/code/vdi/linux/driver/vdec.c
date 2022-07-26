@@ -46,6 +46,7 @@
 //#define VPU_IRQ_CONTROL
 #endif
 
+#define VPU_SUPPORT_CLOCK_CONTROL
 /* if clktree is work,try this...*/
 #define STARFIVE_VPU_SUPPORT_CLOCK_CONTROL
 
@@ -159,6 +160,9 @@ static void vpu_clk_disable(vpu_clk_t *clk);
 static int vpu_clk_enable(vpu_clk_t *clk);
 static vpu_clk_t *vpu_clk_get(struct platform_device *pdev);
 static void vpu_clk_put(vpu_clk_t *clk);
+
+static int vpu_pmu_enable(struct device *dev);
+static void vpu_pmu_disable(struct device *dev);
 
 /* end customer definition */
 static vpudrv_buffer_t s_instance_pool = {0};
@@ -1348,7 +1352,6 @@ static int vpu_probe(struct platform_device *pdev)
 	if(pdev){
 		vpu_dev = &pdev->dev;
 		vpu_dev->coherent_dma_mask = 0xffffffff;;
-		//vpu_dev->dma_ops = NULL;
 		dev_info(vpu_dev,"device init.\n");
 	}
     if (pdev)
@@ -1393,10 +1396,9 @@ static int vpu_probe(struct platform_device *pdev)
     else
         DPRINTK("[VPUDRV] : get clock controller s_vpu_clk=%p\n", s_vpu_clk);
 
-#ifdef VPU_SUPPORT_CLOCK_CONTROL
-#else
+    vpu_pmu_enable(s_vpu_clk->dev);
     vpu_clk_enable(s_vpu_clk);
-#endif
+    reset_control_deassert(s_vpu_clk->resets);
 
 #ifdef VPU_SUPPORT_ISR
 #ifdef VPU_SUPPORT_PLATFORM_DRIVER_REGISTER
@@ -1499,8 +1501,10 @@ static int vpu_remove(struct platform_device *pdev)
     if (s_vpu_register.virt_addr)
         iounmap((void *)s_vpu_register.virt_addr);
 
+    reset_control_assert(s_vpu_clk->resets);
     vpu_clk_disable(s_vpu_clk);
     vpu_clk_put(s_vpu_clk);
+    vpu_pmu_disable(s_vpu_clk->dev);
 
     return 0;
 }
@@ -2161,14 +2165,9 @@ static int vpu_clk_enable(vpu_clk_t *clk)
 {
 	int ret;
 
-	vpu_pmu_enable(clk->dev);
 	ret = clk_bulk_prepare_enable(clk->nr_clks, clk->clks);
 	if (ret)
 		dev_err(clk->dev, "enable clk error.\n");
-
-	ret = reset_control_deassert(clk->resets);
-	if (ret)
-		dev_err(clk->dev, "deassert vpu error.\n");
 
 	DPRINTK("[VPUDRV] vpu_clk_enable\n");
 	return ret;
@@ -2176,13 +2175,6 @@ static int vpu_clk_enable(vpu_clk_t *clk)
 
 static void vpu_clk_disable(vpu_clk_t *clk)
 {
-	int ret;
-
-	ret = reset_control_assert(clk->resets);
-	if (ret)
-		dev_err(clk->dev, "assert vpu error.\n");
-
 	clk_bulk_disable_unprepare(clk->nr_clks, clk->clks);
-	vpu_pmu_disable(clk->dev);
 }
 #endif

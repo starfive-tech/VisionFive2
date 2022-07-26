@@ -1297,9 +1297,10 @@ int vdi_set_clock_gate(unsigned long core_idx, int enable)
         return -1;
 
     if (vdi->product_code == WAVE512_CODE || vdi->product_code == WAVE515_CODE || vdi->product_code == WAVE517_CODE ||
-        vdi->product_code == WAVE521_CODE || vdi->product_code == WAVE521C_CODE || vdi->product_code == WAVE511_CODE || vdi->product_code == WAVE521C_DUAL_CODE ) {
+        vdi->product_code == WAVE521_CODE || vdi->product_code == WAVE521C_CODE || vdi->product_code == WAVE521C_DUAL_CODE ) {
         return 0;
     }
+
     vdi->clock_state = enable;
 
     ret = ioctl(vdi->vpu_fd, VDI_IOCTL_SET_CLOCK_GATE, &enable);
