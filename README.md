@@ -39,11 +39,11 @@ $ cd opensbi && git checkout master && cd ..
 After update submodules, run `make` or `make -jx` and the complete toolchain and
 `evb_fw_payload.img` & `image.fit` will be built. The completed build tree will consume about 14G of disk space.
 
-By default, the above generated image does not contain VPU module (wave511, the video hard decode driver and wave420l, the video hard encode driver) , JPU module (codaj12, the jpeg/mjpeg hard decode&encode driver), mailbox test app, e24 test app.  The following instructions will add VPU module, JPU module, mailbox test app and e24 test app according to your requirement:
+By default, the above generated image does not contain VPU driver module(wave511, the video hard decode driver and wave420l, the video hard encode driver)and JPU driver module(codaj12,the jpeg/mjpeg hard decode&encode driver).  The following instructions will add VPU driver module and JPU driver module according to your requirement:
 
 	$ make -jx
-	$ ./build_soft_3rdpart.sh
-	$ rm -rf work/initramfs.cpio.gz
+	$ make vpudriver-build
+	$ rm -rf work/buildroot_initramfs/images/rootfs.tar
 	$ make -jx
 
 Then the below target files will be generated, copy files to tftp server workspace path:
@@ -181,7 +181,7 @@ Please insert the TF card to the host and run command `df -h` to check the devic
 ```
 $ make -jx
 $ make buildroot_rootfs -jx
-$ ./build_soft_3rdpart.sh rootfs
+$ make vpudriver-build-rootfs
 $ rm work/buildroot_rootfs/images/rootfs.ext*
 $ make buildroot_rootfs -jx
 $ make DISK=/dev/sdX format-rootfs-image && sync
