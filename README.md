@@ -187,6 +187,30 @@ $ make buildroot_rootfs -jx
 $ make DISK=/dev/sdX format-rootfs-image && sync
 ```
 
+## Generate SDCard Image file
+
+We could generate a sdcard image file by the below command. The sdcard image file could be burned into sdcard or tf card through `dd` command, or `rpi-imager` or `balenaEtcher` tool
+
+```
+$ make -jx
+$ make buildroot_rootfs -jx
+$ ./build_soft_3rdpart.sh rootfs
+$ rm work/buildroot_rootfs/images/rootfs.ext*
+$ make buildroot_rootfs -jx
+$ ./genimage.sh
+```
+
+Then the output file `work/sdcard.img`  will be generated.  Then It can been burn into tf card, e.g. through `dd` command
+
+```
+$ sudo dd if=work/sdcard.img of=/dev/sdX bs=4096
+$ sync
+$ sudo growpart /dev/sdc 4  # extend partition 4
+$ sudo e2fsck -f /dev/sdc4
+$ sudo resize2fs /dev/sdc4  # extend filesystem
+$ sudo fsck.ext4 /dev/sdc4
+```
+
 ## Using DTB Overlay Dynamically
 
 The system support load dtb overlay dynamically when the board is running. The detail process to use the dtbo please reference to the dtbo documents.
