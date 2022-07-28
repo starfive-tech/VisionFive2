@@ -37,6 +37,7 @@ linux_defconfig := $(linux_srcdir)/arch/riscv/configs/starfive_jh7110_defconfig
 vmlinux := $(linux_wrkdir)/vmlinux
 vmlinux_stripped := $(linux_wrkdir)/vmlinux-stripped
 vmlinux_bin := $(wrkdir)/vmlinux.bin
+module_install_path:=$(wrkdir)/module_install_path
 
 its_file=$(confdir)/$(HWBOARD)-fit-image.its
 uboot_its_file=$(confdir)/$(HWBOARD)-uboot-fit-image.its
@@ -150,6 +151,7 @@ $(buildroot_rootfs_wrkdir)/.config: $(buildroot_srcdir) $(buildroot_initramfs_ta
 
 $(buildroot_rootfs_ext): $(buildroot_srcdir) $(buildroot_rootfs_wrkdir)/.config $(target_gcc) $(buildroot_rootfs_config)
 	$(MAKE) -C $< RISCV=$(RISCV) PATH=$(RVPATH) O=$(buildroot_rootfs_wrkdir)
+	cp -r $(module_install_path)/lib/modules $(buildroot_rootfs_wrkdir)/target/lib/
 
 .PHONY: buildroot_rootfs
 buildroot_rootfs: $(buildroot_rootfs_ext)
@@ -184,15 +186,22 @@ $(uboot_wrkdir)/.config: $(uboot_defconfig)
 	cp -p $< $@
 	$(MAKE) -C $(uboot_srcdir) O=$(uboot_wrkdir) ARCH=riscv olddefconfig
 
+vmlinu:$(vmlinux)
 $(vmlinux): $(linux_srcdir) $(linux_wrkdir)/.config $(target_gcc)
 	$(MAKE) -C $< O=$(linux_wrkdir) \
 		ARCH=riscv \
 		CROSS_COMPILE=$(CROSS_COMPILE) \
 		PATH=$(RVPATH) \
-		vmlinux		\
 		HWBOARD_FLAG=$(HWBOARD_FLAG) \
+		vmlinux \
 		all \
 		modules
+	$(MAKE) -C $< O=$(linux_wrkdir) \
+		ARCH=riscv \
+		CROSS_COMPILE=$(CROSS_COMPILE) \
+		PATH=$(RVPATH) \
+		INSTALL_MOD_PATH=$(module_install_path) \
+		modules_install
 
 # vpu building depend on the $(vmlinux), $(vmlinux) depend on $(buildroot_initramfs_sysroot)
 # so vpubuild should be built seperately
@@ -247,6 +256,7 @@ $(initramfs).d: $(buildroot_initramfs_sysroot)
 	$(linux_srcdir)/usr/gen_initramfs_list.sh -l $(confdir)/initramfs.txt $(buildroot_initramfs_sysroot) > $@
 
 $(initramfs): $(buildroot_initramfs_sysroot) $(vmlinux)
+	cp -r $(module_install_path)/lib/modules $(buildroot_initramfs_sysroot)/lib/
 	cd $(linux_wrkdir) && \
 		$(linux_srcdir)/usr/gen_initramfs_list.sh \
 		-o $@ -u $(shell id -u) -g $(shell id -g) \
