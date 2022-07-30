@@ -10,7 +10,7 @@ image with a Opensbi binary, linux kernel, device tree, ramdisk and rootdisk for
 ### Ubuntu 16.04/18.04/20.04 x86_64 host
 
 - Status: Working
-- Build dependencies: `build-essential g++ git autoconf automake autotools texinfo bison xxd curl flex gawk gdisk gperf libgmp-dev libmpfr-dev libmpc-dev libz-dev libssl-dev libncurses-dev libtool patchutils python screen texinfo unzip zlib1g-dev libyaml-dev`
+- Build dependencies: `build-essential g++ git autoconf automake autotools texinfo bison xxd curl flex gawk gdisk gperf libgmp-dev libmpfr-dev libmpc-dev libz-dev libssl-dev libncurses-dev libtool patchutils python screen texinfo unzip zlib1g-dev libyaml-dev wget cpio bc dosfstools`
 - Additional build deps for **QEMU**: `libglib2.0-dev libpixman-1-dev`
 - Additional build deps for **Spike**: `device-tree-compiler`
 - tools require for  **format-boot-loader** target: `mtools`
@@ -44,6 +44,7 @@ By default, the above generated image does not contain VPU driver module(wave511
 	$ make -jx
 	$ make vpudriver-build
 	$ rm -rf work/buildroot_initramfs/images/rootfs.tar
+	$ rm work/initramfs.cpio.gz
 	$ make -jx
 
 Then the below target files will be generated, copy files to tftp server workspace path:
@@ -194,7 +195,7 @@ We could generate a sdcard image file by the below command. The sdcard image fil
 ```
 $ make -jx
 $ make buildroot_rootfs -jx
-$ ./build_soft_3rdpart.sh rootfs
+$ make vpudriver-build-rootfs
 $ rm work/buildroot_rootfs/images/rootfs.ext*
 $ make buildroot_rootfs -jx
 $ ./genimage.sh
@@ -205,14 +206,13 @@ Then the output file `work/sdcard.img`  will be generated.  Then It can been bur
 ```
 $ sudo dd if=work/sdcard.img of=/dev/sdX bs=4096
 $ sync
-$ sudo growpart /dev/sdc 4  # extend partition 4
-$ sudo e2fsck -f /dev/sdc4
-$ sudo resize2fs /dev/sdc4  # extend filesystem
-$ sudo fsck.ext4 /dev/sdc4
+$ sudo growpart /dev/sdX 4  # extend partition 4
+$ sudo e2fsck -f /dev/sdX4
+$ sudo resize2fs /dev/sdX4  # extend filesystem
+$ sudo fsck.ext4 /dev/sdX4
 ```
 
 ## Using DTB Overlay Dynamically
 
 The system support load dtb overlay dynamically when the board is running. The detail process to use the dtbo please reference to the dtbo documents.
-
 
