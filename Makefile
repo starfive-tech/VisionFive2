@@ -126,7 +126,7 @@ fpga: all
 fpga: HWBOARD_FLAG := HWBOARD_FPGA
 
 $(buildroot_initramfs_wrkdir)/.config: $(buildroot_srcdir)
-	rm -rf $(dir $@)
+#	rm -rf $(dir $@)
 	mkdir -p $(dir $@)
 	cp $(buildroot_initramfs_config) $@
 	$(MAKE) -C $< RISCV=$(RISCV) O=$(buildroot_initramfs_wrkdir) olddefconfig
@@ -144,7 +144,7 @@ buildroot_initramfs-menuconfig: $(buildroot_initramfs_wrkdir)/.config $(buildroo
 # use buildroot_initramfs toolchain
 # TODO: fix path and conf/buildroot_rootfs_config
 $(buildroot_rootfs_wrkdir)/.config: $(buildroot_srcdir) $(buildroot_initramfs_tar)
-	rm -rf $(dir $@)
+#	rm -rf $(dir $@)
 	mkdir -p $(dir $@)
 	cp $(buildroot_rootfs_config) $@
 	$(MAKE) -C $< RISCV=$(RISCV) PATH=$(RVPATH) O=$(buildroot_rootfs_wrkdir) olddefconfig
