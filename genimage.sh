@@ -18,12 +18,17 @@ COLOR_GREEN="\033[1;32m"
 COLOR_YELLOW="\033[1;33m"
 COLOR_RED="\033[1;31m"
 COLOR_GREY="\033[1;30m"
+HWBOARD=visionfive2
 
 TOPDIR=`dirname $0`
 BUILD_DIR=$TOPDIR/work
 INPUT_DIR=$TOPDIR
 OUTPUT_DIR=$TOPDIR/work
-GENIMAGE_CFG=$TOPDIR/conf/genimage.cfg
+if [ $HWBOARD == "visionfive2" ]; then
+	GENIMAGE_CFG=$TOPDIR/conf/genimage-vf2.cfg
+else
+	GENIMAGE_CFG=$TOPDIR/conf/genimage.cfg
+fi
 GENIMAGE=$TOPDIR/work/buildroot_initramfs/host/bin/genimage
 
 if [ ! -f $GENIMAGE ]; then
