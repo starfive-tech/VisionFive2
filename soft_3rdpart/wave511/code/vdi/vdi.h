@@ -168,6 +168,9 @@ extern "C" {
 #if defined(SUPPORT_SW_UART) || defined(SUPPORT_SW_UART_V2)
     int vdi_get_task_num(unsigned long core_idx);
 #endif
+    void set_cpu_freq_fixed(void);
+    void realese_cpu_freq_fixed(void);
+
 #if defined (__cplusplus)
 }
 #endif
