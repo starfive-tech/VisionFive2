@@ -368,7 +368,6 @@ static void DoYourJob(ComponentImpl* com)
     /* Check if connected components are terminated */
     sinkComponent = (ComponentImpl*)com->sinkPort.connectedComponent;
     if (sinkComponent && sinkComponent->terminate == TRUE) {
-        printf("%s skin terminate\r\n",com->name);
         com->terminate = TRUE;
     }
 
