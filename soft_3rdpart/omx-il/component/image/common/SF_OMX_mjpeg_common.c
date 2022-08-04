@@ -184,7 +184,40 @@ OMX_ERRORTYPE InitMjpegStructorCommon(SF_OMX_COMPONENT *pSfOMXComponent)
         pPortDefinition->bEnabled = OMX_TRUE;
 
         pPortDefinition->eDir = (i == 0 ? OMX_DirInput : OMX_DirOutput);
+        pSfOMXComponent->assignedBufferNum[i] = 0;
     }
+
+    /* Set componentVersion */
+    pSfOMXComponent->componentVersion.s.nVersionMajor = VERSIONMAJOR_NUMBER;
+    pSfOMXComponent->componentVersion.s.nVersionMinor = VERSIONMINOR_NUMBER;
+    pSfOMXComponent->componentVersion.s.nRevision     = REVISION_NUMBER;
+    pSfOMXComponent->componentVersion.s.nStep         = STEP_NUMBER;
+    /* Set specVersion */
+    pSfOMXComponent->specVersion.s.nVersionMajor = VERSIONMAJOR_NUMBER;
+    pSfOMXComponent->specVersion.s.nVersionMinor = VERSIONMINOR_NUMBER;
+    pSfOMXComponent->specVersion.s.nRevision     = REVISION_NUMBER;
+    pSfOMXComponent->specVersion.s.nStep         = STEP_NUMBER;
+
+    memset(pSfOMXComponent->markType, 0, sizeof(pSfOMXComponent->markType));
+    pSfOMXComponent->propagateMarkType.hMarkTargetComponent = NULL;
+    pSfOMXComponent->propagateMarkType.pMarkData = NULL;
+
+    for (int i = 0; i < 2; i++)
+    {
+        ret = SF_SemaphoreCreate(&pSfOMXComponent->portSemaphore[i]);
+        if (ret)
+            goto ERROR;
+        ret = SF_SemaphoreCreate(&pSfOMXComponent->portUnloadSemaphore[i]);
+        if (ret)
+            goto ERROR;
+        ret = SF_SemaphoreCreate(&pSfOMXComponent->portFlushSemaphore[i]);
+        if (ret)
+            goto ERROR;
+    }
+
+    ret = SF_SemaphoreCreate(&pSfCodaj12Implement->pauseOutSemaphore);
+    if (ret)
+        goto ERROR;
 
     // strcpy(pSfOMXComponent->portDefinition[1].format.image.cMIMEType, "JPEG");
     // pSfOMXComponent->portDefinition[1].format.image.eColorFormat = OMX_COLOR_FormatYUV420SemiPlanar;
@@ -198,6 +231,15 @@ OMX_ERRORTYPE InitMjpegStructorCommon(SF_OMX_COMPONENT *pSfOMXComponent)
 EXIT:
     return ret;
 ERROR:
+    for (int i = 0; i < 2; i++)
+    {
+        SF_SemaphoreTerminate(pSfOMXComponent->portSemaphore[i]);
+        SF_SemaphoreTerminate(pSfOMXComponent->portUnloadSemaphore[i]);
+        SF_SemaphoreTerminate(pSfOMXComponent->portFlushSemaphore[i]);
+    }
+
+    SF_SemaphoreTerminate(pSfCodaj12Implement->pauseOutSemaphore);
+
     if (pSfOMXComponent->pOMXComponent)
     {
         free(pSfOMXComponent->pOMXComponent);
@@ -217,6 +259,7 @@ static void sf_get_component_functions(SF_CODAJ12_FUNCTIONS *funcs, OMX_PTR *soh
     funcs->JPU_DecRegisterFrameBuffer = dlsym(sohandle, "JPU_DecRegisterFrameBuffer");
     funcs->JPU_DecGiveCommand = dlsym(sohandle, "JPU_DecGiveCommand");
     funcs->JPU_DecStartOneFrameBySerialNum = dlsym(sohandle, "JPU_DecStartOneFrameBySerialNum");
+    funcs->JPU_DecStartOneFrame = dlsym(sohandle, "JPU_DecStartOneFrame");
     funcs->JPU_DecGetOutputInfo = dlsym(sohandle, "JPU_DecGetOutputInfo");
     funcs->JPU_SWReset = dlsym(sohandle, "JPU_SWReset");
     funcs->JPU_DecSetRdPtrEx = dlsym(sohandle, "JPU_DecSetRdPtrEx");
@@ -232,295 +275,14 @@ static void sf_get_component_functions(SF_CODAJ12_FUNCTIONS *funcs, OMX_PTR *soh
     funcs->BitstreamFeeder_Destroy = dlsym(sohandle, "BitstreamFeeder_Destroy");
     funcs->jdi_allocate_dma_memory = dlsym(sohandle, "jdi_allocate_dma_memory");
     funcs->jdi_free_dma_memory = dlsym(sohandle, "jdi_free_dma_memory");
-    funcs->AllocateOneFrameBuffer = dlsym(sohandle, "AllocateOneFrameBuffer");
+    funcs->AllocateFrameBuffer = dlsym(sohandle, "AllocateFrameBuffer");
     funcs->FreeFrameBuffer = dlsym(sohandle, "FreeFrameBuffer");
     funcs->GetFrameBuffer = dlsym(sohandle, "GetFrameBuffer");
     funcs->GetFrameBufferCount = dlsym(sohandle, "GetFrameBufferCount");
     funcs->UpdateFrameBuffers = dlsym(sohandle, "UpdateFrameBuffers");
     funcs->SetMaxLogLevel = dlsym(sohandle, "SetMaxLogLevel");
-    funcs->AttachOneFrameBuffer = dlsym(sohandle, "AttachOneFrameBuffer");
+    funcs->SaveYuvImageHelper = dlsym(sohandle, "SaveYuvImageHelper");
     FunctionOut();
-}
-
-OMX_BOOL AttachOutputBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U8* pBuffer, OMX_U32 nSizeBytes)
-{
-    SF_CODAJ12_IMPLEMEMT *pSfCodaj12Implement = pSfOMXComponent->componentImpl;
-    Int32 instIdx = pSfCodaj12Implement->instIdx;
-    JpgDecOpenParam *decOP = &pSfCodaj12Implement->decOP;
-    DecConfigParam *decConfig = pSfCodaj12Implement->config;
-    JpgDecInitialInfo *initialInfo = &pSfCodaj12Implement->initialInfo;
-    FrameBuffer *pFrameBuf = pSfCodaj12Implement->frameBuf;
-    JpgDecHandle handle = pSfCodaj12Implement->handle;
-
-    Uint32 framebufWidth = 0, framebufHeight = 0, framebufStride = 0;
-    Uint32 decodingWidth, decodingHeight;
-    BOOL scalerOn = FALSE;
-    Uint32 bitDepth = 0;
-    FrameFormat subsample;
-    Uint32 temp;
-    OMX_U8 *virtAddr = NULL;
-    Uint32 bufferIndex;
-    JpgRet jpgret;
-
-    FunctionIn();
-    if (initialInfo->sourceFormat == FORMAT_420 || initialInfo->sourceFormat == FORMAT_422)
-        framebufWidth = JPU_CEIL(16, initialInfo->picWidth);
-    else
-        framebufWidth = JPU_CEIL(8, initialInfo->picWidth);
-
-    if (initialInfo->sourceFormat == FORMAT_420 || initialInfo->sourceFormat == FORMAT_440)
-        framebufHeight = JPU_CEIL(16, initialInfo->picHeight);
-    else
-        framebufHeight = JPU_CEIL(8, initialInfo->picHeight);
-
-    if (framebufWidth == 0 || framebufHeight == 0)
-    {
-        LOG(SF_LOG_WARN, "width or height == 0, use port parameters\r\n");
-        for (int i = 0; i < OMX_PORT_MAX; i ++)
-        {
-            OMX_PARAM_PORTDEFINITIONTYPE *pPort = &pSfOMXComponent->portDefinition[i];
-            framebufWidth = pPort->format.video.nFrameWidth;
-            framebufHeight = pPort->format.video.nFrameHeight;
-            if (framebufWidth > 0 && framebufHeight > 0)
-            {
-                LOG(SF_LOG_INFO, "Use port: %d\r\n", i);
-                break;
-            }
-        }
-        if (framebufWidth == 0 || framebufHeight == 0)
-        {
-            LOG(SF_LOG_ERR, "Can not get frame size\r\n");
-            return OMX_FALSE;
-        }
-    }
-    LOG(SF_LOG_DEBUG, "framebufWidth: %d, framebufHeight: %d\r\n", framebufWidth, framebufHeight);
-
-    decodingWidth = framebufWidth >> decConfig->iHorScaleMode;
-    decodingHeight = framebufHeight >> decConfig->iVerScaleMode;
-    if (decOP->packedFormat != PACKED_FORMAT_NONE && decOP->packedFormat != PACKED_FORMAT_444)
-    {
-        // When packed format, scale-down resolution should be multiple of 2.
-        decodingWidth = JPU_CEIL(2, decodingWidth);
-    }
-
-    subsample = pSfCodaj12Implement->frameFormat;
-    temp = decodingWidth;
-    decodingWidth = (decConfig->rotation == 90 || decConfig->rotation == 270) ? decodingHeight : decodingWidth;
-    decodingHeight = (decConfig->rotation == 90 || decConfig->rotation == 270) ? temp : decodingHeight;
-    if (decConfig->roiEnable == TRUE)
-    {
-        decodingWidth = framebufWidth = initialInfo->roiFrameWidth;
-        decodingHeight = framebufHeight = initialInfo->roiFrameHeight;
-    }
-
-    LOG(SF_LOG_DEBUG, "decodingWidth: %d, decodingHeight: %d\n", decodingWidth, decodingHeight);
-
-    if (decOP->rotation != 0 || decOP->mirror != MIRDIR_NONE)
-    {
-        if (decOP->outputFormat != FORMAT_MAX && decOP->outputFormat != initialInfo->sourceFormat)
-        {
-            LOG(SF_LOG_ERR, "The rotator cannot work with the format converter together.\n");
-            return OMX_FALSE;
-        }
-    }
-
-    LOG(SF_LOG_INFO, "<INSTANCE %d>\n", instIdx);
-    LOG(SF_LOG_INFO, "SOURCE PICTURE SIZE : W(%d) H(%d)\n", initialInfo->picWidth, initialInfo->picHeight);
-    LOG(SF_LOG_INFO, "SUBSAMPLE           : %d\n", subsample);
-
-    bitDepth = initialInfo->bitDepth;
-    scalerOn = (BOOL)(decConfig->iHorScaleMode || decConfig->iVerScaleMode);
-    // may be handle == NULL on ffmpeg case
-    if (bitDepth == 0)
-    {
-        bitDepth = 8;
-    }
-    LOG(SF_LOG_DEBUG, "AllocateOneFrameBuffer\r\n");
-    LOG_APPEND(SF_LOG_DEBUG, "instIdx = %d subsample = %d chromaInterleave = %d packedFormat = %d rotation = %d\r\n",
-                instIdx, subsample, decOP->chromaInterleave, decOP->packedFormat, decConfig->rotation);
-    LOG_APPEND(SF_LOG_DEBUG, "scalerOn = %d decodingWidth = %d decodingHeight = %d bitDepth = %d\r\n",
-                scalerOn, decodingWidth, decodingHeight, bitDepth);
-    if (pSfCodaj12Implement->functions->AttachOneFrameBuffer(instIdx, subsample, decOP->chromaInterleave,
-        decOP->packedFormat, decConfig->rotation,
-        scalerOn, decodingWidth, decodingHeight, bitDepth, pBuffer, nSizeBytes, &bufferIndex) == OMX_FALSE)
-    {
-        LOG(SF_LOG_ERR, "Fail to attach FrameBuffer\r\n");
-        return OMX_FALSE;
-    }
-
-    LOG(SF_LOG_INFO, "Allocate frame buffer %p, index = %d\r\n", virtAddr, bufferIndex);
-
-    //Register frame buffer
-    FRAME_BUF *pFrame = pSfCodaj12Implement->functions->GetFrameBuffer(instIdx, bufferIndex);
-    memcpy(&pSfCodaj12Implement->frame[bufferIndex], pFrame, sizeof(FRAME_BUF));
-    pFrameBuf[bufferIndex].bufY = pFrame->vbY.phys_addr;
-    pFrameBuf[bufferIndex].bufCb = pFrame->vbCb.phys_addr;
-    if (decOP->chromaInterleave == CBCR_SEPARATED)
-        pFrameBuf[bufferIndex].bufCr = pFrame->vbCr.phys_addr;
-    pFrameBuf[bufferIndex].stride = pFrame->strideY;
-    pFrameBuf[bufferIndex].strideC = pFrame->strideC;
-    pFrameBuf[bufferIndex].endian = decOP->frameEndian;
-    pFrameBuf[bufferIndex].format = (FrameFormat)pFrame->Format;
-    framebufStride = pFrameBuf[bufferIndex].stride;
-
-    // may be handle == NULL on ffmpeg case
-    jpgret = pSfCodaj12Implement->functions->JPU_DecRegisterFrameBuffer2(handle, &pFrameBuf[bufferIndex], framebufStride);
-    LOG(SF_LOG_DEBUG, "JPU_DecRegisterFrameBuffer2 ret = %d\r\n", jpgret);
-    FunctionOut();
-    return OMX_TRUE;
-
-}
-OMX_U8 *AllocateOutputBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U32 nSizeBytes)
-{
-    SF_CODAJ12_IMPLEMEMT *pSfCodaj12Implement = pSfOMXComponent->componentImpl;
-    Int32 instIdx = pSfCodaj12Implement->instIdx;
-    JpgDecOpenParam *decOP = &pSfCodaj12Implement->decOP;
-    DecConfigParam *decConfig = pSfCodaj12Implement->config;
-    JpgDecInitialInfo *initialInfo = &pSfCodaj12Implement->initialInfo;
-    FrameBuffer *pFrameBuf = pSfCodaj12Implement->frameBuf;
-    JpgDecHandle handle = pSfCodaj12Implement->handle;
-
-    Uint32 framebufWidth = 0, framebufHeight = 0, framebufStride = 0;
-    Uint32 decodingWidth, decodingHeight;
-    BOOL scalerOn = FALSE;
-    Uint32 bitDepth = 0;
-    FrameFormat subsample;
-    Uint32 temp;
-    OMX_U8 *virtAddr;
-    Uint32 bufferIndex;
-    JpgRet jpgret;
-
-    CbCrInterLeave chromaInterleave;
-    PackedFormat packedFormat;
-    FunctionIn();
-
-    if (initialInfo->sourceFormat == FORMAT_420 || initialInfo->sourceFormat == FORMAT_422)
-        framebufWidth = JPU_CEIL(16, initialInfo->picWidth);
-    else
-        framebufWidth = JPU_CEIL(8, initialInfo->picWidth);
-
-    if (initialInfo->sourceFormat == FORMAT_420 || initialInfo->sourceFormat == FORMAT_440)
-        framebufHeight = JPU_CEIL(16, initialInfo->picHeight);
-    else
-        framebufHeight = JPU_CEIL(8, initialInfo->picHeight);
-
-    if (framebufWidth == 0 || framebufHeight == 0)
-    {
-        LOG(SF_LOG_WARN, "width or height == 0, use port parameters\r\n");
-        for (int i = 0; i < OMX_PORT_MAX; i ++)
-        {
-            OMX_PARAM_PORTDEFINITIONTYPE *pPort = &pSfOMXComponent->portDefinition[i];
-            framebufWidth = pPort->format.video.nFrameWidth;
-            framebufHeight = pPort->format.video.nFrameHeight;
-            if (framebufWidth > 0 && framebufHeight > 0)
-            {
-                LOG(SF_LOG_INFO, "Use port: %d\r\n", i);
-                break;
-            }
-        }
-
-        if (initialInfo->sourceFormat == FORMAT_420 || initialInfo->sourceFormat == FORMAT_422)
-            framebufWidth = JPU_CEIL(16, framebufWidth);
-        else
-            framebufWidth = JPU_CEIL(8, framebufWidth);
-
-        if (initialInfo->sourceFormat == FORMAT_420 || initialInfo->sourceFormat == FORMAT_440)
-            framebufHeight = JPU_CEIL(16, framebufHeight);
-        else
-            framebufHeight = JPU_CEIL(8, framebufHeight);
-
-        if (framebufWidth == 0 || framebufHeight == 0)
-        {
-            LOG(SF_LOG_ERR, "Can not get frame size\r\n");
-            return NULL;
-        }
-    }
-    LOG(SF_LOG_DEBUG, "framebufWidth: %d, framebufHeight: %d\r\n", framebufWidth, framebufHeight);
-
-    decodingWidth = framebufWidth >> decConfig->iHorScaleMode;
-    decodingHeight = framebufHeight >> decConfig->iVerScaleMode;
-    if (decOP->packedFormat != PACKED_FORMAT_NONE && decOP->packedFormat != PACKED_FORMAT_444)
-    {
-        // When packed format, scale-down resolution should be multiple of 2.
-        decodingWidth = JPU_CEIL(2, decodingWidth);
-    }
-
-    subsample = pSfCodaj12Implement->frameFormat;
-    temp = decodingWidth;
-    decodingWidth = (decConfig->rotation == 90 || decConfig->rotation == 270) ? decodingHeight : decodingWidth;
-    decodingHeight = (decConfig->rotation == 90 || decConfig->rotation == 270) ? temp : decodingHeight;
-    if (decConfig->roiEnable == TRUE)
-    {
-        decodingWidth = framebufWidth = initialInfo->roiFrameWidth;
-        decodingHeight = framebufHeight = initialInfo->roiFrameHeight;
-    }
-
-    LOG(SF_LOG_DEBUG, "decodingWidth: %d, decodingHeight: %d\n", decodingWidth, decodingHeight);
-
-    if (decOP->rotation != 0 || decOP->mirror != MIRDIR_NONE)
-    {
-        if (decOP->outputFormat != FORMAT_MAX && decOP->outputFormat != initialInfo->sourceFormat)
-        {
-            LOG(SF_LOG_ERR, "The rotator cannot work with the format converter together.\n");
-            return NULL;
-        }
-    }
-
-    LOG(SF_LOG_INFO, "<INSTANCE %d>\n", instIdx);
-    LOG(SF_LOG_INFO, "SOURCE PICTURE SIZE : W(%d) H(%d)\n", initialInfo->picWidth, initialInfo->picHeight);
-    LOG(SF_LOG_INFO, "SUBSAMPLE           : %d\n", subsample);
-
-    bitDepth = initialInfo->bitDepth;
-    scalerOn = (BOOL)(decConfig->iHorScaleMode || decConfig->iVerScaleMode);
-    // may be handle == NULL on ffmpeg case
-    if (bitDepth == 0)
-    {
-        bitDepth = 8;
-    }
-    if (handle == NULL)
-    {
-        LOG(SF_LOG_INFO, "JPU not open yet, use default\r\n");
-        chromaInterleave = decConfig->cbcrInterleave;
-        packedFormat = decConfig->packedFormat;
-    }
-    else
-    {
-        chromaInterleave = decOP->chromaInterleave;
-        packedFormat = decOP->packedFormat;
-    }
-    LOG(SF_LOG_DEBUG, "AllocateOneFrameBuffer\r\n");
-    LOG_APPEND(SF_LOG_DEBUG, "instIdx = %d subsample = %d chromaInterleave = %d packedFormat = %d rotation = %d\r\n",
-                instIdx, subsample, chromaInterleave, packedFormat, decConfig->rotation);
-    LOG_APPEND(SF_LOG_DEBUG, "scalerOn = %d decodingWidth = %d decodingHeight = %d bitDepth = %d\r\n",
-                scalerOn, decodingWidth, decodingHeight, bitDepth);
-    virtAddr = (OMX_U8 *)pSfCodaj12Implement->functions->AllocateOneFrameBuffer
-        (instIdx, subsample, chromaInterleave, packedFormat, decConfig->rotation,
-        scalerOn, decodingWidth, decodingHeight, bitDepth, &bufferIndex);
-    if (virtAddr == NULL)
-    {
-        LOG(SF_LOG_ERR, "Failed to AllocateOneFrameBuffer()\n");
-        return NULL;
-    }
-    LOG(SF_LOG_INFO, "Allocate frame buffer %p, index = %d\r\n", virtAddr, bufferIndex);
-
-    //Register frame buffer
-    FRAME_BUF *pFrame = pSfCodaj12Implement->functions->GetFrameBuffer(instIdx, bufferIndex);
-    memcpy(&pSfCodaj12Implement->frame[bufferIndex], pFrame, sizeof(FRAME_BUF));
-    pFrameBuf[bufferIndex].bufY = pFrame->vbY.phys_addr;
-    pFrameBuf[bufferIndex].bufCb = pFrame->vbCb.phys_addr;
-    if (decOP->chromaInterleave == CBCR_SEPARATED)
-        pFrameBuf[bufferIndex].bufCr = pFrame->vbCr.phys_addr;
-    pFrameBuf[bufferIndex].stride = pFrame->strideY;
-    pFrameBuf[bufferIndex].strideC = pFrame->strideC;
-    pFrameBuf[bufferIndex].endian = decOP->frameEndian;
-    pFrameBuf[bufferIndex].format = (FrameFormat)pFrame->Format;
-    framebufStride = pFrameBuf[bufferIndex].stride;
-
-    // may be handle == NULL on ffmpeg case
-    jpgret = pSfCodaj12Implement->functions->JPU_DecRegisterFrameBuffer2(handle, &pFrameBuf[bufferIndex], framebufStride);
-    LOG(SF_LOG_DEBUG, "JPU_DecRegisterFrameBuffer2 ret = %d\r\n", jpgret);
-    FunctionOut();
-    return virtAddr;
 }
 
 void CodaJ12FlushBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U32 nPortNumber)
@@ -545,26 +307,23 @@ void CodaJ12FlushBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U32 nPortNumber)
             }
 
             pOMXBuffer = data.pBuffer;
-            LOG(SF_LOG_INFO, "Flush Buffer %p\r\n", pOMXBuffer);
+            LOG(SF_LOG_INFO, "get header %p from in q\r\n", pOMXBuffer);
             if (pOMXBuffer != NULL)
             {
                 pOMXBuffer->nFilledLen = 0;
                 pOMXBuffer->nFlags = OMX_BUFFERFLAG_EOS;
+                LOG(SF_LOG_INFO, "Flush input Buffer header %p pBuffer %p\r\n", pOMXBuffer, pOMXBuffer->pBuffer);
                 pSfOMXComponent->callbacks->EmptyBufferDone(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData, pOMXBuffer);
+                pSfOMXComponent->handlingBufferNum[OMX_INPUT_PORT_INDEX]--;
+                if((pSfOMXComponent->handlingBufferNum[OMX_INPUT_PORT_INDEX] == 0) && pSfOMXComponent->bPortFlushing[OMX_INPUT_PORT_INDEX])
+                {
+                    LOG(SF_LOG_INFO, "return all input buff\r\n");
+                    SF_SemaphorePost(pSfOMXComponent->portFlushSemaphore[OMX_INPUT_PORT_INDEX]);
+                }
             }
         }
         break;
     case OMX_OUTPUT_PORT_INDEX:
-        for(int i = 0; i < MCA_MAX_INDEX; i++){
-            pOMXBuffer = pSfCodaj12Implement->mesCacheArr[i].pBuffer;
-            LOG(SF_LOG_INFO, "Flush Buffer %p\r\n", pOMXBuffer);
-            if (pOMXBuffer != NULL)
-            {
-                pOMXBuffer->nFilledLen = 0;
-                pOMXBuffer->nFlags = OMX_BUFFERFLAG_EOS;
-                pSfOMXComponent->callbacks->FillBufferDone(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData, pOMXBuffer);
-            }
-        }
         while (OMX_TRUE)
         {
             if (msgrcv(pSfCodaj12Implement->sOutputMessageQueue, (void *)&data, BUFSIZ, 0, IPC_NOWAIT) < 0)
@@ -574,12 +333,19 @@ void CodaJ12FlushBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U32 nPortNumber)
             }
 
             pOMXBuffer = data.pBuffer;
-            LOG(SF_LOG_INFO, "Flush Buffer %p\r\n", pOMXBuffer);
+            LOG(SF_LOG_INFO, "get header %p from out q\r\n", pOMXBuffer);
             if (pOMXBuffer != NULL)
             {
                 pOMXBuffer->nFilledLen = 0;
                 pOMXBuffer->nFlags = OMX_BUFFERFLAG_EOS;
+                LOG(SF_LOG_INFO, "Flush output Buffer header %p pBuffer %p\r\n", pOMXBuffer, pOMXBuffer->pBuffer);
                 pSfOMXComponent->callbacks->FillBufferDone(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData, pOMXBuffer);
+                pSfOMXComponent->handlingBufferNum[OMX_OUTPUT_PORT_INDEX]--;
+                if((pSfOMXComponent->handlingBufferNum[OMX_OUTPUT_PORT_INDEX] == 0) && pSfOMXComponent->bPortFlushing[OMX_OUTPUT_PORT_INDEX])
+                {
+                    LOG(SF_LOG_INFO, "return all output buff\r\n");
+                    SF_SemaphorePost(pSfOMXComponent->portFlushSemaphore[OMX_OUTPUT_PORT_INDEX]);
+                }
             }
         }
         break;
