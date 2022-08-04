@@ -749,6 +749,8 @@ static void EncoderThread(void *args)
     {
         pEncOP->frameRateInfo = pSfOMXComponent->portDefinition[0].format.video.xFramerate;
     }
+    pEncOP->EncStdParam.hevcParam.numUnitsInTick = 1000;
+    pEncOP->EncStdParam.hevcParam.timeScale = (pEncOP->frameRateInfo)*1000;
 
     if(pSfOMXComponent->portDefinition[1].format.video.nBitrate)
     {
