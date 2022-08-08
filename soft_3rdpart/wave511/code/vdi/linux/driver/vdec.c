@@ -290,6 +290,138 @@ static u32  s_vpu_reg_store[MAX_NUM_VPU_CORE][64];
 #define WriteVpuRegister(addr, val) *(volatile unsigned int *)(s_vpu_register.virt_addr + s_bit_firmware_info[core].reg_base_offset + addr) = (unsigned int)val
 #define WriteVpu(addr, val)         *(volatile unsigned int *)(addr) = (unsigned int)val;
 
+#ifdef CONFIG_CPU_FREQ
+#include <linux/fs.h>
+#include <linux/file.h>
+
+struct freq_ctrl {
+	struct device *dev;
+	struct file *governor;
+	struct file *maxfreq;
+	struct file *parameters_off;
+	const char *scaling_governor;
+	const char *scaling_maxfreq;
+	const char *scaling_parameters_off;
+	const char *fixed_freq;
+	char re_cpu_gov[16];
+	char re_max_freq[16];
+};
+
+static struct freq_ctrl *vpu_freq_ctrl;
+
+static int vpu_freq_open(struct freq_ctrl *vpu_freq_ctrl)
+{
+	vpu_freq_ctrl->governor = filp_open(
+				vpu_freq_ctrl->scaling_governor, O_RDWR, 0);
+	if (IS_ERR(vpu_freq_ctrl->governor))
+		goto out;
+
+	vpu_freq_ctrl->maxfreq = filp_open(
+				vpu_freq_ctrl->scaling_maxfreq, O_RDWR, 0);
+	if (IS_ERR(vpu_freq_ctrl->maxfreq))
+		goto out;
+
+	vpu_freq_ctrl->parameters_off = filp_open(
+				vpu_freq_ctrl->scaling_parameters_off, O_RDWR, 0);
+	if (IS_ERR(vpu_freq_ctrl->parameters_off))
+		goto out;
+
+	return 0;
+out:
+	dev_err(vpu_freq_ctrl->dev, "failed open scaling_governor.\n");
+	return -ENXIO;
+}
+
+static int vpu_freq_close(void)
+{
+	if (!vpu_freq_ctrl)
+		return -ENODEV;
+
+	if (vpu_freq_ctrl->governor && vpu_freq_ctrl->maxfreq
+		&& vpu_freq_ctrl->parameters_off) {
+		fput(vpu_freq_ctrl->governor);
+		fput(vpu_freq_ctrl->maxfreq);
+		fput(vpu_freq_ctrl->parameters_off);
+		vpu_freq_ctrl->governor = NULL;
+		vpu_freq_ctrl->maxfreq = NULL;
+		vpu_freq_ctrl->parameters_off = NULL;
+	}
+	return 0;
+}
+
+static int vpu_freq_save_env(void)
+{
+	const char *fixed_freq = vpu_freq_ctrl->fixed_freq;
+	const char *governor_mode = "performance";
+	size_t rv;
+
+	if (!vpu_freq_ctrl)
+		return -ENODEV;
+	/*save env*/
+	kernel_read(vpu_freq_ctrl->governor, vpu_freq_ctrl->re_cpu_gov,
+			sizeof(vpu_freq_ctrl->re_cpu_gov), NULL);
+	kernel_read(vpu_freq_ctrl->maxfreq, vpu_freq_ctrl->re_max_freq,
+			sizeof(vpu_freq_ctrl->re_max_freq), NULL);
+
+	/*setenv*/
+	rv = kernel_write(vpu_freq_ctrl->maxfreq, fixed_freq,
+			strlen(fixed_freq), NULL);
+	rv = kernel_write(vpu_freq_ctrl->governor, governor_mode,
+			strlen(governor_mode), NULL);
+	rv = kernel_write(vpu_freq_ctrl->parameters_off, "1", 1, NULL);
+
+	return 0;
+}
+
+static int vpu_freq_put_env(void)
+{
+	size_t rv;
+
+	if (!vpu_freq_ctrl)
+		return -ENODEV;
+
+	rv = kernel_write(vpu_freq_ctrl->governor, vpu_freq_ctrl->re_cpu_gov,
+			strlen(vpu_freq_ctrl->re_cpu_gov), NULL);
+	rv = kernel_write(vpu_freq_ctrl->maxfreq, vpu_freq_ctrl->re_max_freq,
+			strlen(vpu_freq_ctrl->re_max_freq), NULL);
+	rv = kernel_write(vpu_freq_ctrl->parameters_off, "0", 1, NULL);
+
+	return 0;
+}
+
+static int vpu_freq_init(struct device *dev)
+{
+	int ret;
+	const char *of_str;
+
+	vpu_freq_ctrl = devm_kzalloc(dev, sizeof(*vpu_freq_ctrl), GFP_KERNEL);
+	if (!vpu_freq_ctrl)
+		return -ENOMEM;
+
+	vpu_freq_ctrl->scaling_governor = "/sys/devices/system/cpu/cpufreq/policy0/scaling_governor";
+	vpu_freq_ctrl->scaling_maxfreq = "/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq";
+	vpu_freq_ctrl->scaling_parameters_off = "/sys/module/cpufreq/parameters/off";
+	vpu_freq_ctrl->dev = dev;
+
+	ret = vpu_freq_open(vpu_freq_ctrl);
+	if (ret) {
+		devm_kfree(dev, vpu_freq_ctrl);
+		vpu_freq_ctrl = NULL;
+		return ret;
+	}
+
+	if (!device_property_read_string(dev, "vdec,runtime-cpufreq", &of_str))
+		vpu_freq_ctrl->fixed_freq = of_str;
+	else
+		vpu_freq_ctrl->fixed_freq = "1250000";
+
+	dev_dbg(dev, "fixed_freq:%s\n", vpu_freq_ctrl->fixed_freq);
+
+	return 0;
+}
+
+#endif
+
 static int vpu_alloc_dma_buffer(vpudrv_buffer_t *vb)
 {
     if (!vb)
@@ -1140,8 +1272,24 @@ INTERRUPT_REMAIN_IN_QUEUE:
 
             if(cache_info.flag)
                 starfive_flush_dcache(cache_info.start,cache_info.size);
-            break;
         }
+	break;
+
+    case VDI_IOCTL_CPUFREQ_SAVEENV:
+        {
+#ifdef CONFIG_CPU_FREQ
+	    vpu_freq_save_env();
+#endif
+        }
+	break;
+    case VDI_IOCTL_CPUFREQ_PUTENV:
+        {
+#ifdef CONFIG_CPU_FREQ
+	    vpu_freq_put_env();
+#endif
+        }
+	break;
+
     default:
         {
             printk(KERN_ERR "[VPUDRV] No such IOCTL, cmd is %d\n", cmd);
@@ -1396,6 +1544,9 @@ static int vpu_probe(struct platform_device *pdev)
     else
         DPRINTK("[VPUDRV] : get clock controller s_vpu_clk=%p\n", s_vpu_clk);
 
+#ifdef CONFIG_CPU_FREQ
+    vpu_freq_init(&pdev->dev);
+#endif
     vpu_pmu_enable(s_vpu_clk->dev);
     vpu_clk_enable(s_vpu_clk);
     reset_control_deassert(s_vpu_clk->resets);
@@ -1813,6 +1964,10 @@ static void __exit vpu_exit(void)
         vpu_free_dma_buffer(&s_common_memory);
         s_common_memory.base = 0;
     }
+
+#ifdef CONFIG_CPU_FREQ
+	vpu_freq_close();
+#endif
 
 #ifdef VPU_SUPPORT_RESERVED_VIDEO_MEMORY
     if (s_video_memory.base) {
