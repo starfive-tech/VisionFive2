@@ -48,6 +48,7 @@ void SF_LogMsgAppend(int level, const char *format, ...);
 typedef enum SF_BUFFER_TYPE
 {
     SF_BUFFER_NOMAL = 0,
+    SF_BUFFER_NOMAL_EXTERNAL,
     SF_BUFFER_DMA,
     SF_BUFFER_DMA_EXTERNAL,
     SF_BUFFER_DMA_FD,
@@ -107,8 +108,10 @@ typedef struct _SF_OMX_COMPONENT
     OMX_PARAM_PORTDEFINITIONTYPE portDefinition[2];
     OMX_HANDLETYPE portSemaphore[2];
     OMX_HANDLETYPE portUnloadSemaphore[2];
+    OMX_HANDLETYPE portFlushSemaphore[2];
     OMX_BUFFERHEADERTYPE *pBufferArray[2][MAX_BUFF_NUM];
     OMX_U32 assignedBufferNum[2];
+    OMX_U32 handlingBufferNum[2];
     OMX_STRING fwPath;
     OMX_STRING componentRule;
     OMX_STATETYPE state;
@@ -117,6 +120,7 @@ typedef struct _SF_OMX_COMPONENT
     OMX_MARKTYPE markType[2];
     OMX_MARKTYPE propagateMarkType;
     OMX_BOOL memory_optimization;
+    OMX_BOOL bPortFlushing[2];
 } SF_OMX_COMPONENT;
 
 typedef struct _SF_PORT_PRIVATE

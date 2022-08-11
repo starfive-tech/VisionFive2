@@ -40,10 +40,9 @@ OMX_ERRORTYPE SF_SemaphoreTerminate(OMX_HANDLETYPE semaphoreHandle)
 
 OMX_ERRORTYPE SF_SemaphoreWait(OMX_HANDLETYPE semaphoreHandle)
 {
-    LOG(SF_LOG_INFO,"SF_SemaphoreWait %p\r\n", semaphoreHandle);
     sem_t *sema = (sem_t *)semaphoreHandle;
-
     FunctionIn();
+    LOG(SF_LOG_INFO,"SF_SemaphoreWait %p\r\n", semaphoreHandle);
 
     if (sema == NULL)
         return OMX_ErrorBadParameter;
@@ -61,6 +60,7 @@ OMX_ERRORTYPE SF_SemaphorePost(OMX_HANDLETYPE semaphoreHandle)
     sem_t *sema = (sem_t *)semaphoreHandle;
 
     FunctionIn();
+    LOG(SF_LOG_INFO,"SF_SemaphorePost %p\r\n", semaphoreHandle);
 
     if (sema == NULL)
         return OMX_ErrorBadParameter;
