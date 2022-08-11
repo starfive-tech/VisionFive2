@@ -63,8 +63,12 @@ OMX_ERRORTYPE ComponentClearCommon(SF_OMX_COMPONENT *pSfOMXComponent)
 {
     SF_WAVE5_IMPLEMEMT *pSfVideoImplement = (SF_WAVE5_IMPLEMEMT *)pSfOMXComponent->componentImpl;
 
+    pSfVideoImplement->functions->ComponentRelease(pSfVideoImplement->hSFComponentFeeder);
     pSfVideoImplement->functions->ComponentRelease(pSfVideoImplement->hSFComponentExecoder);
+    pSfVideoImplement->functions->ComponentRelease(pSfVideoImplement->hSFComponentRender);
+    pSfVideoImplement->functions->ComponentDestroy(pSfVideoImplement->hSFComponentFeeder, NULL);
     pSfVideoImplement->functions->ComponentDestroy(pSfVideoImplement->hSFComponentExecoder, NULL);
+    pSfVideoImplement->functions->ComponentDestroy(pSfVideoImplement->hSFComponentRender, NULL);
     pSfVideoImplement->functions->DeInitLog();
     dlclose(pSfOMXComponent->soHandle);
     free(pSfVideoImplement->functions);
