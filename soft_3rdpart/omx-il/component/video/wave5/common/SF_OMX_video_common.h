@@ -115,7 +115,10 @@ typedef struct _SF_WAVE5_IMPLEMEMT
     CodStd bitFormat;
     OMX_BOOL rev_eos;
     SF_Queue *CmdQueue;
-    SF_Queue *pauseQ;
+    SF_Queue *inPauseQ;
+    SF_Queue *outPauseQ;
+    SF_Queue *inPortQ;
+    SF_Queue *outPortQ;
     THREAD_HANDLE_TYPE *pCmdThread;
     OMX_BOOL bCmdRunning;
     OMX_U64 frame_array[MAX_INDEX];

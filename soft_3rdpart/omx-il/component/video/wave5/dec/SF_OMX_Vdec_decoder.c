@@ -74,6 +74,8 @@ static void OnEventArrived(Component com, unsigned long event, void *data, void 
 {
     PortContainerExternal *pPortContainerExternal = (PortContainerExternal *)data;
     OMX_BUFFERHEADERTYPE *pOMXBuffer;
+    OMX_BUFFERHEADERTYPE **ppBuffer;
+    OMX_BUFFERHEADERTYPE *pBuffer;
     SF_OMX_BUF_INFO *pBufInfo;
     static OMX_U32 dec_cnt = 0;
     static struct timeval tv_old = {0};
@@ -89,12 +91,34 @@ static void OnEventArrived(Component com, unsigned long event, void *data, void 
     switch (event)
     {
     case COMPONENT_EVENT_DEC_EMPTY_BUFFER_DONE:
+        if (pSfOMXComponent->bPortFlushing[0])
+        {
+            LOG(SF_LOG_INFO, "flushing,break\r\n");
+            break;
+        }
         pOMXBuffer = (OMX_BUFFERHEADERTYPE *)pPortContainerExternal->pAppPrivate;
         if (pOMXBuffer == NULL)
         {
             LOG(SF_LOG_WARN, "Could not find omx buffer by address\r\n");
             return;
         }
+
+        ppBuffer = SF_Queue_Peek(pSfVideoImplement->inPortQ);
+
+        if (ppBuffer)
+            pBuffer = *ppBuffer;
+
+        if (pBuffer == pOMXBuffer)
+        {
+            LOG(SF_LOG_INFO, "get buffer %p\r\n", pOMXBuffer);
+            SF_Queue_Dequeue(pSfVideoImplement->inPortQ);
+        }
+        else
+        {
+            LOG(SF_LOG_INFO, "buffer %p gone, break.\r\n", pOMXBuffer);
+            break;
+        }
+
         LOG(SF_LOG_INFO, "Empty done h %p b %p\r\n", pOMXBuffer, pOMXBuffer->pBuffer);
 
         if (pSfOMXComponent->markType[0].hMarkTargetComponent != NULL)
@@ -122,11 +146,24 @@ static void OnEventArrived(Component com, unsigned long event, void *data, void 
             }
         }
 
-        pSfOMXComponent->callbacks->EmptyBufferDone(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData, pOMXBuffer);
+        if (pSfOMXComponent->state == OMX_StatePause)
+        {
+            LOG(SF_LOG_INFO, "tmp store buf when pause\r\n");
+            SF_Queue_Enqueue(pSfVideoImplement->inPauseQ, &pOMXBuffer);
+        }
+        else{
+            pSfOMXComponent->callbacks->EmptyBufferDone(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData, pOMXBuffer);
+        }
+
         break;
     case COMPONENT_EVENT_DEC_FILL_BUFFER_DONE:
     {
         struct timeval tv;
+        if (pSfOMXComponent->bPortFlushing[1])
+        {
+            LOG(SF_LOG_INFO, "flushing,break\r\n");
+            break;
+        }
 
         pOMXBuffer = (OMX_BUFFERHEADERTYPE *)pPortContainerExternal->pAppPrivate;
         if (pOMXBuffer == NULL)
@@ -134,6 +171,23 @@ static void OnEventArrived(Component com, unsigned long event, void *data, void 
             LOG(SF_LOG_WARN, "Could not find omx buffer by address\r\n");
             return;
         }
+
+        ppBuffer = SF_Queue_Peek(pSfVideoImplement->outPortQ);
+
+        if (ppBuffer)
+            pBuffer = *ppBuffer;
+
+        if (pBuffer == pOMXBuffer)
+        {
+            LOG(SF_LOG_INFO, "get buffer %p\r\n", pOMXBuffer);
+            SF_Queue_Dequeue(pSfVideoImplement->outPortQ);
+        }
+        else
+        {
+            LOG(SF_LOG_INFO, "buffer %p gone, break.\r\n", pOMXBuffer);
+            break;
+        }
+
         gettimeofday(&tv, NULL);
         if (gInitTimeStamp == 0)
         {
@@ -184,7 +238,7 @@ static void OnEventArrived(Component com, unsigned long event, void *data, void 
         if (pSfOMXComponent->state == OMX_StatePause)
         {
             LOG(SF_LOG_INFO, "tmp store buf when pause\r\n");
-            SF_Queue_Enqueue(pSfVideoImplement->pauseQ, &pOMXBuffer);
+            SF_Queue_Enqueue(pSfVideoImplement->outPauseQ, &pOMXBuffer);
         }
         else{
             pSfOMXComponent->callbacks->FillBufferDone(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData, pOMXBuffer);
@@ -262,6 +316,8 @@ static OMX_ERRORTYPE SF_OMX_EmptyThisBuffer(
 
     ComponentImpl *pFeederComponent = (ComponentImpl *)pSfVideoImplement->hSFComponentFeeder;
 
+    LOG(SF_LOG_DEBUG, "bufheader %p nFilledLen = %d, nFlags = %d, pBuffer = %p\r\n", pBuffer, pBuffer->nFilledLen, pBuffer->nFlags, pBuffer->pBuffer);
+
     if (!pSfOMXComponent->portDefinition[0].bEnabled)
     {
         LOG(SF_LOG_INFO, "feed buffer when input port stop\r\n");
@@ -286,6 +342,8 @@ static OMX_ERRORTYPE SF_OMX_EmptyThisBuffer(
     pPortContainerExternal->nFlags = pBuffer->nFlags;
     pPortContainerExternal->pAppPrivate = (void*)pBuffer;
 
+    SF_Queue_Enqueue(pSfVideoImplement->inPortQ, &pBuffer);
+
     if (pSfVideoImplement->functions->Queue_Enqueue(pFeederComponent->srcPort.inputQ, (void *)pPortContainerExternal) != OMX_TRUE)
     {
         LOG(SF_LOG_ERR, "%p:%p FAIL\r\n", pFeederComponent->srcPort.inputQ, pPortContainerExternal);
@@ -294,7 +352,7 @@ static OMX_ERRORTYPE SF_OMX_EmptyThisBuffer(
     }
     LOG(SF_LOG_PERF, "input queue count=%d/%d\r\n", pSfVideoImplement->functions->Queue_Get_Cnt(pFeederComponent->srcPort.inputQ),
                                                     pSfOMXComponent->portDefinition[0].nBufferCountActual);
-    LOG(SF_LOG_INFO, "input buffer address = %p, size = %d, flag = %x\r\n", pBuffer->pBuffer, pBuffer->nFilledLen, pBuffer->nFlags);
+    //LOG(SF_LOG_INFO, "input buffer address = %p, size = %d, flag = %x\r\n", pBuffer->pBuffer, pBuffer->nFilledLen, pBuffer->nFlags);
 
     if (pBuffer->nFlags & OMX_BUFFERFLAG_EOS)
     {
@@ -328,6 +386,7 @@ static OMX_ERRORTYPE SF_OMX_FillThisBuffer(
     SF_WAVE5_IMPLEMEMT *pSfVideoImplement = (SF_WAVE5_IMPLEMEMT *)pSfOMXComponent->componentImpl;
     SF_OMX_BUF_INFO *pBufInfo = (SF_OMX_BUF_INFO *)pBuffer->pOutputPortPrivate;
     ComponentImpl *pRendererComponent = (ComponentImpl *)pSfVideoImplement->hSFComponentRender;
+    LOG(SF_LOG_DEBUG, "bufheader %p nFilledLen = %d, nFlags = %d, pBuffer = %p\r\n", pBuffer, pBuffer->nFilledLen, pBuffer->nFlags, pBuffer->pBuffer);
 
     if (!pSfOMXComponent->portDefinition[1].bEnabled)
     {
@@ -363,6 +422,9 @@ static OMX_ERRORTYPE SF_OMX_FillThisBuffer(
     }
 
     if (pSfVideoImplement->frame_array_index == MAX_INDEX) pSfVideoImplement->frame_array_index = 0;
+
+    SF_Queue_Enqueue(pSfVideoImplement->outPortQ, &pBuffer);
+
     if (pSfVideoImplement->functions->Queue_Enqueue(pRendererComponent->sinkPort.inputQ, (void *)pPortContainerExternal) == FALSE)
     {
         LOG(SF_LOG_ERR, "%p:%p FAIL\r\n", pRendererComponent->sinkPort.inputQ, pPortContainerExternal);
@@ -1605,12 +1667,20 @@ static void CmdThread(void *args)
 
                 if (pSfOMXComponent->state == OMX_StateExecuting)
                 {
-                    ppBuffer = SF_Queue_Dequeue(pSfVideoImplement->pauseQ);
+                    ppBuffer = SF_Queue_Dequeue(pSfVideoImplement->outPauseQ);
                     while (ppBuffer)
                     {
                         pOMXBuffer = *ppBuffer;
                         pSfOMXComponent->callbacks->FillBufferDone(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData, pOMXBuffer);
-                        ppBuffer = SF_Queue_Dequeue(pSfVideoImplement->pauseQ);
+                        ppBuffer = SF_Queue_Dequeue(pSfVideoImplement->outPauseQ);
+                    }
+
+                    ppBuffer = SF_Queue_Dequeue(pSfVideoImplement->inPauseQ);
+                    while (ppBuffer)
+                    {
+                        pOMXBuffer = *ppBuffer;
+                        pSfOMXComponent->callbacks->EmptyBufferDone(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData, pOMXBuffer);
+                        ppBuffer = SF_Queue_Dequeue(pSfVideoImplement->inPauseQ);
                     }
                 }
             }
@@ -1636,25 +1706,63 @@ static void CmdThread(void *args)
 
                 if (nPort == 0)
                 {
-                    FlushBuffer(pSfOMXComponent, nPort);
-                    pSfOMXComponent->callbacks->EventHandler(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData,
-                                                    OMX_EventCmdComplete, OMX_CommandFlush, nPort, NULL);
-                }
-                else
-                {
+                    pSfOMXComponent->bPortFlushing[0] = OMX_TRUE;
                     FlushBuffer(pSfOMXComponent, nPort);
                     if (pSfOMXComponent->state == OMX_StatePause)
                     {
-                        ppBuffer = SF_Queue_Dequeue(pSfVideoImplement->pauseQ);
+                        ppBuffer = SF_Queue_Dequeue(pSfVideoImplement->inPauseQ);
                         while (ppBuffer)
                         {
                             pOMXBuffer = *ppBuffer;
-                            pSfOMXComponent->callbacks->FillBufferDone(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData, pOMXBuffer);
-                            ppBuffer = SF_Queue_Dequeue(pSfVideoImplement->pauseQ);
+                            LOG(SF_LOG_PERF, "OMX empty one buffer, address = %p, size = %d, nTimeStamp = %d, nFlags = %X\r\n",
+                                            pOMXBuffer->pBuffer, pOMXBuffer->nFilledLen, pOMXBuffer->nTimeStamp, pOMXBuffer->nFlags);
+                            pSfOMXComponent->callbacks->EmptyBufferDone(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData, pOMXBuffer);
+                            ppBuffer = SF_Queue_Dequeue(pSfVideoImplement->inPauseQ);
+                        }
+
+                        ppBuffer = SF_Queue_Dequeue(pSfVideoImplement->inPortQ);
+                        while (ppBuffer)
+                        {
+                            pOMXBuffer = *ppBuffer;
+                            LOG(SF_LOG_PERF, "OMX empty one buffer, address = %p, size = %d, nTimeStamp = %d, nFlags = %X\r\n",
+                                            pOMXBuffer->pBuffer, pOMXBuffer->nFilledLen, pOMXBuffer->nTimeStamp, pOMXBuffer->nFlags);
+                            pSfOMXComponent->callbacks->EmptyBufferDone(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData, pOMXBuffer);
+                            ppBuffer = SF_Queue_Dequeue(pSfVideoImplement->inPortQ);
                         }
                     }
                     pSfOMXComponent->callbacks->EventHandler(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData,
                                                     OMX_EventCmdComplete, OMX_CommandFlush, nPort, NULL);
+                    pSfOMXComponent->bPortFlushing[0] = OMX_FALSE;
+                }
+                else
+                {
+                    pSfOMXComponent->bPortFlushing[1] = OMX_TRUE;
+                    FlushBuffer(pSfOMXComponent, nPort);
+                    if (pSfOMXComponent->state == OMX_StatePause)
+                    {
+                        ppBuffer = SF_Queue_Dequeue(pSfVideoImplement->outPauseQ);
+                        while (ppBuffer)
+                        {
+                            pOMXBuffer = *ppBuffer;
+                            LOG(SF_LOG_PERF, "OMX finish one buffer, address = %p, size = %d, nTimeStamp = %d, nFlags = %X\r\n",
+                                            pOMXBuffer->pBuffer, pOMXBuffer->nFilledLen, pOMXBuffer->nTimeStamp, pOMXBuffer->nFlags);
+                            pSfOMXComponent->callbacks->FillBufferDone(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData, pOMXBuffer);
+                            ppBuffer = SF_Queue_Dequeue(pSfVideoImplement->outPauseQ);
+                        }
+
+                        ppBuffer = SF_Queue_Dequeue(pSfVideoImplement->outPortQ);
+                        while (ppBuffer)
+                        {
+                            pOMXBuffer = *ppBuffer;
+                            LOG(SF_LOG_PERF, "OMX finish one buffer, address = %p, size = %d, nTimeStamp = %d, nFlags = %X\r\n",
+                                            pOMXBuffer->pBuffer, pOMXBuffer->nFilledLen, pOMXBuffer->nTimeStamp, pOMXBuffer->nFlags);
+                            pSfOMXComponent->callbacks->FillBufferDone(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData, pOMXBuffer);
+                            ppBuffer = SF_Queue_Dequeue(pSfVideoImplement->outPortQ);
+                        }
+                    }
+                    pSfOMXComponent->callbacks->EventHandler(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData,
+                                                    OMX_EventCmdComplete, OMX_CommandFlush, nPort, NULL);
+                    pSfOMXComponent->bPortFlushing[1] = OMX_FALSE;
                 }
             }
         }
@@ -1850,10 +1958,31 @@ static OMX_ERRORTYPE SF_OMX_ComponentConstructor(SF_OMX_COMPONENT *pSfOMXCompone
         nInstance--;
         return OMX_ErrorInsufficientResources;
     }
-    pSfVideoImplement->pauseQ = SF_Queue_Create(20, sizeof(OMX_BUFFERHEADERTYPE*));
-    if (NULL == pSfVideoImplement->pauseQ)
+    pSfVideoImplement->inPauseQ = SF_Queue_Create(20, sizeof(OMX_BUFFERHEADERTYPE*));
+    if (NULL == pSfVideoImplement->inPauseQ)
     {
-        LOG(SF_LOG_ERR, "create pauseQ error");
+        LOG(SF_LOG_ERR, "create inPauseQ error");
+        nInstance--;
+        return OMX_ErrorInsufficientResources;
+    }
+    pSfVideoImplement->outPauseQ = SF_Queue_Create(20, sizeof(OMX_BUFFERHEADERTYPE*));
+    if (NULL == pSfVideoImplement->outPauseQ)
+    {
+        LOG(SF_LOG_ERR, "create outPauseQ error");
+        nInstance--;
+        return OMX_ErrorInsufficientResources;
+    }
+    pSfVideoImplement->inPortQ = SF_Queue_Create(20, sizeof(OMX_BUFFERHEADERTYPE*));
+    if (NULL == pSfVideoImplement->inPortQ)
+    {
+        LOG(SF_LOG_ERR, "create inPortQ error");
+        nInstance--;
+        return OMX_ErrorInsufficientResources;
+    }
+    pSfVideoImplement->outPortQ = SF_Queue_Create(20, sizeof(OMX_BUFFERHEADERTYPE*));
+    if (NULL == pSfVideoImplement->outPortQ)
+    {
+        LOG(SF_LOG_ERR, "create outPortQ error");
         nInstance--;
         return OMX_ErrorInsufficientResources;
     }
@@ -1897,7 +2026,10 @@ static OMX_ERRORTYPE SF_OMX_ComponentClear(SF_OMX_COMPONENT *pSfOMXComponent)
 	pthread_join(pSfVideoImplement->pCmdThread->pthread, &ThreadRet);
     LOG(SF_LOG_INFO, "Cmd thread end %ld\r\n", (Uint64)ThreadRet);
     SF_Queue_Destroy(pSfVideoImplement->CmdQueue);
-    SF_Queue_Destroy(pSfVideoImplement->pauseQ);
+    SF_Queue_Destroy(pSfVideoImplement->outPauseQ);
+    SF_Queue_Destroy(pSfVideoImplement->inPauseQ);
+    SF_Queue_Destroy(pSfVideoImplement->inPortQ);
+    SF_Queue_Destroy(pSfVideoImplement->outPortQ);
 
     free(pSfVideoImplement->pusBitCode);
     pSfVideoImplement->functions->ClearDecListenerContext(pSfVideoImplement->lsnCtx);
