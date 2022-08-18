@@ -1362,7 +1362,16 @@ static void ProcessThread(void *args)
     decOP->rotation = decConfig->rotation;
     decOP->mirror = decConfig->mirror;
     decOP->pixelJustification = decConfig->pixelJustification;
-    decOP->outputFormat = FORMAT_MAX;
+
+    if (decConfig->packedFormat)
+    {
+        decOP->outputFormat = FORMAT_MAX;
+    }
+    else
+    {
+        decOP->outputFormat = pSfCodaj12Implement->frameFormat;
+    }
+
     decOP->intrEnableBit = ((1 << INT_JPU_DONE) | (1 << INT_JPU_ERROR) | (1 << INT_JPU_BIT_BUF_EMPTY));
 
     LOG(SF_LOG_DEBUG, "streamEndian = %x\r\n", decOP->streamEndian);
@@ -1448,7 +1457,15 @@ static void ProcessThread(void *args)
         decodingWidth = JPU_CEIL(2, decodingWidth);
     }
 
-    subsample = initialInfo->sourceFormat;
+    if (decConfig->packedFormat)
+    {
+        subsample = initialInfo->sourceFormat;
+    }
+    else
+    {
+        subsample = pSfCodaj12Implement->frameFormat;
+    }
+
     temp = decodingWidth;
     decodingWidth = (decConfig->rotation == 90 || decConfig->rotation == 270) ? decodingHeight : decodingWidth;
     decodingHeight = (decConfig->rotation == 90 || decConfig->rotation == 270) ? temp : decodingHeight;
