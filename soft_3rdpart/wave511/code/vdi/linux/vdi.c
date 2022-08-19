@@ -171,6 +171,26 @@ int vdi_probe(unsigned long core_idx)
     return ret;
 }
 
+void set_cpu_freq_fixed(void)
+{
+	int vpu_fd = open(VPU_DEVICE_NAME, O_RDWR);
+	if (vpu_fd < 0)
+	    VLOG(ERR, "[VDI] Can't open vpu driver \n");
+
+	ioctl(vpu_fd, VDI_IOCTL_CPUFREQ_SAVEENV, NULL);
+	close(vpu_fd);
+}
+
+void realese_cpu_freq_fixed(void)
+{
+	int vpu_fd = open(VPU_DEVICE_NAME, O_RDWR);
+	if (vpu_fd < 0)
+	    VLOG(ERR, "[VDI] Can't open vpu driver \n");
+
+	ioctl(vpu_fd, VDI_IOCTL_CPUFREQ_PUTENV, NULL);
+	close(vpu_fd);
+}
+
 int vdi_init(unsigned long core_idx)
 {
     vdi_info_t *vdi;
@@ -186,8 +206,7 @@ int vdi_init(unsigned long core_idx)
         vdi->task_num++;
         return 0;
     }
-
-
+    set_cpu_freq_fixed();
 
     vdi->vpu_fd = open(VPU_DEVICE_NAME, O_RDWR);	// if this API supports VPU parallel processing using multi VPU. the driver should be made to open multiple times.
     if (vdi->vpu_fd < 0) {
@@ -393,6 +412,7 @@ int vdi_release(unsigned long core_idx)
         vdi->vpu_fd = -1;
 
     }
+    realese_cpu_freq_fixed();
 
     memset(vdi, 0x00, sizeof(vdi_info_t));
 
@@ -1297,7 +1317,7 @@ int vdi_set_clock_gate(unsigned long core_idx, int enable)
         return -1;
 
     if (vdi->product_code == WAVE512_CODE || vdi->product_code == WAVE515_CODE || vdi->product_code == WAVE517_CODE ||
-        vdi->product_code == WAVE521_CODE || vdi->product_code == WAVE521C_CODE || vdi->product_code == WAVE511_CODE || vdi->product_code == WAVE521C_DUAL_CODE ) {
+        vdi->product_code == WAVE521_CODE || vdi->product_code == WAVE521C_CODE || vdi->product_code == WAVE521C_DUAL_CODE ) {
         return 0;
     }
     vdi->clock_state = enable;

@@ -2,7 +2,8 @@
 
 module="vdec"
 device="vdec"
-mode="664"
+para_off="/sys/module/cpufreq/parameters/off"
+mode="666"
 
 # Group: since distributions do	it differently,	look for wheel or use staff
 if grep	'^staff:' /etc/group > /dev/null; then
@@ -23,3 +24,6 @@ rm -f /dev/${device}
 mknod /dev/${device} c $major 0
 chgrp $group /dev/${device}
 chmod $mode  /dev/${device}
+if [ -f $para_off ];then
+	chmod 644 $para_off
+fi
