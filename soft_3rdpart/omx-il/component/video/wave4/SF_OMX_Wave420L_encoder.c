@@ -257,11 +257,15 @@ ERROR:
     return ret;
 }
 
-static OMX_ERRORTYPE SetDefaultConfig(SF_OMX_COMPONENT *pSfOMXComponent)
+static OMX_ERRORTYPE InitEncoder(SF_OMX_COMPONENT *pSfOMXComponent)
 {
     OMX_ERRORTYPE ret = OMX_ErrorNone;
     SF_WAVE420L_IMPLEMEMT *pImp = (SF_WAVE420L_IMPLEMEMT *)pSfOMXComponent->componentImpl;
     TestEncConfig   *pEncConfig = &pImp->encConfig;
+    Int32 productId;
+    Uint32 BitCodesizeInWord;
+    Uint16* pusBitCode;
+
     FunctionIn();
 
     pEncConfig->stdMode       = STD_HEVC;
@@ -286,20 +290,6 @@ static OMX_ERRORTYPE SetDefaultConfig(SF_OMX_COMPONENT *pSfOMXComponent)
     pEncConfig->srcFormat3p4b = 0;
     pEncConfig->ringBufferEnable = 0;
 
-    FunctionOut();
-    return ret;
-}
-
-static OMX_ERRORTYPE InitEncoder(SF_OMX_COMPONENT *pSfOMXComponent)
-{
-    OMX_ERRORTYPE ret = OMX_ErrorNone;
-    SF_WAVE420L_IMPLEMEMT *pImp = (SF_WAVE420L_IMPLEMEMT *)pSfOMXComponent->componentImpl;
-    TestEncConfig   *pEncConfig = &pImp->encConfig;
-    Int32 productId;
-    Uint32 BitCodesizeInWord;
-    Uint16* pusBitCode;
-
-    FunctionIn();
 
     productId = Warp_VPU_GetProductId(pImp, pEncConfig->coreIdx);
 
@@ -2363,7 +2353,7 @@ static OMX_ERRORTYPE SF_OMX_ComponentConstructor(SF_OMX_COMPONENT *pSfOMXCompone
     // pSfOMXComponent->pOMXComponent->ComponentRoleEnum = &SF_OMX_ComponentRoleEnum;
     // pSfOMXComponent->pOMXComponent->ComponentDeInit = &SF_OMX_ComponentDeInit;
 
-    SetDefaultConfig(pSfOMXComponent);
+    //InitEncoder(pSfOMXComponent);
 EXIT:
     FunctionOut();
 
