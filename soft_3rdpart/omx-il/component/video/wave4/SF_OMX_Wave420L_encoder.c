@@ -647,7 +647,6 @@ static void EncoderThread(void *args)
     EncParam            encParam;
     EncHeaderParam encHeaderParam;
     YuvInfo        yuvFeederInfo;
-    ENC_CFG encCfg;
     OMX_BUFFERHEADERTYPE *pOutputBuffer;
     OMX_BUFFERHEADERTYPE *pInputBuffer;
     BitstreamReader bsReader = NULL;
@@ -663,7 +662,6 @@ static void EncoderThread(void *args)
     Uint32 interruptTimeout = VPU_ENC_TIMEOUT;
     Uint32 geteos = 0;
     Uint32 size;
-    Uint32 KeyFrameInterval;
     void* yuvFeeder = NULL;
 
     pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
@@ -678,7 +676,7 @@ static void EncoderThread(void *args)
 
     //Warp_GetEncOpenParamDefault(pImp, pEncOP, pEncConfig);
     if (strlen(pEncConfig->cfgFileName) != 0) {
-        Warp_GetEncOpenParam(pImp, pEncOP, pEncConfig, &encCfg);
+        Warp_GetEncOpenParam(pImp, pEncOP, pEncConfig, NULL);
     }
     else {
         Warp_GetEncOpenParamDefault(pImp, pEncOP, pEncConfig);
@@ -772,18 +770,6 @@ static void EncoderThread(void *args)
     else if(pEncOP->rcEnable == 1)
     {
         pSfOMXComponent->portDefinition[1].format.video.nBitrate = pEncOP->bitRate;
-    }
-
-    KeyFrameInterval = pImp->HEVCComponent[OMX_OUTPUT_PORT_INDEX].nKeyFrameInterval;
-
-    if (KeyFrameInterval)
-    {
-        if (KeyFrameInterval == 1)
-        {
-            pEncOP->EncStdParam.hevcParam.gopParam.picParam[0].picType = PIC_TYPE_I;
-            pEncOP->EncStdParam.hevcParam.gopParam.picParam[0].picQp = encCfg.hevcCfg.intraQP;
-        }
-        pEncOP->EncStdParam.hevcParam.intraPeriod = KeyFrameInterval;
     }
 
     ret = Warp_VPU_EncOpen(pImp, pHandle, pEncOP);
@@ -2032,7 +2018,7 @@ static OMX_ERRORTYPE SF_OMX_SetParameter(
         OMX_U32 nKeyFrameInterval = pSrcHEVCComponent->nKeyFrameInterval;
 
         LOG(SF_LOG_INFO, "Set nKeyFrameInterval = %d on port %d\r\n", nKeyFrameInterval, nPortIndex);
-        if (nKeyFrameInterval > 1024)
+        if (nKeyFrameInterval == 1)
         {
             LOG(SF_LOG_ERR, "Set nKeyFrameInterval = %d not supported!\r\n", nKeyFrameInterval);
             ret = OMX_ErrorBadPortIndex;

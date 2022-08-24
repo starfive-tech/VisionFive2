@@ -10,7 +10,6 @@
 #include <OMX_Core.h>
 #include <OMX_Component.h>
 #include <OMX_Video.h>
-#include <OMX_VideoExt.h>
 #include <OMX_IndexExt.h>
 #include <sys/time.h>
 #include <sys/types.h>
@@ -408,24 +407,12 @@ int main(int argc, char **argv)
     OMX_SetParameter(hComponentEncoder, OMX_IndexParamPortDefinition, &pOutputPortDefinition);
 
     if(encodeTestContext->nNumPFrame){
-        if (strstr(encodeTestContext->sOutputFormat, "h264") != NULL)
-        {
-            OMX_VIDEO_PARAM_AVCTYPE avcType;
-            OMX_INIT_STRUCTURE(avcType);
-            avcType.nPortIndex = 1;
-            OMX_GetParameter(hComponentEncoder, OMX_IndexParamVideoAvc, &avcType);
-            avcType.nPFrames = encodeTestContext->nNumPFrame;
-            OMX_SetParameter(hComponentEncoder, OMX_IndexParamVideoAvc, &avcType);
-        }
-        else if (strstr(encodeTestContext->sOutputFormat, "h265") != NULL)
-        {
-            OMX_VIDEO_PARAM_HEVCTYPE hevcType;
-            OMX_INIT_STRUCTURE(hevcType);
-            hevcType.nPortIndex = 1;
-            OMX_GetParameter(hComponentEncoder, OMX_IndexParamVideoHevc, &hevcType);
-            hevcType.nKeyFrameInterval = encodeTestContext->nNumPFrame;
-            OMX_SetParameter(hComponentEncoder, OMX_IndexParamVideoHevc, &hevcType);
-        }
+        OMX_VIDEO_PARAM_AVCTYPE avcType;
+        OMX_INIT_STRUCTURE(avcType);
+        avcType.nPortIndex = 1;
+        OMX_GetParameter(hComponentEncoder, OMX_IndexParamVideoAvc, &avcType);
+        avcType.nPFrames = encodeTestContext->nNumPFrame;
+        OMX_SetParameter(hComponentEncoder, OMX_IndexParamVideoAvc, &avcType);
     }
 
     /*Alloc input buffer*/
