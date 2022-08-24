@@ -1670,7 +1670,7 @@ refill:
 
         pBuffer->nFilledLen = pSfCodaj12Implement->functions->SaveYuvImageHelper
                         (pBuffer->pBuffer, &pFrameBuf[outputInfo.indexFrameDisplay],
-                        decOP->chromaInterleave, decOP->packedFormat, displayWidth, displayHeight, bitDepth);
+                        decOP->chromaInterleave, decOP->packedFormat, initialInfo->picWidth, initialInfo->picHeight, bitDepth);
         if (!pBuffer->nFilledLen)
         {
             LOG(SF_LOG_ERR, "fill out buffer err -1\r\n");
