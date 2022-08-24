@@ -18,8 +18,6 @@
 #include <errno.h>
 
 #include "sf_queue.h"
-#include "sf_thread.h"
-#include "sf_semaphore.h"
 #include "wave420l/sample/helper/main_helper.h"
 #include "wave420l/vpuapi/vpuapi.h"
 
@@ -37,8 +35,8 @@
 
 #define NUM_OF_PORTS 2
 
-#define DEFAULT_FRAME_WIDTH 1920
-#define DEFAULT_FRAME_HEIGHT 1080
+#define DEFAULT_FRAME_WIDTH 3840
+#define DEFAULT_FRAME_HEIGHT 2160
 #define DEFAULT_MJPEG_INPUT_BUFFER_SIZE (DEFAULT_FRAME_WIDTH * DEFAULT_FRAME_HEIGHT * 3)
 #define DEFAULT_MJPEG_OUTPUT_BUFFER_SIZE (DEFAULT_FRAME_WIDTH * DEFAULT_FRAME_HEIGHT * 3)
 #define DEFAULT_FRAMERATE 30
@@ -95,6 +93,13 @@ typedef struct _SF_W420L_FUNCTIONS
     void (*PrintVpuStatus)(Uint32 coreIdx, Uint32 productId);
 }SF_W420L_FUNCTIONS;
 
+typedef struct _THREAD_HANDLE_TYPE
+{
+    pthread_t          pthread;
+    pthread_attr_t     attr;
+    struct sched_param schedparam;
+    int                stack_size;
+} THREAD_HANDLE_TYPE;
 
 typedef struct Message
 {
@@ -135,20 +140,15 @@ typedef struct _SF_WAVE420L_IMPLEMEMT
     EncOutputInfo       outputInfo;
     Int32               instIdx;
     Int32               coreIdx;
-    Uint32              tmpFramerate;
-    Uint64              tmpCounter;
     SF_Queue            *EmptyQueue;
     SF_Queue            *FillQueue;
     SF_Queue            *CmdQueue;
-    SF_Queue            *pauseQ;
-    OMX_HANDLETYPE      pauseSemaphore;
     OMX_VIDEO_PARAM_HEVCTYPE HEVCComponent[2];
 
     THREAD_HANDLE_TYPE *pProcessThread;
     THREAD_HANDLE_TYPE *pCmdThread;
     OMX_BOOL bThreadRunning;
     OMX_BOOL bCmdRunning;
-    OMX_BOOL bPause;
     OMX_STATETYPE currentState;
 } SF_WAVE420L_IMPLEMEMT;
 

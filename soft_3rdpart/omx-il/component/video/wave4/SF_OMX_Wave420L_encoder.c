@@ -14,6 +14,15 @@
 #define WAVE420L_CONFIG_FILE "/lib/firmware/encoder_defconfig.cfg"
 #define OMX_Command_StopThread OMX_CommandMax
 
+static Uint32 BitCodesizeInWord;
+static Uint16* pusBitCode;
+
+static Uint32 inputBufNum = 0;
+static Uint32 outputBufNum = 0;
+
+static Uint32 tmpFramerate;
+static Uint64 tmpCounter=0;
+
 static OMX_BOOL EmptyBufferDone(SF_OMX_COMPONENT *pSfOMXComponent, OMX_BUFFERHEADERTYPE *pBuffer);
 static OMX_BOOL FillBufferDone(SF_OMX_COMPONENT *pSfOMXComponent, OMX_BUFFERHEADERTYPE *pBuffer);
 static void FlushBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U32 nPortNumber);
@@ -65,6 +74,62 @@ static void sf_get_component_functions(SF_W420L_FUNCTIONS *funcs, OMX_PTR *sohan
     FunctionOut();
 }
 
+static OMX_ERRORTYPE CreateThread(THREAD_HANDLE_TYPE **threadHandle, OMX_PTR function_name, OMX_PTR argument)
+{
+    FunctionIn();
+
+    int result = 0;
+    int detach_ret = 0;
+    THREAD_HANDLE_TYPE *thread;
+    OMX_ERRORTYPE ret = OMX_ErrorNone;
+
+    thread = malloc(sizeof(THREAD_HANDLE_TYPE));
+    memset(thread, 0, sizeof(THREAD_HANDLE_TYPE));
+
+    pthread_attr_init(&thread->attr);
+    if (thread->stack_size != 0)
+        pthread_attr_setstacksize(&thread->attr, thread->stack_size);
+
+    /* set priority */
+    if (thread->schedparam.sched_priority != 0)
+        pthread_attr_setschedparam(&thread->attr, &thread->schedparam);
+
+    detach_ret = pthread_attr_setdetachstate(&thread->attr, PTHREAD_CREATE_JOINABLE);
+    if (detach_ret != 0)
+    {
+        free(thread);
+        *threadHandle = NULL;
+        ret = OMX_ErrorUndefined;
+        goto EXIT;
+    }
+
+    result = pthread_create(&thread->pthread, &thread->attr, function_name, (void *)argument);
+    /* pthread_setschedparam(thread->pthread, SCHED_RR, &thread->schedparam); */
+
+    switch (result)
+    {
+    case 0:
+        *threadHandle = thread;
+        ret = OMX_ErrorNone;
+        break;
+    case EAGAIN:
+        free(thread);
+        *threadHandle = NULL;
+        ret = OMX_ErrorInsufficientResources;
+        break;
+    default:
+        free(thread);
+        *threadHandle = NULL;
+        ret = OMX_ErrorUndefined;
+        break;
+    }
+
+EXIT:
+    FunctionOut();
+
+    return ret;
+}
+
 OMX_ERRORTYPE WaveOmxInit(SF_OMX_COMPONENT *pSfOMXComponent)
 {
     OMX_ERRORTYPE ret = OMX_ErrorNone;
@@ -107,7 +172,7 @@ OMX_ERRORTYPE WaveOmxInit(SF_OMX_COMPONENT *pSfOMXComponent)
 
     pImp = (SF_WAVE420L_IMPLEMEMT *)pSfOMXComponent->componentImpl;
     pImp->functions = malloc(sizeof(SF_W420L_FUNCTIONS));
-
+    pImp->currentState = OMX_StateLoaded;
     //pImp->frameFormat = DEFAULT_FRAME_FORMAT;
     if (pImp->functions == NULL)
     {
@@ -154,12 +219,6 @@ OMX_ERRORTYPE WaveOmxInit(SF_OMX_COMPONENT *pSfOMXComponent)
         LOG(SF_LOG_ERR, "create CmdQueue error");
         return OMX_ErrorInsufficientResources;
     }
-    pImp->pauseQ = SF_Queue_Create(20, sizeof(OMX_BUFFERHEADERTYPE*));
-    if (NULL == pImp->pauseQ)
-    {
-        LOG(SF_LOG_ERR, "create pauseQ error");
-        return OMX_ErrorInsufficientResources;
-    }
 
     for (int i = 0; i < OMX_PORT_MAX; i++)
     {
@@ -192,7 +251,6 @@ OMX_ERRORTYPE WaveOmxInit(SF_OMX_COMPONENT *pSfOMXComponent)
         pHEVCComponent->nPortIndex = i;
         pHEVCComponent->nKeyFrameInterval = DEFAULT_GOP;
         pHEVCComponent->eProfile = OMX_VIDEO_HEVCProfileMain;
-        pSfOMXComponent->assignedBufferNum[i] = 0;
     }
 
     pSfOMXComponent->portDefinition[OMX_INPUT_PORT_INDEX].format.video.cMIMEType = "raw/video";
@@ -203,51 +261,14 @@ OMX_ERRORTYPE WaveOmxInit(SF_OMX_COMPONENT *pSfOMXComponent)
     memset(pSfOMXComponent->pBufferArray, 0, sizeof(pSfOMXComponent->pBufferArray));
     pSfOMXComponent->memory_optimization = OMX_TRUE;
 
-    /* Set componentVersion */
-    pSfOMXComponent->componentVersion.s.nVersionMajor = VERSIONMAJOR_NUMBER;
-    pSfOMXComponent->componentVersion.s.nVersionMinor = VERSIONMINOR_NUMBER;
-    pSfOMXComponent->componentVersion.s.nRevision     = REVISION_NUMBER;
-    pSfOMXComponent->componentVersion.s.nStep         = STEP_NUMBER;
-    /* Set specVersion */
-    pSfOMXComponent->specVersion.s.nVersionMajor = VERSIONMAJOR_NUMBER;
-    pSfOMXComponent->specVersion.s.nVersionMinor = VERSIONMINOR_NUMBER;
-    pSfOMXComponent->specVersion.s.nRevision     = REVISION_NUMBER;
-    pSfOMXComponent->specVersion.s.nStep         = STEP_NUMBER;
-
-    memset(pSfOMXComponent->markType, 0, sizeof(pSfOMXComponent->markType));
-    pSfOMXComponent->propagateMarkType.hMarkTargetComponent = NULL;
-    pSfOMXComponent->propagateMarkType.pMarkData = NULL;
-
-    for (int i = 0; i < 2; i++)
-    {
-        ret = SF_SemaphoreCreate(&pSfOMXComponent->portSemaphore[i]);
-        if (ret)
-            goto ERROR;
-        ret = SF_SemaphoreCreate(&pSfOMXComponent->portUnloadSemaphore[i]);
-        if (ret)
-            goto ERROR;
-    }
-
-    ret = SF_SemaphoreCreate(&pImp->pauseSemaphore);
-    if (ret)
-        goto ERROR;
 
     CreateThread(&pImp->pCmdThread, CmdThread, (void *)pSfOMXComponent);
     pImp->bCmdRunning = OMX_TRUE;
-    pImp->tmpFramerate = 25;
 
     FunctionOut();
 EXIT:
     return ret;
 ERROR:
-    for (int i = 0; i < 2; i++)
-    {
-        SF_SemaphoreTerminate(pSfOMXComponent->portSemaphore[i]);
-        SF_SemaphoreTerminate(pSfOMXComponent->portUnloadSemaphore[i]);
-    }
-
-    SF_SemaphoreTerminate(pImp->pauseSemaphore);
-
     if (pSfOMXComponent->pOMXComponent)
     {
         free(pSfOMXComponent->pOMXComponent);
@@ -263,8 +284,6 @@ static OMX_ERRORTYPE InitEncoder(SF_OMX_COMPONENT *pSfOMXComponent)
     SF_WAVE420L_IMPLEMEMT *pImp = (SF_WAVE420L_IMPLEMEMT *)pSfOMXComponent->componentImpl;
     TestEncConfig   *pEncConfig = &pImp->encConfig;
     Int32 productId;
-    Uint32 BitCodesizeInWord;
-    Uint16* pusBitCode;
 
     FunctionIn();
 
@@ -317,11 +336,6 @@ static void CmdThread(void *args)
 {
     SF_OMX_COMPONENT *pSfOMXComponent = (SF_OMX_COMPONENT *)args;
     SF_WAVE420L_IMPLEMEMT *pImp = (SF_WAVE420L_IMPLEMEMT *)pSfOMXComponent->componentImpl;
-    OMX_BUFFERHEADERTYPE *pOMXBuffer = NULL;
-    OMX_BUFFERHEADERTYPE **ppBuffer = NULL;
-    OMX_ERRORTYPE ret = OMX_ErrorNone;
-    OMX_STATETYPE comCurrentState;
-    OMX_U32 i = 0, cnt = 0;
     SF_OMX_CMD *pCmd;
     void *pNull = NULL;
     void *ThreadRet;
@@ -339,281 +353,87 @@ static void CmdThread(void *args)
         switch (pCmd->Cmd)
         {
         case OMX_CommandStateSet:
-            LOG(SF_LOG_INFO, "OMX dest state = %X\r\n", pCmd->nParam);
-
-            comCurrentState = pSfOMXComponent->state;
-
-            if (comCurrentState == pCmd->nParam)
-            {
-                LOG(SF_LOG_DEBUG, "same state %d\r\n", pCmd->nParam);
-                pSfOMXComponent->callbacks->EventHandler(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData,
-                                                    OMX_EventError, OMX_ErrorSameState, pCmd->nParam, NULL);
-                break;
-            }
-
-            ret = OMX_ErrorNone;
-
+            pSfOMXComponent->nextState = pCmd->nParam;
+            LOG(SF_LOG_INFO, "OMX dest state = %X, current state = %X\r\n", pCmd->nParam, pImp->currentState);
             switch (pCmd->nParam)
             {
-            case OMX_StateInvalid:
-                switch (comCurrentState)
-                {
-                case OMX_StateExecuting:
-                    pImp->bThreadRunning = 0;
-                    // enqueue null mean encoder thread cycle end
-                    SF_Queue_Enqueue(pImp->EmptyQueue, &pNull);
-                    SF_Queue_Enqueue(pImp->FillQueue, &pNull);
-                    pthread_join(pImp->pProcessThread->pthread, &ThreadRet);
-                case OMX_StateIdle:
-                case OMX_StatePause:
-                case OMX_StateLoaded:
-                case OMX_StateWaitForResources:
-                default:
-                    pSfOMXComponent->state = OMX_StateInvalid;
-                    break;
-                }
-                ret = OMX_ErrorInvalidState;
-                break;
-
             case OMX_StateLoaded:
-                switch (comCurrentState)
-                {
-                case OMX_StateWaitForResources:
-                    break;
-                case OMX_StateIdle:
-                    Warp_VPU_DeInit(pImp, pImp->coreIdx);
-                    for (i = 0; i < 2; i++)
-                    {
-                        if (pSfOMXComponent->portDefinition[i].bEnabled){
-                            LOG(SF_LOG_INFO,"unload SemaphoreWait \r\n");
-                            SF_SemaphoreWait(pSfOMXComponent->portUnloadSemaphore[i]);
-                            LOG(SF_LOG_INFO,"unload SemaphoreWait out\r\n");
-                        }
-                    }
-                    break;
-                default:
-                    ret = OMX_ErrorIncorrectStateTransition;
-                    break;
-                }
                 break;
             case OMX_StateIdle:
-                if (comCurrentState == OMX_StatePause)
+                switch (pImp->currentState)
                 {
-                    comCurrentState = pSfOMXComponent->stateBeforePause;
-                }
-                switch (comCurrentState)
-                {
-                case OMX_StateLoaded:
-                    InitEncoder(pSfOMXComponent);
-                    for (i = 0; i < 2; i++)
+                    case OMX_StateExecuting:
                     {
-                        if (pSfOMXComponent->portDefinition[i].bEnabled){
-                            LOG(SF_LOG_INFO,"SemaphoreWait \r\n");
-                            SF_SemaphoreWait(pSfOMXComponent->portSemaphore[i]);
-                            LOG(SF_LOG_INFO,"SemaphoreWait out\r\n");
-                        }
+                        pImp->bThreadRunning = 0;
+                        // enqueue null mean encoder thread cycle end
+                        SF_Queue_Enqueue(pImp->EmptyQueue, &pNull);
+                        SF_Queue_Enqueue(pImp->FillQueue, &pNull);
+                        pthread_join(pImp->pProcessThread->pthread, &ThreadRet);
+                        LOG(SF_LOG_INFO, "Encoder thread end %ld\r\n", (Uint64)ThreadRet);
+                        FlushBuffer(pSfOMXComponent,OMX_INPUT_PORT_INDEX);
+                        FlushBuffer(pSfOMXComponent,OMX_OUTPUT_PORT_INDEX);
+                        SF_Queue_Flush(pImp->EmptyQueue);
+                        SF_Queue_Flush(pImp->FillQueue);
+                        pImp->currentState = OMX_StateIdle;
+                        break;
                     }
-                    break;
-                case OMX_StateExecuting:
-                    pImp->bThreadRunning = 0;
-                    // enqueue null mean encoder thread cycle end
-                    SF_Queue_Enqueue(pImp->EmptyQueue, &pNull);
-                    SF_Queue_Enqueue(pImp->FillQueue, &pNull);
-                    pthread_join(pImp->pProcessThread->pthread, &ThreadRet);
-                    LOG(SF_LOG_INFO, "Encoder thread end %ld\r\n", (Uint64)ThreadRet);
-                    FlushBuffer(pSfOMXComponent,OMX_INPUT_PORT_INDEX);
-                    FlushBuffer(pSfOMXComponent,OMX_OUTPUT_PORT_INDEX);
-                    SF_Queue_Flush(pImp->EmptyQueue);
-                    SF_Queue_Flush(pImp->FillQueue);
-                    break;
-                case OMX_StateIdle:
-                    pImp->bPause = OMX_FALSE;
-                    break;
-                default:
-                    ret = OMX_ErrorIncorrectStateTransition;
-                    break;
+                    case OMX_StateIdle:
+                        break;
+                    case OMX_StateLoaded:
+                        // InitDecoder(pSfOMXComponent);
+                        pImp->currentState = OMX_StateIdle;
+                        break;
+                    default:
+                        LOG(SF_LOG_ERR, "Can't go to state %d from %d\r\n",pImp->currentState, pCmd->nParam);
+                        break;
                 }
                 break;
-
-            case OMX_StateWaitForResources:
-                switch (comCurrentState)
-                {
-                case OMX_StateLoaded:
-                    break;
-                default:
-                    ret = OMX_ErrorIncorrectStateTransition;
-                    break;
-                }
-                break;
-
             case OMX_StateExecuting:
-                if (comCurrentState == OMX_StatePause)
-                {
-                    comCurrentState = pSfOMXComponent->stateBeforePause;
-                }
-                switch (comCurrentState)
+                switch (pImp->currentState)
                 {
                 case OMX_StateIdle:
                     pImp->bThreadRunning = OMX_TRUE;
-                    pImp->bPause = OMX_FALSE;
-                    pImp->tmpCounter = 0;
                     CreateThread(&pImp->pProcessThread, EncoderThread, (void *)pSfOMXComponent);
+                    pImp->currentState = OMX_StateExecuting;
                     break;
                 case OMX_StateExecuting:
-                    pImp->bPause = OMX_FALSE;
-                    SF_SemaphorePost(pImp->pauseSemaphore);
                     break;
+                case OMX_StateLoaded:
                 default:
-                    ret = OMX_ErrorIncorrectStateTransition;
+                    LOG(SF_LOG_ERR, "Can't go to state %d from %d\r\n",pImp->currentState, pCmd->nParam);
                     break;
                 }
                 break;
-
-            case OMX_StatePause:
-                switch (comCurrentState)
-                {
-                case OMX_StateIdle:
-                case OMX_StateExecuting:
-                    pImp->bPause = OMX_TRUE;
-                    pSfOMXComponent->stateBeforePause = comCurrentState;
-                    break;
-                default:
-                    ret = OMX_ErrorIncorrectStateTransition;
-                    break;
-                }
-                break;
-
             default:
-                ret = OMX_ErrorIncorrectStateTransition;
                 break;
             }
-
-            if (ret == OMX_ErrorNone)
-            {
-                pSfOMXComponent->state = pCmd->nParam;
-                pSfOMXComponent->traningState = OMX_TransStateInvalid;
-                pSfOMXComponent->callbacks->EventHandler(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData,
+            pSfOMXComponent->callbacks->EventHandler(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData,
                                                     OMX_EventCmdComplete, OMX_CommandStateSet, pCmd->nParam, NULL);
-                LOG(SF_LOG_DEBUG, "complete cmd StateSet %d\r\n", pCmd->nParam);
-
-                if (pSfOMXComponent->state == OMX_StateExecuting)
-                {
-                    ppBuffer = SF_Queue_Dequeue(pImp->pauseQ);
-                    while (ppBuffer)
-                    {
-                        pOMXBuffer = *ppBuffer;
-                        pSfOMXComponent->callbacks->FillBufferDone(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData, pOMXBuffer);
-                        ppBuffer = SF_Queue_Dequeue(pImp->pauseQ);
-                    }
-                }
-            }
-            else
-            {
-                pSfOMXComponent->callbacks->EventHandler(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData,
-                                                    OMX_EventError, ret, 0, NULL);
-                LOG(SF_LOG_DEBUG, "Can't go to state %d from %d, ret %X \r\n",pSfOMXComponent->state, pCmd->nParam, ret);
-            }
+            LOG(SF_LOG_DEBUG, "complete cmd StateSet %d\r\n", pCmd->nParam);
             break;
 
         case OMX_CommandFlush:
-        {
-            LOG(SF_LOG_INFO, "flush port %d\r\n", pCmd->nParam);
-            OMX_U32 nPort = pCmd->nParam;
-            cnt = (pCmd->nParam == OMX_ALL) ? 2 : 1;
-
-            for (i = 0; i < cnt; i++) {
-                if (pCmd->nParam == OMX_ALL)
-                    nPort = i;
-                else
-                    nPort = pCmd->nParam;
-
-                if (nPort == 0)
-                {
-                    FlushBuffer(pSfOMXComponent, nPort);
-                    pSfOMXComponent->callbacks->EventHandler(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData,
-                                                    OMX_EventCmdComplete, OMX_CommandFlush, nPort, NULL);
-                }
-                else
-                {
-                    FlushBuffer(pSfOMXComponent, nPort);
-                    if (pSfOMXComponent->state == OMX_StatePause)
-                    {
-                        ppBuffer = SF_Queue_Dequeue(pImp->pauseQ);
-                        while (ppBuffer)
-                        {
-                            pOMXBuffer = *ppBuffer;
-                            pSfOMXComponent->callbacks->FillBufferDone(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData, pOMXBuffer);
-                            ppBuffer = SF_Queue_Dequeue(pImp->pauseQ);
-                        }
-                    }
-                    pSfOMXComponent->callbacks->EventHandler(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData,
-                                                    OMX_EventCmdComplete, OMX_CommandFlush, nPort, NULL);
-                }
-            }
-        }
-        break;
+            FlushBuffer(pSfOMXComponent, pCmd->nParam);
+            pSfOMXComponent->callbacks->EventHandler(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData,
+                                                    OMX_EventCmdComplete, OMX_CommandFlush, pCmd->nParam, NULL);
+            LOG(SF_LOG_DEBUG, "complete cmd flush port %d\r\n", pCmd->nParam);
+            break;
 
         case OMX_CommandPortDisable:
-        {
-            LOG(SF_LOG_INFO, "disable port %d\r\n", pCmd->nParam);
-            OMX_U32 nPort;
-            cnt = (pCmd->nParam == OMX_ALL) ? 2 : 1;
-
-            for (i = 0; i < cnt; i++) {
-                if (pCmd->nParam == OMX_ALL)
-                    nPort = i;
-                else
-                    nPort = pCmd->nParam;
-
-                FlushBuffer(pSfOMXComponent, nPort);
-            }
-
-            for (i = 0; i < cnt; i++) {
-                if (pCmd->nParam == OMX_ALL)
-                    nPort = i;
-                else
-                    nPort = pCmd->nParam;
-
-                if (pSfOMXComponent->state != OMX_StateLoaded)
-                    SF_SemaphoreWait(pSfOMXComponent->portUnloadSemaphore[nPort]);
-                pSfOMXComponent->callbacks->EventHandler(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData,
-                                                    OMX_EventCmdComplete, OMX_CommandPortDisable, nPort, NULL);
-            }
-        }
-        break;
+            if(pCmd->nParam < OMX_PORT_MAX)
+                pSfOMXComponent->portDefinition[pCmd->nParam].bEnabled = OMX_FALSE;
+            pSfOMXComponent->callbacks->EventHandler(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData,
+                                                    OMX_EventCmdComplete, OMX_CommandPortDisable, pCmd->nParam, NULL);
+            LOG(SF_LOG_DEBUG, "complete cmd disable port %d\r\n", pCmd->nParam);
+            break;
 
         case OMX_CommandPortEnable:
-        {
-            LOG(SF_LOG_INFO, "enable port %d\r\n", pCmd->nParam);
-            OMX_U32 nPort;
-            cnt = (pCmd->nParam == OMX_ALL) ? 2 : 1;
-
-            for (i = 0; i < cnt; i++) {
-                if (pCmd->nParam == OMX_ALL)
-                    nPort = i;
-                else
-                    nPort = pCmd->nParam;
-
-                if ((pSfOMXComponent->state != OMX_StateLoaded) &&
-                        (pSfOMXComponent->state != OMX_StateWaitForResources))
-                    SF_SemaphoreWait(pSfOMXComponent->portSemaphore[nPort]);
-                pSfOMXComponent->callbacks->EventHandler(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData,
-                                                    OMX_EventCmdComplete, OMX_CommandPortEnable, nPort, NULL);
-            }
-        }
-        break;
-
-        case OMX_CommandMarkBuffer:
-        {
-            LOG(SF_LOG_INFO, "set mark %d\r\n", pCmd->nParam);
-            OMX_U32 nPort;
-            nPort = pCmd->nParam;
-            pSfOMXComponent->markType[nPort].hMarkTargetComponent =
-                                ((OMX_MARKTYPE *)pCmd->pCmdData)->hMarkTargetComponent;
-            pSfOMXComponent->markType[nPort].pMarkData =
-                                ((OMX_MARKTYPE *)pCmd->pCmdData)->pMarkData;
-        }
-        break;
+            if(pCmd->nParam < OMX_PORT_MAX)
+                pSfOMXComponent->portDefinition[pCmd->nParam].bEnabled = OMX_TRUE;
+            pSfOMXComponent->callbacks->EventHandler(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData,
+                                                    OMX_EventCmdComplete, OMX_CommandPortEnable, pCmd->nParam, NULL);
+            LOG(SF_LOG_DEBUG, "complete cmd enable port %d\r\n", pCmd->nParam);
+            break;
 
         default:
             break;
@@ -650,7 +470,6 @@ static void EncoderThread(void *args)
     Int32 srcFrameIdx = 0, frameIdx = 0;
     Int32 timeoutCount = 0, int_reason = 0;
     Uint32 interruptTimeout = VPU_ENC_TIMEOUT;
-    Uint32 geteos = 0;
     Uint32 size;
     void* yuvFeeder = NULL;
 
@@ -892,8 +711,7 @@ static void EncoderThread(void *args)
         goto ERR_ENC_OPEN;
     }
 
-    LOG(SF_LOG_DEBUG, "get output buff %p index %d\r\n", pOutputBuffer->pBuffer,
-                        ((SF_OMX_BUF_INFO*)pOutputBuffer->pOutputPortPrivate)->index);
+    LOG(SF_LOG_DEBUG, "get output buff %p index %d\r\n", pOutputBuffer->pBuffer, pOutputBuffer->nOutputPortIndex);
 
     Warp_EnterLock(pImp, coreIdx);
     size = Warp_BufferStreamReader_Act(pImp, bsReader, encHeaderParam.buf,
@@ -930,12 +748,6 @@ static void EncoderThread(void *args)
             break;
         }
 
-        if(pImp->bPause){
-            LOG(SF_LOG_DEBUG,"in pause\n");
-            SF_SemaphoreWait(pImp->pauseSemaphore);
-            LOG(SF_LOG_DEBUG,"out pause\n");
-        }
-
         pInputBuffer = *(OMX_BUFFERHEADERTYPE**)SF_Queue_Dequeue_Block(pImp->EmptyQueue);
 
         if(pInputBuffer == NULL){
@@ -947,19 +759,13 @@ static void EncoderThread(void *args)
             LOG(SF_LOG_DEBUG, "end of stream,end\n");
             pImp->bThreadRunning = 0;
             EmptyBufferDone(pSfOMXComponent, pInputBuffer);
-            pOutputBuffer = *(OMX_BUFFERHEADERTYPE**)SF_Queue_Dequeue_Block(pImp->FillQueue);
-            pOutputBuffer->nFilledLen = 0;
-            pOutputBuffer->nFlags = OMX_BUFFERFLAG_EOS;
-            FillBufferDone(pSfOMXComponent, pOutputBuffer);
             break;
         }else if(pInputBuffer->nFlags == OMX_BUFFERFLAG_EOS){
             LOG(SF_LOG_DEBUG, "end of stream,end\n");
-            //encParam.srcEndFlag = 1;
-            geteos = 1;
+            encParam.srcEndFlag = 1;
         }
 
-        LOG(SF_LOG_DEBUG, "get input buff %p index %d\r\n", pInputBuffer->pBuffer,
-                            ((SF_OMX_BUF_INFO*)pInputBuffer->pInputPortPrivate)->index);
+        LOG(SF_LOG_DEBUG, "get input buff %p index %d\r\n", pInputBuffer->pBuffer, pInputBuffer->nInputPortIndex);
 
         srcFrameIdx = (frameIdx%fbAllocInfo.num);
         encParam.srcIdx = srcFrameIdx;
@@ -1023,8 +829,7 @@ static void EncoderThread(void *args)
                     goto ERR_ENC_OPEN;
                 }
 
-                LOG(SF_LOG_DEBUG, "get output buff %p index %d\r\n", pOutputBuffer->pBuffer,
-                                    ((SF_OMX_BUF_INFO*)pOutputBuffer->pOutputPortPrivate)->index);
+                LOG(SF_LOG_DEBUG, "get output buff %p index %d\r\n", pOutputBuffer->pBuffer, pOutputBuffer->nOutputPortIndex);
                 size = Warp_BufferStreamReader_Act(pImp, bsReader, pEncOP->bitstreamBuffer, pEncOP->bitstreamBufferSize, STREAM_READ_ALL_SIZE, pOutputBuffer->pBuffer, comparatorBitStream);
                 if (size == 0) {
                     LOG(SF_LOG_ERR, "BufferStreamReader acc err \r\n");
@@ -1032,11 +837,6 @@ static void EncoderThread(void *args)
                 }
                 pOutputBuffer->nFilledLen = size;
                 pOutputBuffer->nFlags = 0;
-                if (geteos)
-                {
-                    pOutputBuffer->nFlags |= OMX_BUFFERFLAG_EOS;
-                    geteos = 0;
-                }
                 FillBufferDone(pSfOMXComponent, pOutputBuffer);
             }
 
@@ -1098,8 +898,7 @@ static void EncoderThread(void *args)
                 goto ERR_ENC_OPEN;
             }
 
-            LOG(SF_LOG_DEBUG, "get output buff %p index %d\r\n", pOutputBuffer->pBuffer,
-                                    ((SF_OMX_BUF_INFO*)pOutputBuffer->pOutputPortPrivate)->index);
+            LOG(SF_LOG_DEBUG, "get output buff %p index %d\r\n", pOutputBuffer->pBuffer, pOutputBuffer->nOutputPortIndex);
             Warp_EnterLock(pImp, coreIdx);
             size = Warp_BufferStreamReader_Act(pImp, bsReader, outputInfo.bitstreamBuffer, pEncOP->bitstreamBufferSize,
                                     outputInfo.bitstreamSize, pOutputBuffer->pBuffer,comparatorBitStream);
@@ -1110,8 +909,6 @@ static void EncoderThread(void *args)
             }
             pOutputBuffer->nFilledLen = size;
             pOutputBuffer->nFlags = OMX_BUFFERFLAG_ENDOFFRAME;
-            if (outputInfo.reconFrameIndex == -1)
-                pOutputBuffer->nFlags |= OMX_BUFFERFLAG_EOS;
             FillBufferDone(pSfOMXComponent, pOutputBuffer);
         }
 
@@ -1146,25 +943,6 @@ ERR_ENC_INIT:
     }
 
     pthread_exit(NULL);
-}
-
-static OMX_ERRORTYPE SF_OMX_ComponentTunnelRequest(
-    OMX_IN OMX_HANDLETYPE hComp,
-    OMX_IN OMX_U32        nPort,
-    OMX_IN OMX_HANDLETYPE hTunneledComp,
-    OMX_IN OMX_U32        nTunneledPort,
-    OMX_INOUT OMX_TUNNELSETUPTYPE *pTunnelSetup)
-{
-    OMX_ERRORTYPE ret = OMX_ErrorNone;
-    (void) hComp;
-    (void) nPort;
-    (void) hTunneledComp;
-    (void) nTunneledPort;
-    (void) pTunnelSetup;
-    ret = OMX_ErrorTunnelingUnsupported;
-    goto EXIT;
-EXIT:
-    return ret;
 }
 
 static void FlushBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U32 nPortNumber)
@@ -1236,18 +1014,6 @@ static OMX_ERRORTYPE SF_OMX_EmptyThisBuffer(
 
     LOG(SF_LOG_DEBUG, "bufheader %p nFilledLen = %d, nFlags = %d, pBuffer = %p\r\n", pBuffer, pBuffer->nFilledLen, pBuffer->nFlags, pBuffer->pBuffer);
 
-    if (!pSfOMXComponent->portDefinition[OMX_INPUT_PORT_INDEX].bEnabled)
-    {
-        LOG(SF_LOG_INFO, "feed buffer when input port stop\r\n");
-        return OMX_ErrorIncorrectStateOperation;
-    }
-
-    if (pBuffer->nInputPortIndex != OMX_INPUT_PORT_INDEX)
-    {
-        LOG(SF_LOG_INFO, "Incorrect nInputPortIndex %d\r\n", pBuffer->nInputPortIndex);
-        return OMX_ErrorBadPortIndex;
-    }
-
     ret = SF_Queue_Enqueue(pImp->EmptyQueue, &pBuffer);
 EXIT:
     FunctionOut();
@@ -1273,18 +1039,6 @@ static OMX_ERRORTYPE SF_OMX_FillThisBuffer(
     SF_WAVE420L_IMPLEMEMT *pImp = (SF_WAVE420L_IMPLEMEMT *)pSfOMXComponent->componentImpl;
     LOG(SF_LOG_DEBUG, "bufheader %p nFilledLen = %d, nFlags = %d, pBuffer = %p\r\n", pBuffer, pBuffer->nFilledLen, pBuffer->nFlags, pBuffer->pBuffer);
 
-    if (!pSfOMXComponent->portDefinition[OMX_OUTPUT_PORT_INDEX].bEnabled)
-    {
-        LOG(SF_LOG_INFO, "feed buffer when output port stop\r\n");
-        return OMX_ErrorIncorrectStateOperation;
-    }
-
-    if (pBuffer->nOutputPortIndex != OMX_OUTPUT_PORT_INDEX)
-    {
-        LOG(SF_LOG_INFO, "Incorrect nOutputPortIndex %d\r\n", pBuffer->nOutputPortIndex);
-        return OMX_ErrorBadPortIndex;
-    }
-
     ret = SF_Queue_Enqueue(pImp->FillQueue, &pBuffer);
 EXIT:
     FunctionOut();
@@ -1300,13 +1054,8 @@ static OMX_ERRORTYPE SF_OMX_UseBuffer(
     OMX_IN OMX_U32 nSizeBytes,
     OMX_IN OMX_U8 *pBuffer)
 {
-    OMX_ERRORTYPE ret = OMX_ErrorNone;
     OMX_BUFFERHEADERTYPE *temp_bufferHeader;
     SF_OMX_BUF_INFO *pBufInfo;
-    OMX_COMPONENTTYPE *pOMXComponent = (OMX_COMPONENTTYPE *)hComponent;
-    SF_OMX_COMPONENT *pSfOMXComponent = pOMXComponent->pComponentPrivate;
-    OMX_U32 i;
-
     FunctionIn();
 
     temp_bufferHeader = (OMX_BUFFERHEADERTYPE *)malloc(sizeof(OMX_BUFFERHEADERTYPE));
@@ -1326,109 +1075,31 @@ static OMX_ERRORTYPE SF_OMX_UseBuffer(
     temp_bufferHeader->nAllocLen = nSizeBytes;
     temp_bufferHeader->pAppPrivate = pAppPrivate;
     temp_bufferHeader->pBuffer = pBuffer;
-    temp_bufferHeader->nSize = sizeof(OMX_BUFFERHEADERTYPE);
-    memcpy(&(temp_bufferHeader->nVersion), &(pSfOMXComponent->componentVersion), sizeof(OMX_VERSIONTYPE));
+    pBufInfo->type = SF_BUFFER_NOMAL;
 
     if(nPortIndex == OMX_INPUT_PORT_INDEX)
-    {
-        for (i = 0; i < MAX_BUFF_NUM; i++)
-        {
-            if (!pSfOMXComponent->pBufferArray[OMX_INPUT_PORT_INDEX][i])
-            {
-                pBufInfo->type = SF_BUFFER_DMA_EXTERNAL;
-                pBufInfo->index = i;
-                temp_bufferHeader->pInputPortPrivate = (OMX_PTR)pBufInfo;
-                temp_bufferHeader->nInputPortIndex = OMX_INPUT_PORT_INDEX;
-                pSfOMXComponent->pBufferArray[OMX_INPUT_PORT_INDEX][i] = temp_bufferHeader;
-                pSfOMXComponent->assignedBufferNum[OMX_INPUT_PORT_INDEX] ++;
-
-                if (pSfOMXComponent->assignedBufferNum[OMX_INPUT_PORT_INDEX] ==
-                        pSfOMXComponent->portDefinition[OMX_INPUT_PORT_INDEX].nBufferCountActual)
-                {
-                    pSfOMXComponent->portDefinition[OMX_INPUT_PORT_INDEX].bPopulated = OMX_TRUE;
-                    SF_SemaphorePost(pSfOMXComponent->portSemaphore[OMX_INPUT_PORT_INDEX]);
-                }
-                break;
-            }
-        }
-        if (i == MAX_BUFF_NUM){
-            LOG(SF_LOG_ERR, "buffer array full\r\n");
-            free(temp_bufferHeader);
-            free(pBufInfo);
-            ret = OMX_ErrorInsufficientResources;
-        }
-    }
+        temp_bufferHeader->pInputPortPrivate = pBufInfo;
     else if(nPortIndex == OMX_OUTPUT_PORT_INDEX)
-    {
-        for (i = 0; i < MAX_BUFF_NUM; i++)
-        {
-            if (!pSfOMXComponent->pBufferArray[OMX_OUTPUT_PORT_INDEX][i])
-            {
-                pBufInfo->type = SF_BUFFER_DMA_EXTERNAL;
-                pBufInfo->index = i;
-                temp_bufferHeader->pOutputPortPrivate = (OMX_PTR)pBufInfo;
-                temp_bufferHeader->nOutputPortIndex = OMX_OUTPUT_PORT_INDEX;
-                pSfOMXComponent->pBufferArray[OMX_OUTPUT_PORT_INDEX][i] = temp_bufferHeader;
-                pSfOMXComponent->assignedBufferNum[OMX_OUTPUT_PORT_INDEX] ++;
-
-                if (pSfOMXComponent->assignedBufferNum[OMX_OUTPUT_PORT_INDEX] ==
-                        pSfOMXComponent->portDefinition[OMX_OUTPUT_PORT_INDEX].nBufferCountActual)
-                {
-                    pSfOMXComponent->portDefinition[OMX_OUTPUT_PORT_INDEX].bPopulated = OMX_TRUE;
-                    SF_SemaphorePost(pSfOMXComponent->portSemaphore[OMX_OUTPUT_PORT_INDEX]);
-                }
-                break;
-            }
-        }
-        if (i == MAX_BUFF_NUM){
-            LOG(SF_LOG_ERR, "buffer array full\r\n");
-            free(temp_bufferHeader);
-            free(pBufInfo);
-            ret = OMX_ErrorInsufficientResources;
-        }
-    }
+        temp_bufferHeader->pOutputPortPrivate = pBufInfo;
 
     *ppBufferHdr = temp_bufferHeader;
 
     FunctionOut();
 
-    return ret;
+    return OMX_ErrorNone;
 }
 
 static OMX_BOOL FillBufferDone(SF_OMX_COMPONENT *pSfOMXComponent, OMX_BUFFERHEADERTYPE *pBuffer)
 {
-    SF_WAVE420L_IMPLEMEMT *pImp = (SF_WAVE420L_IMPLEMEMT *)pSfOMXComponent->componentImpl;
     FunctionIn();
 
-    pBuffer->nTimeStamp = (pImp->tmpCounter*1000000)/pImp->tmpFramerate;
-    pImp->tmpCounter++;
+    pBuffer->nTimeStamp = (tmpCounter*1000000)/tmpFramerate;
+    tmpCounter++;
 
     LOG(SF_LOG_PERF, "OMX finish one buffer, address = %p, size = %d, nTimeStamp = %d, nFlags = %X\r\n",
             pBuffer->pBuffer, pBuffer->nFilledLen, pBuffer->nTimeStamp, pBuffer->nFlags);
 
-    if (pSfOMXComponent->propagateMarkType.hMarkTargetComponent != NULL) {
-        LOG(SF_LOG_INFO, "Component propagate mark to output port\r\n");
-        pBuffer->hMarkTargetComponent = pSfOMXComponent->propagateMarkType.hMarkTargetComponent;
-        pBuffer->pMarkData = pSfOMXComponent->propagateMarkType.pMarkData;
-        pSfOMXComponent->propagateMarkType.hMarkTargetComponent = NULL;
-        pSfOMXComponent->propagateMarkType.pMarkData = NULL;
-    }
-
-    if (pSfOMXComponent->state == OMX_StatePause)
-    {
-        LOG(SF_LOG_INFO, "tmp store buf when pause\r\n");
-        SF_Queue_Enqueue(pImp->pauseQ, &pBuffer);
-    }
-    else{
-        if (pBuffer->nFlags & OMX_BUFFERFLAG_EOS)
-        {
-            pSfOMXComponent->callbacks->EventHandler(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData, OMX_EventBufferFlag,
-                                                 OMX_OUTPUT_PORT_INDEX, pBuffer->nFlags, NULL);
-        }
-        pSfOMXComponent->callbacks->FillBufferDone(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData, pBuffer);
-    }
-
-
+    pSfOMXComponent->callbacks->FillBufferDone(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData, pBuffer);
     FunctionOut();
     return OMX_TRUE;
 }
@@ -1439,32 +1110,6 @@ static OMX_BOOL EmptyBufferDone(SF_OMX_COMPONENT *pSfOMXComponent, OMX_BUFFERHEA
     LOG(SF_LOG_DEBUG, "EmptyBufferDone IN\r\n");
     LOG(SF_LOG_PERF, "OMX empty one buffer, address = %p, size = %d, nTimeStamp = %d, nFlags = %X\r\n",
         pBuffer->pBuffer, pBuffer->nFilledLen, pBuffer->nTimeStamp, pBuffer->nFlags);
-
-    if (pSfOMXComponent->markType[OMX_INPUT_PORT_INDEX].hMarkTargetComponent != NULL)
-    {
-        LOG(SF_LOG_INFO, "set Component mark %p\r\n", pSfOMXComponent->markType[OMX_INPUT_PORT_INDEX].hMarkTargetComponent);
-        pBuffer->hMarkTargetComponent      = pSfOMXComponent->markType[OMX_INPUT_PORT_INDEX].hMarkTargetComponent;
-        pBuffer->pMarkData                 = pSfOMXComponent->markType[OMX_INPUT_PORT_INDEX].pMarkData;
-        pSfOMXComponent->markType[OMX_INPUT_PORT_INDEX].hMarkTargetComponent = NULL;
-        pSfOMXComponent->markType[OMX_INPUT_PORT_INDEX].pMarkData = NULL;
-    }
-
-    if (pBuffer->hMarkTargetComponent != NULL)
-    {
-        if (pBuffer->hMarkTargetComponent == pSfOMXComponent->pOMXComponent)
-        {
-            LOG(SF_LOG_INFO, "Component mark hit\r\n");
-            pSfOMXComponent->callbacks->EventHandler(pSfOMXComponent->pOMXComponent,
-                pSfOMXComponent->pAppData,
-                OMX_EventMark,
-                0, 0, pBuffer->pMarkData);
-        } else {
-            LOG(SF_LOG_INFO, "Component propagate mark from input port\r\n");
-            pSfOMXComponent->propagateMarkType.hMarkTargetComponent = pBuffer->hMarkTargetComponent;
-            pSfOMXComponent->propagateMarkType.pMarkData = pBuffer->pMarkData;
-        }
-    }
-
     pSfOMXComponent->callbacks->EmptyBufferDone(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData, pBuffer);
     LOG(SF_LOG_DEBUG, "EmptyBufferDone OUT\r\n");
 
@@ -1479,12 +1124,9 @@ static OMX_ERRORTYPE SF_OMX_AllocateBuffer(
     OMX_IN OMX_PTR pAppPrivate,
     OMX_IN OMX_U32 nSizeBytes)
 {
-    OMX_COMPONENTTYPE *pOMXComponent = (OMX_COMPONENTTYPE *)hComponent;
-    SF_OMX_COMPONENT *pSfOMXComponent = pOMXComponent->pComponentPrivate;
     OMX_ERRORTYPE ret = OMX_ErrorNone;
     OMX_BUFFERHEADERTYPE *temp_bufferHeader;
     SF_OMX_BUF_INFO *pBufInfo;
-    OMX_U32 i;
 
     FunctionIn();
     if (nSizeBytes == 0)
@@ -1509,70 +1151,26 @@ static OMX_ERRORTYPE SF_OMX_AllocateBuffer(
 
     temp_bufferHeader->nAllocLen = nSizeBytes;
     temp_bufferHeader->pAppPrivate = pAppPrivate;
-    temp_bufferHeader->nSize = sizeof(OMX_BUFFERHEADERTYPE);
-    memcpy(&(temp_bufferHeader->nVersion), &(pSfOMXComponent->componentVersion), sizeof(OMX_VERSIONTYPE));
 
     if (nPortIndex == OMX_OUTPUT_PORT_INDEX)
     {
-        for (i = 0; i < MAX_BUFF_NUM; i++)
-        {
-            if (!pSfOMXComponent->pBufferArray[OMX_OUTPUT_PORT_INDEX][i])
-            {
-                temp_bufferHeader->pBuffer = malloc(nSizeBytes);
-                memset(temp_bufferHeader->pBuffer, 0, nSizeBytes);
-                temp_bufferHeader->nOutputPortIndex = OMX_OUTPUT_PORT_INDEX;
-                pBufInfo->type = SF_BUFFER_NOMAL;
-                pBufInfo->index = i;
-                temp_bufferHeader->pOutputPortPrivate = (void*)pBufInfo;
-                LOG(SF_LOG_PERF, "alloc normal output buffer %d \r\n", i);
-
-                pSfOMXComponent->pBufferArray[OMX_OUTPUT_PORT_INDEX][i] = temp_bufferHeader;
-                pSfOMXComponent->assignedBufferNum[OMX_OUTPUT_PORT_INDEX]++;
-
-                if (pSfOMXComponent->assignedBufferNum[OMX_OUTPUT_PORT_INDEX] ==
-                        pSfOMXComponent->portDefinition[OMX_OUTPUT_PORT_INDEX].nBufferCountActual)
-                {
-                    pSfOMXComponent->portDefinition[OMX_OUTPUT_PORT_INDEX].bPopulated = OMX_TRUE;
-                    SF_SemaphorePost(pSfOMXComponent->portSemaphore[OMX_OUTPUT_PORT_INDEX]);
-                }
-                break;
-            }
-        }
-        if (i == MAX_BUFF_NUM){
-            LOG(SF_LOG_ERR, "buffer array full\r\n");
-            temp_bufferHeader->pBuffer = NULL;
-        }
+        temp_bufferHeader->pBuffer = malloc(nSizeBytes);
+        memset(temp_bufferHeader->pBuffer, 0, nSizeBytes);
+        temp_bufferHeader->nOutputPortIndex = outputBufNum;
+        pBufInfo->type = SF_BUFFER_NOMAL;
+        temp_bufferHeader->pOutputPortPrivate = (void*)pBufInfo;
+        LOG(SF_LOG_PERF, "alloc normal output buffer %d \r\n", outputBufNum);
+        outputBufNum ++;
     }
     else if (nPortIndex == OMX_INPUT_PORT_INDEX)
     {
-        for (i = 0; i < MAX_BUFF_NUM; i++)
-        {
-            if (!pSfOMXComponent->pBufferArray[OMX_INPUT_PORT_INDEX][i])
-            {
-                temp_bufferHeader->pBuffer = malloc(nSizeBytes);
-                memset(temp_bufferHeader->pBuffer, 0, nSizeBytes);
-                temp_bufferHeader->nInputPortIndex = OMX_INPUT_PORT_INDEX;
-                pBufInfo->type = SF_BUFFER_NOMAL;
-                pBufInfo->index = i;
-                temp_bufferHeader->pInputPortPrivate = (void*)pBufInfo;
-                LOG(SF_LOG_PERF, "alloc normal intput buffer %d \r\n", i);
-
-                pSfOMXComponent->pBufferArray[OMX_INPUT_PORT_INDEX][i] = temp_bufferHeader;
-                pSfOMXComponent->assignedBufferNum[OMX_INPUT_PORT_INDEX]++;
-
-                if (pSfOMXComponent->assignedBufferNum[OMX_INPUT_PORT_INDEX] ==
-                        pSfOMXComponent->portDefinition[OMX_INPUT_PORT_INDEX].nBufferCountActual)
-                {
-                    pSfOMXComponent->portDefinition[OMX_INPUT_PORT_INDEX].bPopulated = OMX_TRUE;
-                    SF_SemaphorePost(pSfOMXComponent->portSemaphore[OMX_INPUT_PORT_INDEX]);
-                }
-                break;
-            }
-        }
-        if (i == MAX_BUFF_NUM){
-            LOG(SF_LOG_ERR, "buffer array full\r\n");
-            temp_bufferHeader->pBuffer = NULL;
-        }
+        temp_bufferHeader->pBuffer = malloc(nSizeBytes);
+        memset(temp_bufferHeader->pBuffer, 0, nSizeBytes);
+        temp_bufferHeader->nInputPortIndex = inputBufNum;
+        pBufInfo->type = SF_BUFFER_NOMAL;
+        temp_bufferHeader->pInputPortPrivate = (void*)pBufInfo;
+        LOG(SF_LOG_PERF, "alloc normal intput buffer %d \r\n", inputBufNum);
+        inputBufNum ++;
     }
 
     if (temp_bufferHeader->pBuffer == NULL)
@@ -1596,14 +1194,9 @@ static OMX_ERRORTYPE SF_OMX_FreeBuffer(
     OMX_IN OMX_BUFFERHEADERTYPE *pBufferHdr)
 {
     SF_OMX_BUF_INFO *pBufInfo;
-    OMX_COMPONENTTYPE *pOMXComponent = (OMX_COMPONENTTYPE *)hComponent;
-    SF_OMX_COMPONENT *pSfOMXComponent = pOMXComponent->pComponentPrivate;
-
     FunctionIn();
 
     if(pBufferHdr == NULL)
-        return OMX_ErrorBadParameter;
-    if(nPortIndex >= OMX_PORT_MAX)
         return OMX_ErrorBadParameter;
 
     if(nPortIndex == OMX_INPUT_PORT_INDEX)
@@ -1611,34 +1204,12 @@ static OMX_ERRORTYPE SF_OMX_FreeBuffer(
     else if(nPortIndex == OMX_OUTPUT_PORT_INDEX)
         pBufInfo = pBufferHdr->pOutputPortPrivate;
 
-    LOG(SF_LOG_INFO, "free header %p pBuffer address = %p on port %d\r\n",
-                                            pBufferHdr, pBufferHdr->pBuffer, nPortIndex);
-
-    if ((pSfOMXComponent->traningState != OMX_TransStateIdleToLoaded) &&
-            (pSfOMXComponent->portDefinition[nPortIndex].bEnabled))
-    {
-        LOG(SF_LOG_INFO, "port Unpopulated\r\n");
-        pSfOMXComponent->callbacks->EventHandler(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData,
-                                                    OMX_EventError, OMX_ErrorPortUnpopulated, nPortIndex, NULL);
-    }
-
     if(pBufInfo->type == SF_BUFFER_NOMAL)
     {
         if(pBufferHdr->pBuffer)
             free(pBufferHdr->pBuffer);
-    }
-
-    pSfOMXComponent->pBufferArray[nPortIndex][pBufInfo->index] = NULL;
-    pSfOMXComponent->assignedBufferNum[nPortIndex]--;
-    LOG(SF_LOG_INFO, "remain %d buff port %d assgin\r\n",pSfOMXComponent->assignedBufferNum[nPortIndex], nPortIndex);
-
-    free(pBufferHdr);
-    free(pBufInfo);
-
-    if (pSfOMXComponent->assignedBufferNum[nPortIndex] == 0) {
-        LOG(SF_LOG_INFO, "unloadedResource signal set\r\n");
-        SF_SemaphorePost(pSfOMXComponent->portUnloadSemaphore[nPortIndex]);
-        pSfOMXComponent->portDefinition[nPortIndex].bPopulated = OMX_FALSE;
+        free(pBufferHdr);
+        free(pBufInfo);
     }
 
     FunctionOut();
@@ -1658,7 +1229,7 @@ static OMX_ERRORTYPE SF_OMX_GetParameter(
 
     FunctionIn();
 
-    if (hComponent == NULL || ComponentParameterStructure == NULL)
+    if (hComponent == NULL)
     {
         ret = OMX_ErrorBadParameter;
         goto EXIT;
@@ -1672,16 +1243,6 @@ static OMX_ERRORTYPE SF_OMX_GetParameter(
         OMX_PORT_PARAM_TYPE *portParam = (OMX_PORT_PARAM_TYPE *)ComponentParameterStructure;
         portParam->nPorts           = OMX_PORT_MAX;
         portParam->nStartPortNumber = OMX_INPUT_PORT_INDEX;
-        break;
-    }
-
-    case OMX_IndexParamAudioInit:
-    case OMX_IndexParamImageInit:
-    case OMX_IndexParamOtherInit:
-    {
-        OMX_PORT_PARAM_TYPE *portParam = (OMX_PORT_PARAM_TYPE *)ComponentParameterStructure;
-        portParam->nPorts           = 0;
-        portParam->nStartPortNumber = 0;
         break;
     }
 
@@ -1736,22 +1297,13 @@ static OMX_ERRORTYPE SF_OMX_GetParameter(
     {
         OMX_PARAM_PORTDEFINITIONTYPE *pPortDefinition = (OMX_PARAM_PORTDEFINITIONTYPE *)ComponentParameterStructure;
         OMX_U32 portIndex = pPortDefinition->nPortIndex;
-
-        if (portIndex < OMX_PORT_MAX)
-        {
-            memcpy(pPortDefinition, &pSfOMXComponent->portDefinition[portIndex], pPortDefinition->nSize);
-            LOG(SF_LOG_DEBUG, "Get parameter port %X\r\n",portIndex);
-            LOG_APPEND(SF_LOG_DEBUG, "width = %d, height = %d\r\n", pPortDefinition->format.video.nFrameWidth, pPortDefinition->format.video.nFrameHeight);
-            LOG_APPEND(SF_LOG_DEBUG, "eColorFormat = %d\r\n", pPortDefinition->format.video.eColorFormat);
-            LOG_APPEND(SF_LOG_DEBUG, "xFramerate = %d\r\n", pPortDefinition->format.video.xFramerate);
-            LOG_APPEND(SF_LOG_DEBUG, "bufferSize = %d\r\n",pPortDefinition->nBufferSize);
-            LOG_APPEND(SF_LOG_DEBUG, "Buffer count = %d\r\n", pPortDefinition->nBufferCountActual);
-        }
-        else
-        {
-            LOG(SF_LOG_INFO,"Bad port index %d\r\n",portIndex);
-            ret = OMX_ErrorBadPortIndex;
-        }
+        memcpy(pPortDefinition, &pSfOMXComponent->portDefinition[portIndex], pPortDefinition->nSize);
+        LOG(SF_LOG_DEBUG, "Get parameter port %X\r\n",portIndex);
+        LOG_APPEND(SF_LOG_DEBUG, "width = %d, height = %d\r\n", pPortDefinition->format.video.nFrameWidth, pPortDefinition->format.video.nFrameHeight);
+        LOG_APPEND(SF_LOG_DEBUG, "eColorFormat = %d\r\n", pPortDefinition->format.video.eColorFormat);
+        LOG_APPEND(SF_LOG_DEBUG, "xFramerate = %d\r\n", pPortDefinition->format.video.xFramerate);
+        LOG_APPEND(SF_LOG_DEBUG, "bufferSize = %d\r\n",pPortDefinition->nBufferSize);
+        LOG_APPEND(SF_LOG_DEBUG, "Buffer count = %d\r\n", pPortDefinition->nBufferCountActual);
         break;
     }
 
@@ -1759,11 +1311,7 @@ static OMX_ERRORTYPE SF_OMX_GetParameter(
         break;
 
     case OMX_IndexParamStandardComponentRole:
-    {
-        OMX_PARAM_COMPONENTROLETYPE *pComponentRole = (OMX_PARAM_COMPONENTROLETYPE *)ComponentParameterStructure;
-        strcpy((OMX_STRING)(pComponentRole->cRole), pSfOMXComponent->componentRule);
         break;
-    }
 
     case OMX_IndexParamVideoAvc:
         break;
@@ -1796,21 +1344,8 @@ static OMX_ERRORTYPE SF_OMX_GetParameter(
         break;
     }
 
-    case OMX_IndexParamCompBufferSupplier:
-    {
-        OMX_PARAM_BUFFERSUPPLIERTYPE *bufferSupplier = (OMX_PARAM_BUFFERSUPPLIERTYPE *)ComponentParameterStructure;
-        OMX_U32 portIndex = bufferSupplier->nPortIndex;
-        if (portIndex >= OMX_PORT_MAX)
-            ret = OMX_ErrorBadPortIndex;
-        break;
-    }
-
     default:
-    {
-        ret = OMX_ErrorUnsupportedIndex;
         break;
-    }
-
     }
 
 EXIT:
@@ -1827,7 +1362,7 @@ static OMX_ERRORTYPE SF_OMX_SetParameter(
     OMX_ERRORTYPE ret = OMX_ErrorNone;
 
     FunctionIn();
-    if (hComponent == NULL || ComponentParameterStructure == NULL)
+    if (hComponent == NULL)
     {
         ret = OMX_ErrorBadParameter;
         goto EXIT;
@@ -1867,7 +1402,7 @@ static OMX_ERRORTYPE SF_OMX_SetParameter(
             LOG(SF_LOG_ERR, "Fail to set xFramerate = %d\r\n", xFramerate);
             return OMX_ErrorBadParameter;
         }
-        pImp->tmpFramerate = xFramerate;
+        tmpFramerate = xFramerate;
         if (portIndex == OMX_INPUT_PORT_INDEX)
         {
             switch (eColorFormat)
@@ -1918,11 +1453,6 @@ static OMX_ERRORTYPE SF_OMX_SetParameter(
             pOutputPort->format.video.nSliceHeight = height;
             pOutputPort->nBufferSize = width * height * 2;
         }
-        else
-        {
-            LOG(SF_LOG_INFO,"Bad port index %d\r\n",portIndex);
-            ret = OMX_ErrorBadPortIndex;
-        }
         break;
     }
 
@@ -1930,15 +1460,7 @@ static OMX_ERRORTYPE SF_OMX_SetParameter(
     {
         OMX_VIDEO_PARAM_PORTFORMATTYPE *portFormat = (OMX_VIDEO_PARAM_PORTFORMATTYPE *)ComponentParameterStructure;
         OMX_COLOR_FORMATTYPE eColorFormat = portFormat->eColorFormat;
-        OMX_U32 nPortIndex = portFormat->nPortIndex;
-        OMX_PARAM_PORTDEFINITIONTYPE *pPort = &pSfOMXComponent->portDefinition[nPortIndex];
         LOG(SF_LOG_INFO, "Set eColorFormat to %d\r\n", eColorFormat);
-
-        if (nPortIndex >= OMX_PORT_MAX)
-            return OMX_ErrorBadPortIndex;
-
-        pPort = &pSfOMXComponent->portDefinition[nPortIndex];
-
         switch (eColorFormat)
         {
         case OMX_COLOR_FormatYUV420Planar:
@@ -1964,7 +1486,7 @@ static OMX_ERRORTYPE SF_OMX_SetParameter(
             break;
         }
         if(!ret){
-            pPort->format.video.eColorFormat = eColorFormat;
+            pInputPort->format.video.eColorFormat = eColorFormat;
         }
         break;
     }
@@ -2016,30 +1538,9 @@ static OMX_ERRORTYPE SF_OMX_SetParameter(
         break;
     }
 
-    case OMX_IndexParamStandardComponentRole:
-    {
-        if ((pSfOMXComponent->state != OMX_StateLoaded) &&
-                (pSfOMXComponent->state != OMX_StateWaitForResources)) {
-            ret = OMX_ErrorIncorrectStateOperation;
-        }
-        break;
-    }
-
-    case OMX_IndexParamCompBufferSupplier:
-    {
-        OMX_PARAM_BUFFERSUPPLIERTYPE *bufferSupplier = (OMX_PARAM_BUFFERSUPPLIERTYPE *)ComponentParameterStructure;
-        OMX_U32 portIndex = bufferSupplier->nPortIndex;
-        if (portIndex >= OMX_PORT_MAX)
-            ret = OMX_ErrorBadPortIndex;
-        break;
-    }
-
     case OMX_IndexParamVideoQuantization:
     case OMX_IndexParamVideoIntraRefresh:
-        break;
-
     default:
-        ret = OMX_ErrorUnsupportedIndex;
         break;
     }
 
@@ -2059,7 +1560,6 @@ static OMX_ERRORTYPE SF_OMX_SendCommand(
     OMX_COMPONENTTYPE *pOMXComponent = (OMX_COMPONENTTYPE *)hComponent;
     SF_OMX_COMPONENT *pSfOMXComponent = pOMXComponent->pComponentPrivate;
     SF_WAVE420L_IMPLEMEMT *pImp = (SF_WAVE420L_IMPLEMEMT *)pSfOMXComponent->componentImpl;
-    OMX_STATETYPE comCurrentState;
     SF_OMX_CMD cmd;
 
     FunctionIn();
@@ -2070,102 +1570,6 @@ static OMX_ERRORTYPE SF_OMX_SendCommand(
     }
 
     LOG(SF_LOG_INFO, "cmd = %X, nParam = %X\r\n", Cmd, nParam);
-
-    comCurrentState = pSfOMXComponent->state;
-
-    if (comCurrentState == OMX_StateInvalid) {
-        return OMX_ErrorInvalidState;
-    }
-
-    switch (Cmd)
-    {
-    case OMX_CommandStateSet:
-    {
-        if ((nParam == OMX_StateLoaded) &&
-            (pSfOMXComponent->state == OMX_StateIdle))
-        {
-            pSfOMXComponent->traningState = OMX_TransStateIdleToLoaded;
-        }
-        else if ((nParam == OMX_StateIdle) &&
-            (pSfOMXComponent->state == OMX_StateLoaded))
-        {
-            pSfOMXComponent->traningState = OMX_TransStateLoadedToIdle;
-        }
-    }
-    break;
-
-    case OMX_CommandFlush:
-    {
-        if (nParam >= 2 && nParam != OMX_ALL)
-            return OMX_ErrorBadPortIndex;
-    }
-    break;
-
-    case OMX_CommandMarkBuffer:
-    {
-        if (nParam >= 2)
-            return OMX_ErrorBadPortIndex;
-        if ((pSfOMXComponent->state != OMX_StateExecuting) &&
-            (pSfOMXComponent->state != OMX_StatePause))
-            return OMX_ErrorIncorrectStateOperation;
-    }
-    break;
-
-    case OMX_CommandPortDisable:
-    {
-        if (nParam >= 2 && nParam != OMX_ALL)
-            return OMX_ErrorBadPortIndex;
-
-        if (nParam == OMX_ALL)
-        {
-            for (int i = 0; i < 2; i++)
-            {
-                if(pSfOMXComponent->portDefinition[i].bEnabled == OMX_FALSE)
-                    return OMX_ErrorIncorrectStateOperation;
-            }
-            for (int i = 0; i < 2; i++)
-            {
-                pSfOMXComponent->portDefinition[i].bEnabled = OMX_FALSE;
-            }
-        }
-        else
-        {
-            if (pSfOMXComponent->portDefinition[nParam].bEnabled == OMX_FALSE)
-                return OMX_ErrorIncorrectStateOperation;
-            pSfOMXComponent->portDefinition[nParam].bEnabled = OMX_FALSE;
-        }
-    }
-    break;
-
-    case OMX_CommandPortEnable:
-    {
-        if (nParam >= 2 && nParam != OMX_ALL)
-            return OMX_ErrorBadPortIndex;
-
-        if (nParam == OMX_ALL)
-        {
-            for (int i = 0; i < 2; i++)
-            {
-                if(pSfOMXComponent->portDefinition[i].bEnabled == OMX_TRUE)
-                    return OMX_ErrorIncorrectStateOperation;
-            }
-            for (int i = 0; i < 2; i++)
-            {
-                pSfOMXComponent->portDefinition[i].bEnabled = OMX_TRUE;
-            }
-        }
-        else
-        {
-            if (pSfOMXComponent->portDefinition[nParam].bEnabled == OMX_TRUE)
-                return OMX_ErrorIncorrectStateOperation;
-            pSfOMXComponent->portDefinition[nParam].bEnabled = OMX_TRUE;
-        }
-    }
-    break;
-
-    default:
-    break;
-    }
 
     cmd.Cmd = Cmd;
     cmd.nParam = nParam;
@@ -2185,9 +1589,9 @@ static OMX_ERRORTYPE SF_OMX_GetState(
     OMX_ERRORTYPE ret = OMX_ErrorNone;
     OMX_COMPONENTTYPE *pOMXComponent = (OMX_COMPONENTTYPE *)hComponent;
     SF_OMX_COMPONENT *pSfOMXComponent = pOMXComponent->pComponentPrivate;
-
+    SF_WAVE420L_IMPLEMEMT *pImp = (SF_WAVE420L_IMPLEMEMT *)pSfOMXComponent->componentImpl;
     FunctionIn();
-    *pState = pSfOMXComponent->state;
+    *pState = pImp->currentState;
     FunctionOut();
     return ret;
 }
@@ -2257,82 +1661,15 @@ EXIT:
     return ret;
 }
 
-static OMX_ERRORTYPE SF_OMX_GetComponentVersion(
-    OMX_IN  OMX_HANDLETYPE   hComponent,
-    OMX_OUT OMX_STRING       pComponentName,
-    OMX_OUT OMX_VERSIONTYPE *pComponentVersion,
-    OMX_OUT OMX_VERSIONTYPE *pSpecVersion,
-    OMX_OUT OMX_UUIDTYPE    *pComponentUUID)
-{
-    OMX_ERRORTYPE ret = OMX_ErrorNone;
-    OMX_COMPONENTTYPE *pOMXComponent = NULL;
-    SF_OMX_COMPONENT *pSfOMXComponent = NULL;
-    OMX_U32 compUUID[4];
-
-    FunctionIn();
-
-    /* check parameters */
-    if (hComponent     == NULL ||
-        pComponentName == NULL || pComponentVersion == NULL ||
-        pSpecVersion   == NULL || pComponentUUID    == NULL) {
-        ret = OMX_ErrorBadParameter;
-        goto EXIT;
-    }
-    pOMXComponent = (OMX_COMPONENTTYPE *)hComponent;
-
-    if (pOMXComponent->pComponentPrivate == NULL) {
-        ret = OMX_ErrorBadParameter;
-        goto EXIT;
-    }
-    pSfOMXComponent = (SF_OMX_COMPONENT *)pOMXComponent->pComponentPrivate;
-
-    if (pSfOMXComponent->state == OMX_StateInvalid) {
-        ret = OMX_ErrorInvalidState;
-        goto EXIT;
-    }
-
-    strcpy(pComponentName, pSfOMXComponent->componentName);
-    memcpy(pComponentVersion, &(pSfOMXComponent->componentVersion), sizeof(OMX_VERSIONTYPE));
-    memcpy(pSpecVersion, &(pSfOMXComponent->specVersion), sizeof(OMX_VERSIONTYPE));
-
-    /* Fill UUID with handle address, PID and UID.
-     * This should guarantee uiniqness */
-    compUUID[0] = (OMX_U32)pOMXComponent;
-    compUUID[1] = (OMX_U32)pOMXComponent;
-    compUUID[2] = (OMX_U32)pOMXComponent;
-    compUUID[3] = (OMX_U32)pOMXComponent;
-    //compUUID[1] = getpid();
-    //compUUID[2] = getuid();
-    memcpy(*pComponentUUID, compUUID, 4 * sizeof(*compUUID));
-
-    ret = OMX_ErrorNone;
-
-EXIT:
-    FunctionOut();
-
-    return ret;
-}
-
-static OMX_U32 nInstance = 0;
-
 static OMX_ERRORTYPE SF_OMX_ComponentConstructor(SF_OMX_COMPONENT *pSfOMXComponent)
 {
     OMX_ERRORTYPE ret = OMX_ErrorNone;
-
+    SF_WAVE420L_IMPLEMEMT *pImp;
     FunctionIn();
-
-    if (nInstance >= MAX_NUM_INSTANCE)
-    {
-        ret = OMX_ErrorInsufficientResources;
-        goto EXIT;
-    }
-
-    nInstance++;
 
     ret = WaveOmxInit(pSfOMXComponent);
     if (ret != OMX_ErrorNone)
     {
-        nInstance--;
         goto EXIT;
     }
 
@@ -2341,19 +1678,19 @@ static OMX_ERRORTYPE SF_OMX_ComponentConstructor(SF_OMX_COMPONENT *pSfOMXCompone
     pSfOMXComponent->pOMXComponent->EmptyThisBuffer = &SF_OMX_EmptyThisBuffer;
     pSfOMXComponent->pOMXComponent->FillThisBuffer = &SF_OMX_FillThisBuffer;
     pSfOMXComponent->pOMXComponent->FreeBuffer = &SF_OMX_FreeBuffer;
-    pSfOMXComponent->pOMXComponent->ComponentTunnelRequest = &SF_OMX_ComponentTunnelRequest;
+    // pSfOMXComponent->pOMXComponent->ComponentTunnelRequest = &SF_OMX_ComponentTunnelRequest;
     pSfOMXComponent->pOMXComponent->GetParameter = &SF_OMX_GetParameter;
     pSfOMXComponent->pOMXComponent->SetParameter = &SF_OMX_SetParameter;
     pSfOMXComponent->pOMXComponent->GetConfig = &SF_OMX_GetConfig;
     pSfOMXComponent->pOMXComponent->SetConfig = &SF_OMX_SetConfig;
     pSfOMXComponent->pOMXComponent->SendCommand = &SF_OMX_SendCommand;
     pSfOMXComponent->pOMXComponent->GetState = &SF_OMX_GetState;
-    pSfOMXComponent->pOMXComponent->GetComponentVersion = &SF_OMX_GetComponentVersion;
     // pSfOMXComponent->pOMXComponent->GetExtensionIndex = &SF_OMX_GetExtensionIndex;
     // pSfOMXComponent->pOMXComponent->ComponentRoleEnum = &SF_OMX_ComponentRoleEnum;
     // pSfOMXComponent->pOMXComponent->ComponentDeInit = &SF_OMX_ComponentDeInit;
-
-    //InitEncoder(pSfOMXComponent);
+    pImp = (SF_WAVE420L_IMPLEMEMT *)pSfOMXComponent->componentImpl;
+    pImp->currentState = OMX_StateLoaded;
+    InitEncoder(pSfOMXComponent);
 EXIT:
     FunctionOut();
 
@@ -2380,8 +1717,6 @@ static OMX_ERRORTYPE SF_OMX_ComponentClear(SF_OMX_COMPONENT *pSfOMXComponent)
         LOG(SF_LOG_INFO, "Encoder thread end %ld\r\n", (Uint64)ThreadRet);
         SF_Queue_Flush(pImp->EmptyQueue);
         SF_Queue_Flush(pImp->FillQueue);
-        SF_Queue_Destroy(pImp->EmptyQueue);
-        SF_Queue_Destroy(pImp->FillQueue);
     }
 
     pImp->bCmdRunning = 0;
@@ -2391,12 +1726,8 @@ static OMX_ERRORTYPE SF_OMX_ComponentClear(SF_OMX_COMPONENT *pSfOMXComponent)
     pthread_cancel(pImp->pCmdThread->pthread);
 	pthread_join(pImp->pCmdThread->pthread, &ThreadRet);
     LOG(SF_LOG_INFO, "Cmd thread end %ld\r\n", (Uint64)ThreadRet);
-    SF_Queue_Destroy(pImp->CmdQueue);
-    SF_Queue_Destroy(pImp->pauseQ);
 
-    //Warp_VPU_DeInit(pImp, pImp->coreIdx);
-
-    nInstance--;
+    Warp_VPU_DeInit(pImp, pImp->coreIdx);
 
     FunctionOut();
 
@@ -2404,7 +1735,7 @@ static OMX_ERRORTYPE SF_OMX_ComponentClear(SF_OMX_COMPONENT *pSfOMXComponent)
 }
 
 SF_OMX_COMPONENT sf_enc_encoder_h265 = {
-    .componentName = "OMX.sf.video_encoder.hevc",
+    .componentName = "sf.enc.encoder.h265",
     .libName = "libsfenc.so",
     .pOMXComponent = NULL,
     .SF_OMX_ComponentConstructor = SF_OMX_ComponentConstructor,

@@ -516,11 +516,7 @@ static BOOL ExecuteRenderer(ComponentImpl* com, PortContainer* in, PortContainer
             }
         }
         output->nFilledLen = sizeYuv;
-        output->index = srcData->decInfo.indexFrameDisplay;
-
-        if(srcData->last)
-            output->nFlags |= 0x1;
-
+        output->nFlags = srcData->decInfo.indexFrameDisplay;
         if(ComponentPortGetData(&com->sinkPort))
         {
             ComponentNotifyListeners(com, COMPONENT_EVENT_DEC_FILL_BUFFER_DONE, (void *)output);
@@ -550,7 +546,6 @@ static BOOL ExecuteRenderer(ComponentImpl* com, PortContainer* in, PortContainer
     srcData->reuse    = FALSE;
 
     if (srcData->last == TRUE) {
-        ComponentNotifyListeners(com, COMPONENT_EVENT_DEC_DECODED_ALL, NULL);
         while ((output = (PortContainerExternal*)ComponentPortGetData(&com->sinkPort)) != NULL)
         {
             output->nFlags = 0x1;
@@ -639,7 +634,7 @@ static Component CreateRenderer(ComponentImpl* com, CNMComponentConfig* componen
     ctx->seqMemQ           = Queue_Create(10, sizeof(SequenceMemInfo));
     ctx->lock              = osal_mutex_create();
     ctx->ppuQ              = Queue_Create(MAX_REG_FRAME, sizeof(FrameBuffer));
-    ctx->MemoryOptimization = FALSE;
+    ctx->MemoryOptimization = TRUE;
     ctx->totalBufferNumber = 10;
     ctx->currentBufferNumber = 0;
     return (Component)com;

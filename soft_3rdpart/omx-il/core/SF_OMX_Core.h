@@ -36,14 +36,8 @@ void SF_LogMsgAppend(int level, const char *format, ...);
 #define FunctionIn()
 #define FunctionOut()
 #endif
-#define VPU_OUTPUT_BUF_NUMBER              10
-#define VPU_INPUT_BUF_NUMBER               5
-#define MAX_BUFF_NUM                       32
-
-#define VERSIONMAJOR_NUMBER                1
-#define VERSIONMINOR_NUMBER                0
-#define REVISION_NUMBER                    0
-#define STEP_NUMBER                        0
+#define VPU_OUTPUT_BUF_NUMBER 10
+#define VPU_INPUT_BUF_NUMBER 5
 
 typedef enum SF_BUFFER_TYPE
 {
@@ -55,34 +49,17 @@ typedef enum SF_BUFFER_TYPE
     SF_BUFFER_ALL,
 }SF_BUFFER_TYPE;
 
-/** This enum defines the transition states of the Component*/
-typedef enum OMX_TRANS_STATETYPE {
-    OMX_TransStateInvalid,
-    OMX_TransStateLoadedToIdle,
-    OMX_TransStateIdleToPause,
-    OMX_TransStatePauseToExecuting,
-    OMX_TransStateIdleToExecuting,
-    OMX_TransStateExecutingToIdle,
-    OMX_TransStateExecutingToPause,
-    OMX_TransStatePauseToIdle,
-    OMX_TransStateIdleToLoaded,
-    OMX_TransStateMax = 0X7FFFFFFF
-} OMX_TRANS_STATETYPE;
-
 typedef struct _SF_OMX_BUF_INFO
 {
     SF_BUFFER_TYPE type;
     OMX_U64 PhysicalAddress;
     OMX_S32 fd;
-    OMX_U32 index;
 }SF_OMX_BUF_INFO;
 
 typedef struct _SF_OMX_COMPONENT
 {
     OMX_STRING componentName;
     OMX_STRING libName;
-    OMX_VERSIONTYPE componentVersion;
-    OMX_VERSIONTYPE specVersion;
     OMX_COMPONENTTYPE *pOMXComponent;
     OMX_ERRORTYPE (*SF_OMX_ComponentConstructor)(struct _SF_OMX_COMPONENT *hComponent);
     OMX_ERRORTYPE (*SF_OMX_ComponentClear)(struct _SF_OMX_COMPONENT *hComponent);
@@ -105,17 +82,10 @@ typedef struct _SF_OMX_COMPONENT
     OMX_CALLBACKTYPE *callbacks;
     OMX_PTR pAppData;
     OMX_PARAM_PORTDEFINITIONTYPE portDefinition[2];
-    OMX_HANDLETYPE portSemaphore[2];
-    OMX_HANDLETYPE portUnloadSemaphore[2];
-    OMX_BUFFERHEADERTYPE *pBufferArray[2][MAX_BUFF_NUM];
-    OMX_U32 assignedBufferNum[2];
+    OMX_BUFFERHEADERTYPE *pBufferArray[64];
     OMX_STRING fwPath;
     OMX_STRING componentRule;
-    OMX_STATETYPE state;
-    OMX_STATETYPE stateBeforePause;
-    OMX_TRANS_STATETYPE traningState;
-    OMX_MARKTYPE markType[2];
-    OMX_MARKTYPE propagateMarkType;
+    OMX_STATETYPE nextState;
     OMX_BOOL memory_optimization;
 } SF_OMX_COMPONENT;
 
@@ -148,6 +118,10 @@ extern "C"
 #endif
 
 int GetNumberOfComponent();
+OMX_BUFFERHEADERTYPE *GetOMXBufferByAddr(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U8 *pAddr);
+OMX_ERRORTYPE StoreOMXBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_BUFFERHEADERTYPE *pBuffer);
+OMX_ERRORTYPE ClearOMXBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_BUFFERHEADERTYPE *pBuffer);
+OMX_U32 GetOMXBufferCount(SF_OMX_COMPONENT *pSfOMXComponent);
 
 #ifdef __cplusplus
 }

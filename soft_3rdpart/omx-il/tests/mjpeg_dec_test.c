@@ -391,7 +391,7 @@ int main(int argc, char **argv)
     printf("get handle by codec id = %d\r\n", codecParameters->codec_id);
     if (codecParameters->codec_id == AV_CODEC_ID_MJPEG)
     {
-        OMX_GetHandle(&hComponentDecoder, "OMX.sf.video_decoder.mjpeg", decodeTestContext, &callbacks);
+        OMX_GetHandle(&hComponentDecoder, "sf.dec.decoder.mjpeg", decodeTestContext, &callbacks);
     }
 
     if (hComponentDecoder == NULL)
