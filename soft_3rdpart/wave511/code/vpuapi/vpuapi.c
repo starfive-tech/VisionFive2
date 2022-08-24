@@ -185,7 +185,7 @@ static RetCode InitializeVPU(Uint32 coreIdx, const Uint16* code, Uint32 size)
     }
 
     /* force to reset vpu, so that the vpu in a clean state */
-#ifndef USE_FEEDING_METHOD_BUFFER
+#if 0
     if (VPU_IsInit(coreIdx) != 0) {
         ProductVpuReInit(coreIdx, (void *)code, size);
         LeaveLock(coreIdx);

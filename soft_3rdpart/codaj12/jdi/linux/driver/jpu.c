@@ -465,7 +465,10 @@ static long jpu_ioctl(struct file *filp, u_int cmd, u_long arg)
                     break;
                 }
 
-                kfree(jbp);
+                jbp->filp = filp;
+                spin_lock(&s_jpu_lock);
+                list_add(&jbp->list, &s_jbp_head);
+                spin_unlock(&s_jpu_lock);
 
                 up(&s_jpu_sem);
             }
