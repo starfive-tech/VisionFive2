@@ -43,7 +43,6 @@ typedef struct DecodeTestContext
     OMX_BUFFERHEADERTYPE *pInputBufferArray[64];
     OMX_BUFFERHEADERTYPE *pOutputBufferArray[64];
     AVFormatContext *avContext;
-    OMX_STATETYPE comState;
     int msgid;
     OMX_S32 RoiLeft;
     OMX_S32 RoiTop;
@@ -56,8 +55,6 @@ typedef struct DecodeTestContext
 } DecodeTestContext;
 DecodeTestContext *decodeTestContext;
 static OMX_S32 FillInputBuffer(DecodeTestContext *decodeTestContext, OMX_BUFFERHEADERTYPE *pInputBuffer);
-
-static OMX_BOOL disableEVnt;
 
 static OMX_ERRORTYPE event_handler(
     OMX_HANDLETYPE hComponent,
@@ -80,10 +77,6 @@ static OMX_ERRORTYPE event_handler(
         OMX_U32 nOutputBufferSize = pOutputPortDefinition.nBufferSize;
         OMX_U32 nOutputBufferCount = pOutputPortDefinition.nBufferCountMin;
         printf("allocate %lu output buffers size %lu\r\n", nOutputBufferCount, nOutputBufferSize);
-
-        printf("enable output port and alloc buffer\n");
-        OMX_SendCommand(pDecodeTestContext->hComponentDecoder, OMX_CommandPortEnable, 1, NULL);
-
         for (int i = 0; i < nOutputBufferCount; i++)
         {
             OMX_BUFFERHEADERTYPE *pBuffer = NULL;
@@ -101,25 +94,6 @@ static OMX_ERRORTYPE event_handler(
         if (msgsnd(pDecodeTestContext->msgid, (void *)&data, sizeof(data) - sizeof(data.msg_type), 0) == -1)
         {
             fprintf(stderr, "msgsnd failed\n");
-        }
-    }
-    break;
-    case OMX_EventCmdComplete:
-    {
-        switch ((OMX_COMMANDTYPE)(nData1))
-        {
-        case OMX_CommandStateSet:
-        {
-            pDecodeTestContext->comState = (OMX_STATETYPE)(nData2);
-        }
-        case OMX_CommandPortDisable:
-        {
-            if (nData2 == 1)
-                disableEVnt = OMX_TRUE;
-        }
-        break;
-        default:
-        break;
         }
     }
     break;
@@ -537,12 +511,6 @@ int main(int argc, char **argv)
         OMX_SetConfig(hComponentDecoder, OMX_IndexConfigCommonScale, &ScaleConfig);
     }
 
-    disableEVnt = OMX_FALSE;
-    OMX_SendCommand(hComponentDecoder, OMX_CommandPortDisable, 1, NULL);
-    printf("wait for output port disable\r\n");
-    while (!disableEVnt);
-    printf("output port disabled\r\n");
-
     OMX_SendCommand(hComponentDecoder, OMX_CommandStateSet, OMX_StateIdle, NULL);
 
     OMX_PARAM_PORTDEFINITIONTYPE pInputPortDefinition;
@@ -562,19 +530,10 @@ int main(int argc, char **argv)
         OMX_BUFFERHEADERTYPE *pBuffer = NULL;
         OMX_AllocateBuffer(hComponentDecoder, &pBuffer, 0, NULL, nInputBufferSize);
         decodeTestContext->pInputBufferArray[i] = pBuffer;
-    }
-
-    printf("wait for Component idle\r\n");
-    while (decodeTestContext->comState != OMX_StateIdle);
-    printf("Component in idle\r\n");
-
-    for (int i = 0; i < nInputBufferCount; i++)
-    {
         /*Fill Input Buffer*/
-        FillInputBuffer(decodeTestContext, decodeTestContext->pInputBufferArray[i]);
-        OMX_EmptyThisBuffer(hComponentDecoder, decodeTestContext->pInputBufferArray[i]);
+        FillInputBuffer(decodeTestContext, pBuffer);
+        OMX_EmptyThisBuffer(hComponentDecoder, pBuffer);
     }
-
 
     fb = fopen(decodeTestContext->sOutputFilePath, "wb+");
 

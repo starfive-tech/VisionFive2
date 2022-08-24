@@ -10,9 +10,7 @@
 #include "OMX_Index.h"
 #include "OMX_IndexExt.h"
 #include "SF_OMX_Core.h"
-#include "sf_queue.h"
 #include "sf_thread.h"
-#include "sf_semaphore.h"
 #include "codaj12/jpuapi/jpuapi.h"
 #include "codaj12/jpuapi/jpuapifunc.h"
 #include "codaj12/sample/main_helper.h"
@@ -54,7 +52,6 @@ typedef struct _SF_CODAJ12_FUNCTIONS
     JpgRet (*JPU_DecRegisterFrameBuffer)(JpgDecHandle handle, FrameBuffer * bufArray, int num, int stride);
     JpgRet (*JPU_DecGiveCommand)(JpgDecHandle handle, JpgCommand cmd, void *param);
     JpgRet (*JPU_DecStartOneFrameBySerialNum)(JpgDecHandle handle, JpgDecParam *param,int bufferIndex);
-    JpgRet (*JPU_DecStartOneFrame)(JpgDecHandle handle, JpgDecParam *param);
     JpgRet (*JPU_DecGetOutputInfo)(JpgDecHandle handle, JpgDecOutputInfo *info);
     JpgRet (*JPU_SWReset)(JpgHandle handle);
     JpgRet (*JPU_DecSetRdPtrEx)(JpgDecHandle handle, PhysicalAddress addr, BOOL updateWrPtr);
@@ -74,14 +71,16 @@ typedef struct _SF_CODAJ12_FUNCTIONS
     int (*jdi_allocate_dma_memory)(jpu_buffer_t *vb);
     void (*jdi_free_dma_memory)(jpu_buffer_t *vb);
 
-    int (*SaveYuvImageHelper)(Uint8* pYuv, FrameBuffer* fb, CbCrInterLeave interLeave, PackedFormat packed,
-                        Uint32 picWidth, Uint32 picHeight, Uint32 bitDepth);
-    int (*FreeOneFrameBuffer)(Uint32 instIdx, void* virt_addr);
+    void *(*AllocateOneFrameBuffer)
+    // (Uint32 instIdx, Uint32 size, Uint32 *bufferIndex);
+    (Uint32 instIdx, FrameFormat subsample, CbCrInterLeave cbcrIntlv,
+     PackedFormat packed, Uint32 rotation, BOOL scalerOn, Uint32 width, Uint32 height, Uint32 bitDepth, Uint32 *bufferIndex);
     void (*FreeFrameBuffer)(int instIdx);
     FRAME_BUF *(*GetFrameBuffer)(int instIdx, int idx);
     Uint32 (*GetFrameBufferCount)(int instIdx);
-    BOOL (*AllocateFrameBuffer)(Uint32 instIdx, FrameFormat subsample, CbCrInterLeave cbcrIntlv, PackedFormat packed,
-                         Uint32 rotation, BOOL scalerOn, Uint32 width, Uint32 height, Uint32 bitDepth, Uint32 num);
+    BOOL (*AttachOneFrameBuffer)(Uint32 instIdx, FrameFormat subsample, CbCrInterLeave cbcrIntlv, PackedFormat packed,
+                         Uint32 rotation, BOOL scalerOn, Uint32 width, Uint32 height, Uint32 bitDepth,
+                         void *virtAddress, Uint32 size, Uint32 *bufferIndex);
     BOOL (*UpdateFrameBuffers)(Uint32 instIdx, Uint32 num, FRAME_BUF *frameBuf);
 
     // JPU Log
@@ -110,20 +109,12 @@ typedef struct _SF_CODAJ12_IMPLEMEMT
     OMX_S32 sInputMessageQueue;
     OMX_S32 sOutputMessageQueue;
     OMX_S32 sBufferDoneQueue;
+    Message mesCacheArr[MCA_MAX_INDEX];
     THREAD_HANDLE_TYPE *pProcessThread;
     OMX_BOOL bThreadRunning;
     OMX_STATETYPE currentState;
     FrameFormat frameFormat;
     OMX_BOOL allocBufFlag;
-    OMX_BOOL gotEos;
-    SF_Queue *CmdQueue;
-    SF_Queue *inPauseQ;
-    SF_Queue *outPauseQ;
-
-    OMX_HANDLETYPE pauseOutSemaphore;
-    THREAD_HANDLE_TYPE *pCmdThread;
-    OMX_BOOL bCmdRunning;
-    OMX_BOOL bPause;
 } SF_CODAJ12_IMPLEMEMT;
 
 enum port_index
@@ -140,6 +131,8 @@ extern "C"
 
 OMX_ERRORTYPE GetStateMjpegCommon(OMX_IN OMX_HANDLETYPE hComponent, OMX_OUT OMX_STATETYPE *pState);
 OMX_ERRORTYPE InitMjpegStructorCommon(SF_OMX_COMPONENT *hComponent);
+OMX_BOOL AttachOutputBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U8* pBuffer, OMX_U32 nSizeBytes);
+OMX_U8* AllocateOutputBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U32 nSizeBytes);
 void ThreadExit(void *value_ptr);
 void CodaJ12FlushBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U32 nPortNumber);
 
