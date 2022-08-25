@@ -1752,7 +1752,7 @@ static OMX_ERRORTYPE SF_OMX_ComponentClear(SF_OMX_COMPONENT *pSfOMXComponent)
 }
 
 SF_OMX_COMPONENT sf_enc_encoder_h265 = {
-    .componentName = "sf.enc.encoder.h265",
+    .componentName = "OMX.sf.video_encoder.hevc",
     .libName = "libsfenc.so",
     .pOMXComponent = NULL,
     .SF_OMX_ComponentConstructor = SF_OMX_ComponentConstructor,

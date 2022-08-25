@@ -1593,7 +1593,7 @@ static OMX_ERRORTYPE SF_OMX_ComponentClear(SF_OMX_COMPONENT *pSfOMXComponent)
 
 //TODO happer
 SF_OMX_COMPONENT sf_dec_decoder_mjpeg = {
-    .componentName = "sf.dec.decoder.mjpeg",
+    .componentName = "OMX.sf.video_decoder.mjpeg",
     .libName = "libcodadec.so",
     .pOMXComponent = NULL,
     .SF_OMX_ComponentConstructor = SF_OMX_ComponentConstructor,

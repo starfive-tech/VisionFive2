@@ -1177,7 +1177,7 @@ EXIT:
 }
 
 SF_OMX_COMPONENT sf_dec_decoder_h265 = {
-    .componentName = "sf.dec.decoder.h265",
+    .componentName = "OMX.sf.video_decoder.hevc",
     .libName = "libsfdec.so",
     .pOMXComponent = NULL,
     .SF_OMX_ComponentConstructor = SF_OMX_ComponentConstructor,
@@ -1189,7 +1189,7 @@ SF_OMX_COMPONENT sf_dec_decoder_h265 = {
     .componentRule = "video_decoder.hevc"};
 
 SF_OMX_COMPONENT sf_dec_decoder_h264 = {
-    .componentName = "sf.dec.decoder.h264",
+    .componentName = "OMX.sf.video_decoder.avc",
     .libName = "libsfdec.so",
     .pOMXComponent = NULL,
     .SF_OMX_ComponentConstructor = SF_OMX_ComponentConstructor,
