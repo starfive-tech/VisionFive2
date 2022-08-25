@@ -445,7 +445,7 @@ else
 	@echo Error: Could not find bootloader partition for $(DISK)
 	@exit 1
 endif
-#	sudo dd if=$(spl_bin_normal_out) of=$(PART1) bs=4096
+	sudo dd if=$(spl_bin_normal_out) of=$(PART1) bs=4096
 	sudo dd if=$(uboot_fit)          of=$(PART2) bs=4096
 	sudo dd if=$(vfat_image)         of=$(PART3) bs=4096
 	sync; sleep 1;
