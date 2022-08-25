@@ -82,7 +82,7 @@ OMX_ERRORTYPE InitMjpegStructorCommon(SF_OMX_COMPONENT *pSfOMXComponent)
         }
     }
 
-    if (strstr(pSfOMXComponent->componentName, "sf.dec") != NULL)
+    if (strstr(pSfOMXComponent->componentName, "OMX.sf.video_decoder") != NULL)
     {
         pSfCodaj12Implement->config = malloc(sizeof(DecConfigParam));
         if (pSfCodaj12Implement->config == NULL)
