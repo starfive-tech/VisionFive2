@@ -333,11 +333,11 @@ int main(int argc, char **argv)
     printf("get handle\r\n");
     if (codecParameters->codec_id == AV_CODEC_ID_H264)
     {
-        OMX_GetHandle(&hComponentDecoder, "sf.dec.decoder.h264", decodeTestContext, &callbacks);
+        OMX_GetHandle(&hComponentDecoder, "OMX.sf.video_decoder.avc", decodeTestContext, &callbacks);
     }
     else if (codecParameters->codec_id == AV_CODEC_ID_HEVC)
     {
-        OMX_GetHandle(&hComponentDecoder, "sf.dec.decoder.h265", decodeTestContext, &callbacks);
+        OMX_GetHandle(&hComponentDecoder, "OMX.sf.video_decoder.hevc", decodeTestContext, &callbacks);
     }
     if (hComponentDecoder == NULL)
     {

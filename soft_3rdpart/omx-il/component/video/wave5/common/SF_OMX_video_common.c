@@ -194,7 +194,7 @@ OMX_ERRORTYPE InitComponentStructorCommon(SF_OMX_COMPONENT *pSfOMXComponent)
         }
     }
 
-    if (strstr(pSfOMXComponent->componentName, "sf.enc") != NULL)
+    if (strstr(pSfOMXComponent->componentName, "sf.video_encoder") != NULL)
     {
         pSfVideoImplement->testConfig = malloc(sizeof(TestEncConfig));
         if (pSfVideoImplement->testConfig == NULL)
@@ -214,7 +214,7 @@ OMX_ERRORTYPE InitComponentStructorCommon(SF_OMX_COMPONENT *pSfOMXComponent)
         memset(pSfVideoImplement->lsnCtx, 0, sizeof(EncListenerContext));
         pSfVideoImplement->functions->SetDefaultEncTestConfig(pSfVideoImplement->testConfig);
     }
-    else if (strstr(pSfOMXComponent->componentName, "sf.dec") != NULL)
+    else if (strstr(pSfOMXComponent->componentName, "sf.video_decoder") != NULL)
     {
         pSfVideoImplement->testConfig = malloc(sizeof(TestDecConfig));
         if (pSfVideoImplement->testConfig == NULL)
@@ -241,11 +241,11 @@ OMX_ERRORTYPE InitComponentStructorCommon(SF_OMX_COMPONENT *pSfOMXComponent)
         goto ERROR;
     }
 
-    if (strstr(pSfOMXComponent->componentName, "264") != NULL)
+    if (strstr(pSfOMXComponent->componentName, "avc") != NULL)
     {
         pSfVideoImplement->bitFormat = STD_AVC;
     }
-    else if (strstr(pSfOMXComponent->componentName, "265") != NULL)
+    else if (strstr(pSfOMXComponent->componentName, "hevc") != NULL)
     {
         pSfVideoImplement->bitFormat = STD_HEVC;
     }

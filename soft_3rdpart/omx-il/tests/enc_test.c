@@ -330,11 +330,11 @@ int main(int argc, char **argv)
     printf("get handle %s\r\n", encodeTestContext->sOutputFormat);
     if (strstr(encodeTestContext->sOutputFormat, "h264") != NULL)
     {
-        OMX_GetHandle(&hComponentEncoder, "sf.enc.encoder.h264", encodeTestContext, &callbacks);
+        OMX_GetHandle(&hComponentEncoder, "OMX.sf.video_encoder.avc", encodeTestContext, &callbacks);
     }
     else if (strstr(encodeTestContext->sOutputFormat, "h265") != NULL)
     {
-        OMX_GetHandle(&hComponentEncoder, "sf.enc.encoder.h265", encodeTestContext, &callbacks);
+        OMX_GetHandle(&hComponentEncoder, "OMX.sf.video_encoder.hevc", encodeTestContext, &callbacks);
     }
     if (hComponentEncoder == NULL)
     {
