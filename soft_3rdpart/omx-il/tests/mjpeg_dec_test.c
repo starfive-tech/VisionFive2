@@ -207,7 +207,7 @@ int main(int argc, char **argv)
 {
     printf("=============================\r\n");
     OMX_S32 error;
-    FILE *fb;
+    FILE *fb = NULL;
     decodeTestContext = malloc(sizeof(DecodeTestContext));
     memset(decodeTestContext, 0, sizeof(DecodeTestContext));
 
@@ -584,7 +584,10 @@ int main(int argc, char **argv)
 
 end:
     /*free resource*/
-    fclose(fb);
+    if (fb)
+    {
+        fclose(fb);
+    }
     OMX_FreeHandle(hComponentDecoder);
     OMX_Deinit();
 }
