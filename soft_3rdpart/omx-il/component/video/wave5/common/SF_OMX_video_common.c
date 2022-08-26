@@ -375,11 +375,11 @@ OMX_ERRORTYPE FlushBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U32 nPort)
             PortContainerExternal *input = NULL;
             while ((input = (PortContainerExternal*)pSfVideoImplement->functions->ComponentPortGetData(&pFeederComponent->srcPort)) != NULL)
             {
-                if (strstr(pSfOMXComponent->componentName, "sf.dec") != NULL)
+                if (strstr(pSfOMXComponent->componentName, "OMX.sf.video_decoder") != NULL)
                 {
                     pSfVideoImplement->functions->ComponentNotifyListeners(pFeederComponent, COMPONENT_EVENT_DEC_EMPTY_BUFFER_DONE, (void *)input);
                 }
-                else if (strstr(pSfOMXComponent->componentName, "sf.enc") != NULL)
+                else if (strstr(pSfOMXComponent->componentName, "OMX.sf.video_encoder") != NULL)
                 {
                     pSfVideoImplement->functions->ComponentNotifyListeners(pFeederComponent, COMPONENT_EVENT_ENC_EMPTY_BUFFER_DONE, (void *)input);
                 }
@@ -398,11 +398,11 @@ OMX_ERRORTYPE FlushBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U32 nPort)
             {
                 output->nFlags = 0x1;
                 output->nFilledLen = 0;
-                if (strstr(pSfOMXComponent->componentName, "sf.dec") != NULL)
+                if (strstr(pSfOMXComponent->componentName, "OMX.sf.video_decoder") != NULL)
                 {
                     pSfVideoImplement->functions->ComponentNotifyListeners(pRendererComponent, COMPONENT_EVENT_DEC_FILL_BUFFER_DONE, (void *)output);
                 }
-                else if (strstr(pSfOMXComponent->componentName, "sf.enc") != NULL)
+                else if (strstr(pSfOMXComponent->componentName, "OMX.sf.video_encoder") != NULL)
                 {
                     pSfVideoImplement->functions->ComponentNotifyListeners(pRendererComponent, COMPONENT_EVENT_ENC_FILL_BUFFER_DONE, (void *)output);
                 }
