@@ -1103,7 +1103,17 @@ static void ProcessThread(void *args)
     decOP->rotation = decConfig->rotation;
     decOP->mirror = decConfig->mirror;
     decOP->pixelJustification = decConfig->pixelJustification;
-    decOP->outputFormat = pSfCodaj12Implement->frameFormat; //decConfig->subsample;
+
+    if (decConfig->packedFormat)
+    {
+        decOP->outputFormat = FORMAT_MAX;
+    }
+    else
+    {
+        decOP->outputFormat = pSfCodaj12Implement->frameFormat;
+    }
+
+
     decOP->intrEnableBit = ((1 << INT_JPU_DONE) | (1 << INT_JPU_ERROR) | (1 << INT_JPU_BIT_BUF_EMPTY));
 
     LOG(SF_LOG_DEBUG, "streamEndian = %x\r\n", decOP->streamEndian);
