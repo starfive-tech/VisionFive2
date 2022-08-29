@@ -239,6 +239,7 @@ static void sf_get_component_functions(SF_CODAJ12_FUNCTIONS *funcs, OMX_PTR *soh
     funcs->UpdateFrameBuffers = dlsym(sohandle, "UpdateFrameBuffers");
     funcs->SetMaxLogLevel = dlsym(sohandle, "SetMaxLogLevel");
     funcs->AttachOneFrameBuffer = dlsym(sohandle, "AttachOneFrameBuffer");
+    funcs->SaveYuvImageHelper = dlsym(sohandle, "SaveYuvImageHelper");
     FunctionOut();
 }
 

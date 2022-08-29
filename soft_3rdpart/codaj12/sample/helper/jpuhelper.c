@@ -106,6 +106,157 @@ static void TiledToLinear(Uint8* pSrc, Uint8* pDst, Uint32 width, Uint32 height,
     }
 }
 
+int StoreYuvImageBurstFormatWhenNotAligned(int chromaStride, Uint8 * dst, int picWidth, int picHeight, Uint32 bitDepth,
+    Uint64 addrY, Uint64 addrCb, Uint64 addrCr, Uint32 stride, FrameFormat format, int endian, CbCrInterLeave interLeave, PackedFormat packed)
+{
+    int size;
+    int y, nY = 0, nCb, nCr;
+    Uint64 addr;
+    int lumaSize, chromaSize = 0, chromaWidth = 0, chromaHeight =0;
+    Uint8 * puc;
+    int chromaStride_i = 0;
+    Uint32  bytesPerPixel = (bitDepth + 7) / 8;
+
+    chromaStride_i = chromaStride;
+
+    switch (format)
+    {
+    case FORMAT_420:
+        nY = picHeight;
+        nCb = nCr = picHeight / 2;
+        chromaSize  = (picWidth/2) * (picHeight/2);
+        chromaWidth = picWidth/2;
+        chromaHeight = nY;
+        break;
+    case FORMAT_440:
+        nY = picHeight;
+        nCb = nCr = picHeight / 2;
+        chromaSize = (picWidth) * (picHeight / 2);
+        chromaWidth = picWidth;
+        chromaHeight = nY;
+        break;
+    case FORMAT_422:
+        nY = picHeight;
+        nCb = nCr = picHeight;
+        chromaSize = (picWidth/2) * picHeight ;
+        chromaWidth = (picWidth/2);
+        chromaHeight = nY*2;
+        break;
+    case FORMAT_444:
+        nY = picHeight;
+        nCb = nCr = picHeight;
+        chromaSize = picWidth * picHeight;
+        chromaWidth = picWidth;
+        chromaHeight = nY*2;
+        break;
+    case FORMAT_400:
+        nY = picHeight;
+        nCb = nCr = 0;
+        chromaSize = 0;
+        chromaWidth = 0;
+        chromaHeight = 0;
+        break;
+    default:
+        return 0;
+    }
+
+    puc = dst;
+    addr = addrY;
+
+    if (packed)
+    {
+        if (packed == PACKED_FORMAT_444)
+            picWidth *= 3;
+        else
+            picWidth *= 2;
+
+        chromaSize = 0;
+    }
+
+    lumaSize = picWidth * nY;
+
+    size = lumaSize + chromaSize*2;
+
+    lumaSize    *= bytesPerPixel;
+    chromaSize  *= bytesPerPixel;
+    size        *= bytesPerPixel;
+    picWidth    *= bytesPerPixel;
+    chromaWidth *= bytesPerPixel;
+
+    if (interLeave){
+        chromaSize = chromaSize *2;
+        chromaWidth = chromaWidth *2;
+        chromaStride_i = chromaStride_i;
+    }
+
+    if ((picWidth != stride) || (chromaWidth != chromaStride_i))
+    {
+        for (y = 0; y < nY; ++y) {
+            JpuReadMem(addr + stride * y, (Uint8 *)(puc + y * picWidth), picWidth,  endian);
+        }
+
+        if(packed)
+            return size;
+
+        if (interLeave)
+        {
+
+            puc = dst + lumaSize;
+            addr = addrCb;
+            for (y = 0; y < (chromaHeight/2); ++y) {
+                JpuReadMem(addr + (chromaStride_i)*y, (Uint8 *)(puc + y*(chromaWidth)), (chromaWidth), endian);
+            }
+        }
+        else
+        {
+            puc = dst + lumaSize;
+            addr = addrCb;
+            for (y = 0; y < nCb; ++y) {
+                JpuReadMem(addr + chromaStride_i * y, (Uint8 *)(puc + y * chromaWidth), chromaWidth,  endian);
+            }
+
+            puc = dst + lumaSize + chromaSize;
+            addr = addrCr;
+            for (y = 0; y < nCr; ++y) {
+                JpuReadMem(addr + chromaStride_i * y, (Uint8 *)(puc + y * chromaWidth), chromaWidth,  endian);
+            }
+
+        }
+
+    }
+    return size;
+}//lint !e429
+
+int SaveYuvImageHelper(
+    Uint8*          pYuv,
+    FrameBuffer*    fb,
+    CbCrInterLeave  interLeave,
+    PackedFormat    packed,
+    Uint32          picWidth,
+    Uint32          picHeight,
+    Uint32          bitDepth
+    )
+{
+    int frameSize;
+
+    if (pYuv == NULL) {
+        JLOG(ERR, "%s:%d pYuv is NULL\n", __FUNCTION__, __LINE__);
+        return 0;
+    }
+
+    frameSize = StoreYuvImageBurstFormatWhenNotAligned(fb->strideC, pYuv, picWidth, picHeight, bitDepth,
+        fb->bufY,
+        fb->bufCb,
+        fb->bufCr,
+        fb->stride,
+        fb->format,
+        fb->endian,
+        interLeave,
+        packed);
+
+    return frameSize;
+}
+
 int SaveYuvImageHelperFormat_V20(
     FILE*           yuvFp,
     Uint8*          pYuv,
