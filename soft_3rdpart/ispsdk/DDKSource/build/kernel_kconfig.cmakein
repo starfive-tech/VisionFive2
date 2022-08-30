@@ -1,0 +1,8 @@
+config ${KO_MODULE_NAME}
+   ${KO_BUILD} "${KO_BRIEF}"
+   default ${KO_DEFAULT}
+   help
+      ${KO_HELP}
+         
+      If unsure say ${KO_DEFAULT}.
+   ${KO_EXTRA}

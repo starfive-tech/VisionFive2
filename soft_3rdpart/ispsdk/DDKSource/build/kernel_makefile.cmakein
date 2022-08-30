@@ -1,0 +1,12 @@
+#
+# kernel makefile generate for module ${KO_MODULE_NAME}
+#
+
+#CONFIG_MODULE_SIG=n
+
+obj-${KO_MODE} := ${KO_MODULE_NAME}.o
+
+ccflags-y += ${KO_CFLAGS} -Wframe-larger-than=4096
+ccflags-y += ${KO_INCLUDES}
+
+${KO_MODULE_NAME}-objs := ${KO_SOURCES}
