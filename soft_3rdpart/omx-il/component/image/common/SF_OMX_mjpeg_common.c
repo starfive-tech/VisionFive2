@@ -303,7 +303,15 @@ OMX_BOOL AttachOutputBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U8* pBuffer, 
         decodingWidth = JPU_CEIL(2, decodingWidth);
     }
 
-    subsample = pSfCodaj12Implement->frameFormat;
+    if (decConfig->packedFormat)
+    {
+        subsample = initialInfo->sourceFormat;
+    }
+    else
+    {
+        subsample = pSfCodaj12Implement->frameFormat;
+    }
+
     temp = decodingWidth;
     decodingWidth = (decConfig->rotation == 90 || decConfig->rotation == 270) ? decodingHeight : decodingWidth;
     decodingHeight = (decConfig->rotation == 90 || decConfig->rotation == 270) ? temp : decodingHeight;
