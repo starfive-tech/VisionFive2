@@ -53,6 +53,7 @@ typedef struct EncodeTestContext
     int msgid;
 } EncodeTestContext;
 EncodeTestContext *encodeTestContext;
+static FILE *fb = NULL;
 static OMX_S32 FillInputBuffer(EncodeTestContext *encodeTestContext, OMX_BUFFERHEADERTYPE *pInputBuffer);
 
 static OMX_ERRORTYPE event_handler(
@@ -164,8 +165,13 @@ static void signal_handle(int sig)
 {
     printf("[%s,%d]: receive sig=%d \n", __FUNCTION__, __LINE__, sig);
 
+
     OMX_FreeHandle(encodeTestContext->hComponentEncoder);
     OMX_Deinit();
+    if (fb)
+        fclose(fb);
+    if (encodeTestContext->pInputFile)
+        fclose(encodeTestContext->pInputFile);
     exit(0);
     // Message data;
     // data.msg_type = 1;
@@ -208,7 +214,6 @@ static OMX_S32 FillInputBuffer(EncodeTestContext *encodeTestContext, OMX_BUFFERH
 
 int main(int argc, char **argv)
 {
-    FILE *fb;
     printf("=============================\r\n");
     encodeTestContext = malloc(sizeof(EncodeTestContext));
     memset(encodeTestContext, 0, sizeof(EncodeTestContext));
@@ -321,6 +326,8 @@ int main(int argc, char **argv)
     if (ret != OMX_ErrorNone)
     {
         printf("[%s,%d]: run OMX_Init failed. ret is %d \n", __FUNCTION__, __LINE__, ret);
+        if (encodeTestContext->pInputFile)
+            fclose(encodeTestContext->pInputFile);
         return 1;
     }
 
@@ -339,6 +346,9 @@ int main(int argc, char **argv)
     if (hComponentEncoder == NULL)
     {
         printf("could not get handle\r\n");
+        OMX_Deinit();
+        if (encodeTestContext->pInputFile)
+            fclose(encodeTestContext->pInputFile);
         return 0;
     }
     encodeTestContext->hComponentEncoder = hComponentEncoder;
@@ -462,8 +472,11 @@ int main(int argc, char **argv)
 
 end:
     /*free resource*/
-    fclose(fb);
-    fclose(encodeTestContext->pInputFile);
+    OMX_SendCommand(hComponentEncoder, OMX_CommandStateSet, OMX_StateIdle, NULL);
     OMX_FreeHandle(hComponentEncoder);
     OMX_Deinit();
+    if (fb)
+        fclose(fb);
+    if (encodeTestContext->pInputFile)
+        fclose(encodeTestContext->pInputFile);
 }
