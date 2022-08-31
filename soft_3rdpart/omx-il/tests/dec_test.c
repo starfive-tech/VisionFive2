@@ -196,7 +196,7 @@ int main(int argc, char **argv)
 {
     printf("=============================\r\n");
     OMX_S32 error;
-    FILE *fb;
+    FILE *fb = NULL;
     decodeTestContext = malloc(sizeof(DecodeTestContext));
     memset(decodeTestContext, 0, sizeof(DecodeTestContext));
 
@@ -289,6 +289,7 @@ int main(int argc, char **argv)
     {
         printf("%s:%d failed to av_open_input_file error(%s), %s\n",
                __FILE__, __LINE__, av_err2str(error), decodeTestContext->sInputFilePath);
+        avformat_free_context(avContext);
         return -1;
     }
 
@@ -297,6 +298,8 @@ int main(int argc, char **argv)
     {
         printf("%s:%d failed to avformat_find_stream_info. error(%s)\n",
                __FUNCTION__, __LINE__, av_err2str(error));
+        avformat_close_input(&avContext);
+        avformat_free_context(avContext);
         return -1;
     }
 
@@ -324,6 +327,8 @@ int main(int argc, char **argv)
     if (ret != OMX_ErrorNone)
     {
         printf("[%s,%d]: run OMX_Init failed. ret is %d \n", __FUNCTION__, __LINE__, ret);
+        avformat_close_input(&avContext);
+        avformat_free_context(avContext);
         return 1;
     }
 
@@ -342,6 +347,9 @@ int main(int argc, char **argv)
     if (hComponentDecoder == NULL)
     {
         printf("could not get handle\r\n");
+        OMX_Deinit();
+        avformat_close_input(&avContext);
+        avformat_free_context(avContext);
         return 0;
     }
     decodeTestContext->hComponentDecoder = hComponentDecoder;
@@ -398,6 +406,11 @@ int main(int argc, char **argv)
     }
 
     fb = fopen(decodeTestContext->sOutputFilePath, "wb+");
+    if (!fb)
+    {
+        fprintf(stderr, "output file open err or no output file patch  %d\n", errno);
+        goto end;
+    }
 
     OMX_SendCommand(hComponentDecoder, OMX_CommandStateSet, OMX_StateExecuting, NULL);
 
@@ -442,7 +455,11 @@ int main(int argc, char **argv)
 
 end:
     /*free resource*/
-    fclose(fb);
+    OMX_SendCommand(hComponentDecoder, OMX_CommandStateSet, OMX_StateIdle, NULL);
     OMX_FreeHandle(hComponentDecoder);
     OMX_Deinit();
+    if (fb)
+        fclose(fb);
+    avformat_close_input(&avContext);
+    avformat_free_context(avContext);
 }
