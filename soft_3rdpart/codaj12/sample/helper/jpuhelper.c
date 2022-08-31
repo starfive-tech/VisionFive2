@@ -224,6 +224,26 @@ int StoreYuvImageBurstFormatWhenNotAligned(int chromaStride, Uint8 * dst, int pi
         }
 
     }
+    else if (!packed && interLeave && lumaSize != (addrCb - addrY))
+    {
+        JpuReadMem(addr, (Uint8 *)( puc ), lumaSize, endian);
+
+        puc = dst + lumaSize;
+        addr = addrCb;
+        JpuReadMem(addr, (Uint8 *)(puc), chromaSize, endian);
+    }
+    else if (!packed && !interLeave && (lumaSize != (addrCb - addrY) || chromaSize != addrCr - addrCb))
+    {
+        JpuReadMem(addr, (Uint8 *)( puc ), lumaSize, endian);
+
+        puc = dst + lumaSize;
+        addr = addrCb;
+        JpuReadMem(addr, (Uint8 *)(puc), chromaSize, endian);
+
+        puc = dst + lumaSize + chromaSize;
+        addr = addrCr;
+        JpuReadMem(addr, (Uint8 *)(puc), chromaSize, endian);
+    }
     return size;
 }//lint !e429
 
