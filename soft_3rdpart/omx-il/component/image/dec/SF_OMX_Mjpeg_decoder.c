@@ -1337,21 +1337,9 @@ static void ProcessThread(void *args)
             return;
         }
 
-        switch (pSfCodaj12Implement->frameFormat)
-        {
-        case FORMAT_420:
-            pBuffer->nFilledLen = outputInfo.decPicWidth * outputInfo.decPicHeight * 3 / 2;
-            break;
-        case FORMAT_422:
-            pBuffer->nFilledLen = outputInfo.decPicWidth * outputInfo.decPicHeight * 2;
-            break;
-        case FORMAT_444:
-            pBuffer->nFilledLen = outputInfo.decPicWidth * outputInfo.decPicHeight * 3;
-            break;
-        default:
-            LOG(SF_LOG_ERR, "Unsupported format: %d\r\n", pSfCodaj12Implement->frameFormat);
-            break;
-        }
+        pBuffer->nFilledLen = pSfCodaj12Implement->functions->SaveYuvImageHelper
+                        (pBuffer->pBuffer, &pSfCodaj12Implement->frameBuf[(OMX_U64)(pBuffer->pOutputPortPrivate)],
+                        decOP->chromaInterleave, decOP->packedFormat, initialInfo->picWidth, initialInfo->picHeight, initialInfo->bitDepth);
 
         LOG(SF_LOG_DEBUG, "decPicSize = [%d %d], pBuffer = %p\r\n",
             outputInfo.decPicWidth, outputInfo.decPicHeight, pBuffer->pBuffer);

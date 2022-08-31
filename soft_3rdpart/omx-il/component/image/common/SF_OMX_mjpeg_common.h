@@ -80,6 +80,8 @@ typedef struct _SF_CODAJ12_FUNCTIONS
     BOOL (*AttachOneFrameBuffer)(Uint32 instIdx, FrameFormat subsample, CbCrInterLeave cbcrIntlv, PackedFormat packed,
                          Uint32 rotation, BOOL scalerOn, Uint32 width, Uint32 height, Uint32 bitDepth,
                          void *virtAddress, Uint32 size, Uint32 *bufferIndex);
+    int (*SaveYuvImageHelper)(Uint8* pYuv, FrameBuffer* fb, CbCrInterLeave interLeave, PackedFormat packed,
+                        Uint32 picWidth, Uint32 picHeight, Uint32 bitDepth);
     BOOL (*UpdateFrameBuffers)(Uint32 instIdx, Uint32 num, FRAME_BUF *frameBuf);
 
     // JPU Log
