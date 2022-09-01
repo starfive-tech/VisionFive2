@@ -50,7 +50,7 @@ $ cd opensbi && git checkout master && cd ..
 
 ## Quick Build Instructions
 
-Below are the quick building for the initramfs image `image.fit` which could be translated to board through tftp and run on board. The completed toolchain, `u-boot-spl.bin.normal.out`, `evb_fw_payload.img`, `image.fit` will be generated under `work/` directory. The completed build tree will consume about 15G of disk space.
+Below are the quick building for the initramfs image `image.fit` which could be translated to board through tftp and run on board. The completed toolchain, `u-boot-spl.bin.normal.out`, `visionfive2_fw_payload.img`, `image.fit` will be generated under `work/` directory. The completed build tree will consume about 15G of disk space.
 
 	$ make -j$(nproc)
 
@@ -65,13 +65,6 @@ work/
 ├── linux/arch/riscv/boot
     ├── dts
     │   └── starfive
-    │       ├── evb-overlay
-    │       │   ├── jh7110-evb-overlay-can.dtbo
-    │       │   ├── jh7110-evb-overlay-rgb2hdmi.dtbo
-    │       │   ├── jh7110-evb-overlay-sdio.dtbo
-    │       │   ├── jh7110-evb-overlay-spi.dtbo
-    │       │   ├── jh7110-evb-overlay-uart4-emmc.dtbo
-    │       │   └── jh7110-evb-overlay-uart5-pwm.dtbo
     │       ├── jh7110-visionfive-v2-A10.dtb
     │       ├── jh7110-visionfive-v2-A11.dtb
     │       ├── jh7110-visionfive-v2-ac108.dtb
@@ -159,7 +152,7 @@ Password: starfive
 
 #### 2. Running the other dtb with the Image.gz and initramfs.cpio.gz
 
-If we want to loading the other dtb, e.g. `jh7110-vf2-xxx.dtb`, follow the below
+If we want to loading the other dtb, e.g. `jh7110-visionfive-v2-wm8960.dtb`, follow the below
 
 Step1: set enviroment parameter:
 
@@ -171,7 +164,7 @@ setenv kernel_comp_addr_r 0xb0000000;setenv kernel_comp_size 0x10000000;
 Step2: upload files to ddr:
 
 ```
-tftpboot ${fdt_addr_r} jh7110-vf2-xxx.dtb;
+tftpboot ${fdt_addr_r} jh7110-visionfive-v2-wm8960.dtb;
 tftpboot ${kernel_addr_r} Image.gz;
 tftpboot ${ramdisk_addr_r} initramfs.cpio.gz;
 ```
@@ -262,7 +255,7 @@ The system support loading dtb overlay dynamically when the board is running. Ru
 # mount -t configfs none /sys/kernel/config
 # mkdir -p /sys/kernel/config/device-tree/overlays/dtoverlay
 # cd <the dtoverlay.dtbo path>
-# cat jh7110-evb-overlay-rgb2hdmi.dtbo > /sys/kernel/config/device-tree/overlays/dtoverlay/dtbo
+# cat vf2-overlay-uart3-i2c.dtbo > /sys/kernel/config/device-tree/overlays/dtoverlay/dtbo
 ```
 
 Additional, you could remove the dtbo feature:
@@ -301,7 +294,7 @@ Prepare the tftp sever. e.g. `sudo apt install tftpd-hpa` for Ubuntu host.
 6. Update U-Boot binary
 
    ```
-   StarFive # tftpboot 0xa0000000 ${serverip}:evb_fw_payload.img
+   StarFive # tftpboot 0xa0000000 ${serverip}:visionfive2_fw_payload.img
    StarFive # sf update 0xa0000000 0x100000 $filesize
    ```
 
