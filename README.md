@@ -138,7 +138,7 @@ tftpboot ${fileaddr} ${serverip}:image.fit;
 
 Step3: load and excute:
 
-	bootm start ${fileaddr};bootm loados ${fileaddr};booti 0x40200000 0x46100000:${filesize} 0x46000000
+	bootm start ${fileaddr};bootm loados ${fileaddr};run chipa_set_linux;booti 0x40200000 0x46100000:${filesize} 0x46000000
 	or:
 	bootm ${fileaddr}#config-1
 	or:
@@ -194,7 +194,7 @@ We could generate a sdcard image file by the below command. The sdcard image fil
 ```
 $ make -j$(nproc)
 $ make buildroot_rootfs -j$(nproc)
-$ ./genimage.sh
+$ make img
 ```
 
 The output file `work/sdcard.img`  will be generated.
