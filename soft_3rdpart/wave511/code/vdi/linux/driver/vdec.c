@@ -785,6 +785,8 @@ static irqreturn_t vpu_irq_handler(int irq, void *dev_id)
 static int vpu_open(struct inode *inode, struct file *filp)
 {
     DPRINTK("[VPUDRV][+] %s\n", __func__);
+    vpu_clk_enable(s_vpu_clk);
+    reset_control_deassert(s_vpu_clk->resets);
     spin_lock(&s_vpu_lock);
 
     s_vpu_drv_context.open_count++;
@@ -1384,12 +1386,12 @@ static int vpu_release(struct inode *inode, struct file *filp)
 #endif
                 s_instance_pool.base = 0;
             }
-
         }
     }
     up(&s_vpu_sem);
 
-    vpu_hw_reset();
+    reset_control_assert(s_vpu_clk->resets);
+    vpu_clk_disable(s_vpu_clk);
     return 0;
 }
 
@@ -1548,8 +1550,6 @@ static int vpu_probe(struct platform_device *pdev)
     vpu_freq_init(&pdev->dev);
 #endif
     vpu_pmu_enable(s_vpu_clk->dev);
-    vpu_clk_enable(s_vpu_clk);
-    reset_control_deassert(s_vpu_clk->resets);
 
 #ifdef VPU_SUPPORT_ISR
 #ifdef VPU_SUPPORT_PLATFORM_DRIVER_REGISTER
@@ -1652,8 +1652,6 @@ static int vpu_remove(struct platform_device *pdev)
     if (s_vpu_register.virt_addr)
         iounmap((void *)s_vpu_register.virt_addr);
 
-    reset_control_assert(s_vpu_clk->resets);
-    vpu_clk_disable(s_vpu_clk);
     vpu_clk_put(s_vpu_clk);
     vpu_pmu_disable(s_vpu_clk->dev);
 
@@ -2274,7 +2272,7 @@ static int vpu_of_clk_get(struct platform_device *pdev, vpu_clk_t *vpu_clk)
 	vpu_clk->clks = vpu_clks;
 	vpu_clk->nr_clks = ARRAY_SIZE(vpu_clks);
 
-	vpu_clk->resets = devm_reset_control_array_get_exclusive(dev);
+	vpu_clk->resets = devm_reset_control_array_get_shared(dev);
 	if (IS_ERR(vpu_clk->resets)) {
 		ret = PTR_ERR(vpu_clk->resets);
 		dev_err(dev, "faied to get vpu reset controls\n");
