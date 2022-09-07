@@ -395,9 +395,9 @@ UBOOTFIT    = 04ffcafa-cd65-11e8-b974-70b3d592f0fa
 #   The default sector size is 512 Bytes
 #   The partition start should be align on 2048-sector boundaries
 # expand the vfat size to 300+M for the vpu/jpu or other debug
-SPL_START   = 2048
-SPL_END     = 6143
-UBOOT_START = 6144
+SPL_START   = 4096
+SPL_END     = 8191
+UBOOT_START = 8192
 UBOOT_END   = 16383
 UBOOT_SIZE  = $(shell expr $(UBOOT_END) - $(UBOOT_START) + 1)
 VFAT_START  = 16384
@@ -466,6 +466,13 @@ format-rootfs-image: format-boot-loader
 	sudo umount tmp-rootfs
 	rmdir tmp-mnt
 	rmdir tmp-rootfs
+
+.PHONY: sdimg img
+sdimg: $(buildroot_rootfs_ext)
+	@./genimage.sh
+
+img: sdimg
+	@./genimage_generic
 
 #usb config
 format-usb-disk: $(sbi_bin) $(uboot) $(fit) $(vfat_image)
