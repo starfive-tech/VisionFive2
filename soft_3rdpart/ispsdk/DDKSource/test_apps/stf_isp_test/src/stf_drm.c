@@ -445,7 +445,7 @@ static struct drm_dev_t *drm_find_connector(DRMParam_t *param, drm_dev_t *dev)
 {
     drm_dev_t *tmp_dev = NULL;
 
-    for (tmp_dev = dev; tmp_dev != NULL; tmp_dev = dev->next) {
+    for (tmp_dev = dev; tmp_dev != NULL; tmp_dev = tmp_dev->next) {
         if (param->connector_id == tmp_dev->conn_id && param->connector_id != 0)
             return tmp_dev;
     }
