@@ -312,7 +312,7 @@ typedef enum _EN_DNYUV_UPDATE {
 
 typedef struct _ST_DNYUV_PNT {
     STF_U16 u16Level;                           /** Level difference value, range from 0 to 1023. */
-    STF_U8 u8Weighting;                         /** Level weighting value, range from 0 to 15. */
+    STF_U8 u8Weighting;                         /** Level weighting value, range from 0 to 7. */
 } ST_DNYUV_PNT, *PST_DNYUV_PNT;
 
 typedef struct _ST_DNYUV_CRV {
@@ -324,9 +324,9 @@ typedef struct _ST_MOD_DNYUV_SETTING {
     //-------------------------------------------------------------------------
     // This section parameters value is assign from setting file.
     STF_BOOL8 bEnable;                          /** Enable/Disable DNYUV module. */
-    STF_U8 u8YSWeighting[DNYUV_WGHT_CNT_MAX];   /** Y channel (spacial) distance to center weighting value, range from 0 to 15. */
+    STF_U8 u8YSWeighting[DNYUV_WGHT_CNT_MAX];   /** Y channel (spacial) distance to center weighting value, range from 0 to 7. */
     ST_DNYUV_PNT stYCurve[DNYUV_CRV_PNT_MAX];   /** Y channel filter curve. */
-    STF_U8 u8UvSWeighting[DNYUV_WGHT_CNT_MAX];  /** UV channel (spacial) distance to center weighting value, range from 0 to 15. */
+    STF_U8 u8UvSWeighting[DNYUV_WGHT_CNT_MAX];  /** UV channel (spacial) distance to center weighting value, range from 0 to 7. */
     ST_DNYUV_PNT stUvCurve[DNYUV_CRV_PNT_MAX];  /** UV channel filter curve. */
 } ST_MOD_DNYUV_SETTING, *PST_MOD_DNYUV_SETTING;
 
