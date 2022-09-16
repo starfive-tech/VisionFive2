@@ -572,13 +572,13 @@ typedef struct _ST_CI_DEVICE {
      */
     STF_RESULT (*InitDevice)(ST_CI_DEVICE *pstDevice, STF_U32 u32PixelFormat);
     /**
-     * @brief get the device pixel format.
+     * @brief Get the pixel format from the device.
      *
      * @return u32PixelFormat pixel format.
      */
     STF_U32 (*GetPixelFormat)(ST_CI_DEVICE *pstDevice);
     /**
-     * @brief initial the video device.
+     * @brief Set the pixel format to the device.
      *
      * @param u32PixelFormat pixel format.
      *
@@ -633,7 +633,7 @@ typedef struct _ST_CI_DEVICE {
      */
     STF_RESULT (*SetCropWin_2)(ST_CI_DEVICE *pstDevice, ST_RECT *pstRect);
     /**
-     * @brief Enumerate support format from the video device.
+     * @brief Enumerate supported formats from the video device.
      *
      * @param .
      *
@@ -665,7 +665,7 @@ typedef struct _ST_CI_DEVICE {
      */
     STF_RESULT (*SetFormat)(ST_CI_DEVICE *pstDevice, STF_U16 u16Width, STF_U16 u16Height, STF_U32 u32PixelFormat);
     /**
-     * @brief Try the data format from the video device.
+     * @brief Test if the video device supports this data format.
      *
      * @param u32PixelFormat the pixel format or type of compression..
      *
@@ -675,7 +675,7 @@ typedef struct _ST_CI_DEVICE {
      */
     STF_RESULT (*TryFormat)(ST_CI_DEVICE *pstDevice, STF_U32 u32PixelFormat);
     /**
-     * @brief Get the streaming parameters from the video device.
+     * @brief Get streaming parameters from the video device.
      *
      * @param pu32Numerator data format pointer.
      * @param pu32Denominator data format pointer.
@@ -686,7 +686,7 @@ typedef struct _ST_CI_DEVICE {
      */
     STF_RESULT (*GetParam)(ST_CI_DEVICE *pstDevice, STF_U32 *pu32Numerator, STF_U32 *pu32Denominator);
     /**
-     * @brief Set the streaming parameters into the video device.
+     * @brief Set streaming parameters into the video device.
      *
      * @param u32Numerator data format pointer.
      * @param u32Denominator data format pointer.
@@ -697,7 +697,7 @@ typedef struct _ST_CI_DEVICE {
      */
     STF_RESULT (*SetParam)(ST_CI_DEVICE *pstDevice, STF_U32 u32Numerator, STF_U32 u32Denominator);
     /**
-     * @brief Set the streaming parameters into the video device.
+     * @brief Set streaming parameters into the video device.
      *
      * @param u32FPS the frame rate per second.
      *
@@ -707,19 +707,19 @@ typedef struct _ST_CI_DEVICE {
      */
     STF_RESULT (*SetParam_2)(ST_CI_DEVICE *pstDevice, STF_U32 u32FPS);
     /**
-     * @brief Get the selection rectangles from the video device.
+     * @brief Get selection rectangle from the video device.
      *
      * @return stRect the selection cropping window.
      */
     struct v4l2_rect (*GetSelection)(ST_CI_DEVICE *pstDevice);
     /**
-     * @brief Get the selection rectangles from the video device.
+     * @brief Get selection rectangle from the video device.
      *
      * @return stRect the selection cropping window.
      */
     ST_RECT (*GetSelection_2)(ST_CI_DEVICE *pstDevice);
     /**
-     * @brief Set the selection rectangles into the video device.
+     * @brief Set selection rectangle into the video device.
      *
      * @param pstRect the selection cropping window.
      *
@@ -729,7 +729,7 @@ typedef struct _ST_CI_DEVICE {
      */
     STF_RESULT (*SetSelection)(ST_CI_DEVICE *pstDevice, struct v4l2_rect *pstRect);
     /**
-     * @brief Set the selection rectangles into the video device.
+     * @brief Set selection rectangle into the video device.
      *
      * @param pstRect the selection cropping window.
      *
@@ -739,7 +739,7 @@ typedef struct _ST_CI_DEVICE {
      */
     STF_RESULT (*SetSelection_2)(ST_CI_DEVICE *pstDevice, ST_RECT *pstRect);
     /**
-     * @brief Stream On/Off the video device.
+     * @brief Start/Stop video device streaming I/O.
      *
      * @param bOn On/Off the streaming.
      *
@@ -749,7 +749,7 @@ typedef struct _ST_CI_DEVICE {
      */
     STF_RESULT (*SetStreamOn)(ST_CI_DEVICE *pstDevice, STF_BOOL8 bOn);
     /**
-     * @brief Check the connection status.
+     * @brief Check the streaming I/O status from the video device.
      *
      * @return STF_TRUE / STF_FALSE
      */
@@ -765,7 +765,7 @@ typedef struct _ST_CI_DEVICE {
      */
     STF_RESULT (*AllocateBuf)(ST_CI_DEVICE *pstDevice, STF_U32 u32Count, ST_DMA_BUF_INFO *pstDmaBufInfo);
     /**
-     * @brief Allocate and enqueue buffer for the video device.
+     * @brief Allocate and enqueue buffer into the video device.
      *
      * @param u32AllocateCount The number of buffers requested or granted.
      * @param u32EnqueueCount The number of buffers will be enqueue.
@@ -776,7 +776,7 @@ typedef struct _ST_CI_DEVICE {
      */
     STF_RESULT (*AllocateAndEnqueueBuf)(ST_CI_DEVICE *pstDevice, STF_U32 u32AllocateCount, STF_U32 u32EnqueueCount, ST_DMA_BUF_INFO *pstDmaBufInfo);
     /**
-     * @brief Get the buffer information.
+     * @brief Get the video buffer from the video device.
      *
      * @param u32Index The specified index.
      *
@@ -784,7 +784,7 @@ typedef struct _ST_CI_DEVICE {
      */
     ST_VDO_MEM *(*GetBuffer)(ST_CI_DEVICE *pstDevice, STF_U32 u32Index);
     /**
-     * @brief Get the buffer information.
+     * @brief Get the video buffer information from the video device.
      *
      * @param u32Index The specified index.
      *
@@ -802,7 +802,7 @@ typedef struct _ST_CI_DEVICE {
      */
     STF_RESULT (*EnqueueBuf)(ST_CI_DEVICE *pstDevice, STF_U8 u8BufIdx);
     /**
-     * @brief Enqueue buffer into the video device.
+     * @brief Enqueue buffers into the video device.
      *
      * @param u32Count The number of buffers will be enqueue into the video device.
      * @param pu32BufIndex The video buffer index array.
@@ -813,7 +813,7 @@ typedef struct _ST_CI_DEVICE {
      */
     STF_RESULT (*EnqueueBuf_2)(ST_CI_DEVICE *pstDevice, STF_U32 u32Count, ST_VDO_BUF_INFO *pstVideoBufferInfo);
     /**
-     * @brief Enqueue buffer from available queue into the video device.
+     * @brief Enqueue buffers from available queue to the video device.
      *
      * @param s32Count The number of buffers will be enqueue into the video device.
      *
@@ -823,7 +823,7 @@ typedef struct _ST_CI_DEVICE {
      */
     STF_RESULT (*EnqueueBufFromAvailableQueue)(ST_CI_DEVICE *pstDevice, STF_S32 s32Count);
     /**
-     * @brief Enqueue buffer from completed queue into the video device.
+     * @brief Enqueue buffers from completed queue to the video device.
      *
      * @param s32RemainCount The number of buffers will be remain on the completed queue.
      *
@@ -833,7 +833,7 @@ typedef struct _ST_CI_DEVICE {
      */
     STF_RESULT (*EnqueueBufFromCompletedQueue)(ST_CI_DEVICE *pstDevice, STF_S32 s32Count);
     /**
-     * @brief Dequeue buffer from the video device.
+     * @brief Dequeue buffers from the video device.
      *
      * @param ppstVdoMem The video memory information structure pointer address.
      *
@@ -843,7 +843,7 @@ typedef struct _ST_CI_DEVICE {
      */
     STF_RESULT (*DequeueBuf)(ST_CI_DEVICE *pstDevice, ST_VDO_MEM **ppstVdoMem);
     /**
-     * @brief Dequeue buffer from the video device.
+     * @brief Dequeue buffers from the video device.
      *
      * @param pu32Count The number of buffers has be dequeue from the video device.
      * @param pstVideoBufferInfo The video buffer information array.
@@ -854,7 +854,7 @@ typedef struct _ST_CI_DEVICE {
      */
     STF_RESULT (*DequeueBuf_2)(ST_CI_DEVICE *pstDevice, STF_S32 *ps32Count, ST_VDO_BUF_INFO *pstVideoBufferInfo);
     /**
-     * @brief Dequeue buffer from the video device.
+     * @brief Dequeue buffers from the video device to completed queue.
      *
      * @param s32Count The number of buffers has be dequeue from the video device.
      *
@@ -864,7 +864,7 @@ typedef struct _ST_CI_DEVICE {
      */
     STF_RESULT (*DequeueBufToCompletedQueue)(ST_CI_DEVICE *pstDevice, STF_S32 s32Count);
     /**
-     * @brief Switch buffer from the completed queue to available queue.
+     * @brief Switch buffers from the completed queue to available queue.
      *
      * @param s32RemainCount The number of buffers will be remain on the completed queue.
      *
@@ -874,7 +874,7 @@ typedef struct _ST_CI_DEVICE {
      */
     STF_RESULT (*SwitchBufFromCompletedToAvailableQueue)(ST_CI_DEVICE *pstDevice, STF_S32 s32RemainCount);
     /**
-     * @brief Push buffer to the queue queue.
+     * @brief Push buffer into the queue.
      *
      * @param pstVdoMem The pointer of buffer.
      * @param pstListQueue The pointer of list queue.
@@ -885,7 +885,7 @@ typedef struct _ST_CI_DEVICE {
      */
     STF_RESULT (*PushBufToQueue)(ST_CI_DEVICE *pstDevice, sLinkedList_T *pstListQueue, ST_VDO_MEM *pstVdoMem, STF_BOOL8 bIsPushToFront);
     /**
-     * @brief Pop buffer from the queue queue.
+     * @brief Pop buffer from the queue.
      *
      * @param ppstVdoMem The pointer of pointer of buffer.
      * @param pstListQueue The pointer of list queue.
@@ -896,7 +896,7 @@ typedef struct _ST_CI_DEVICE {
      */
     ST_VDO_MEM *(*PopBufFromQueue)(ST_CI_DEVICE *pstDevice, sLinkedList_T *pstListQueue, STF_BOOL8 bIsPopFromBack);
     /**
-     * @brief Release buffer from the video device.
+     * @brief Release buffers from the device.
      *
      * @return STF_SUCCESS
      * @return STF_ERROR_UNEXPECTED_STATE if the device is in the wrong state
@@ -915,7 +915,7 @@ typedef struct _ST_CI_DEVICE {
      */
     STF_RESULT (*GenerateLinksInfo)(ST_CI_DEVICE *pstDevice, EN_SNSR_IF enSensorInterface, ST_ITEM_INFO *pstLinksInfo);
     /**
-     * @brief Process the media link setup.
+     * @brief Process the media link settings.
      *
      * @param pstLinksInfo links information.
      *
@@ -925,7 +925,7 @@ typedef struct _ST_CI_DEVICE {
      */
     STF_RESULT (*ProcessLinks)(ST_CI_DEVICE *pstDevice, ST_ITEM_INFO *pstLinksInfo);
     /**
-     * @brief Process the media link setup.
+     * @brief Process the media link settings.
      *
      * @param enSensorInterface indicate the sensor interface DVP0/CSI0/CSI1.
      *

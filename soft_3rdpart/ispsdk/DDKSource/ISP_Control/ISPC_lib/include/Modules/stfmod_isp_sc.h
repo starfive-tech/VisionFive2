@@ -327,6 +327,80 @@ typedef enum _EN_SC_UPDATE {
 //} EN_SC_IN_SEL, *PEN_SC_IN_SEL;                 /** SC input MUX for AE/AF/AWB. */
 //
 //
+typedef struct _ST_SC_AE_WS_R_G {
+    STF_U32 u32R;
+    STF_U32 u32G;
+} ST_SC_AE_WS_R_G, *PST_SC_AE_WS_R_G;
+
+typedef struct _ST_SC_AE_WS_B_Y {
+    STF_U32 u32B;
+    STF_U32 u32Y;
+} ST_SC_AE_WS_B_Y, *PST_SC_AE_WS_B_Y;
+
+typedef struct _ST_SC_AWB_PS_R_G {
+    STF_U32 u32R;
+    STF_U32 u32G;
+} ST_SC_AWB_PS_R_G, *PST_SC_AWB_PS_R_G;
+
+typedef struct _ST_SC_AWB_PS_B_CNT {
+    STF_U32 u32B;
+    STF_U32 u32CNT;
+} ST_SC_AWB_PS_B_CNT, *PST_SC_AWB_PS_B_CNT;
+
+typedef struct _ST_SC_AWB_WGS_W_RW {
+    STF_U32 u32W;
+    STF_U32 u32RW;
+} ST_SC_AWB_WGS_W_RW, *PST_SC_AWB_WGS_W_RW;
+
+typedef struct _ST_SC_AWB_WGS_GW_BW {
+    STF_U32 u32GW;
+    STF_U32 u32BW;
+} ST_SC_AWB_WGS_GW_BW, *PST_SC_AWB_WGS_GW_BW;
+
+typedef struct _ST_SC_AWB_WGS_GRW_GBW {
+    STF_U32 u32GRW;
+    STF_U32 u32GBW;
+} ST_SC_AWB_WGS_GRW_GBW, *PST_SC_AWB_WGS_GRW_GBW;
+
+typedef struct _ST_SC_AF_ES_DAT_CNT {
+    STF_U32 u32DAT;
+    STF_U32 u32CNT;
+} ST_SC_AF_ES_DAT_CNT, *PST_SC_AF_ES_DAT_CNT;
+
+typedef struct _ST_SC_AE_HIST_R_G {
+    STF_U32 u32R;
+    STF_U32 u32G;
+} ST_SC_AE_HIST_R_G, *PST_SC_AE_HIST_R_G;
+
+typedef struct _ST_SC_AE_HIST_B_Y {
+    STF_U32 u32B;
+    STF_U32 u32Y;
+} ST_SC_AE_HIST_B_Y, *PST_SC_AE_HIST_B_Y;
+
+typedef struct _ST_SC_DATA
+{
+    ST_SC_AE_WS_R_G AeWsRG[16];
+    ST_SC_AE_WS_B_Y AeWsBY[16];
+    ST_SC_AWB_PS_R_G AwbPsRG[16];
+    ST_SC_AWB_PS_B_CNT AwbPsBCNT[16];
+    ST_SC_AWB_WGS_W_RW AwbWgsWRW[16];
+    ST_SC_AWB_WGS_GW_BW AwbWgsGWBW[16];
+    ST_SC_AWB_WGS_GRW_GBW AwbWgsGRWGBW[16];
+    ST_SC_AF_ES_DAT_CNT AfEsDATCNT[16];
+} ST_SC_DATA, *PST_SC_DATA;
+
+typedef struct _ST_SC_HIST
+{
+    ST_SC_AE_HIST_R_G AeHistRG[64];
+    ST_SC_AE_HIST_B_Y AeHistBY[64];
+} ST_SC_HIST, *PST_SC_HIST;
+
+typedef struct _ST_SC_DUMP
+{
+    ST_SC_DATA ScData[16];
+    ST_SC_HIST ScHist;
+} ST_SC_DUMP, *PST_SC_DUMP;
+
 typedef struct _ST_SC_CROP_DEC {
     STF_U16 u16HStart;                          /** Horizontal starting point for SC cropping. Since hardware bug issue, H_Start cannot less than 4. */
     STF_U16 u16VStart;                          /** Vertical starting point for SC cropping. Since hardware bug issue, V_Start cannot less than 4. */
