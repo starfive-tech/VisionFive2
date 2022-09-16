@@ -212,6 +212,29 @@ $ sudo resize2fs /dev/sdX4  # extend filesystem
 $ sudo fsck.ext4 /dev/sdX4
 ```
 
+If your system doesn't have growpart, like buildroot, you can use fdisk instead：
+
+```bash
+#!bin/sh
+disk=/dev/mmcblk0
+part=p4
+sudo fdisk $disk << EOF
+p
+d
+4
+n
+
+
+
+NO
+w
+EOF
+
+sudo e2fsck -f ${disk}${part}
+sudo resize2fs ${disk}${part}
+sudo fsck.ext4 ${disk}${part}
+```
+
 ## Using DTB Overlay Dynamically
 
 The system support load dtb overlay dynamically when the board is running. The detail process to use the dtbo please reference to the dtbo documents.
