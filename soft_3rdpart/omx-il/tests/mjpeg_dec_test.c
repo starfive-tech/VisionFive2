@@ -77,6 +77,9 @@ static OMX_ERRORTYPE event_handler(
         OMX_U32 nOutputBufferSize = pOutputPortDefinition.nBufferSize;
         OMX_U32 nOutputBufferCount = pOutputPortDefinition.nBufferCountMin;
         printf("allocate %lu output buffers size %lu\r\n", nOutputBufferCount, nOutputBufferSize);
+        printf("======================================\r\n");
+        printf("out put resolution [%ldx%ld]\r\n", pOutputPortDefinition.format.video.nFrameWidth, pOutputPortDefinition.format.video.nFrameHeight);
+        printf("======================================\r\n");
         for (int i = 0; i < nOutputBufferCount; i++)
         {
             OMX_BUFFERHEADERTYPE *pBuffer = NULL;
@@ -329,6 +332,17 @@ int main(int argc, char **argv)
         help();
         return -1;
     }
+    if ((decodeTestContext->ScaleFactorH || decodeTestContext->ScaleFactorV) && decodeTestContext->Rotation)
+    {
+        printf("Invalid operation mode : Rotation cannot work with the scaler");
+        return -1;
+    }
+    if ((decodeTestContext->ScaleFactorH || decodeTestContext->ScaleFactorV) && (decodeTestContext->RoiWidth && decodeTestContext->RoiHeight))
+    {
+        printf("Invalid operation mode : ROI cannot work with the scaler");
+        return -1;
+    }
+
     /*ffmpeg init*/
     printf("init ffmpeg\r\n");
     AVFormatContext *avContext = NULL;
