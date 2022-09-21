@@ -602,7 +602,7 @@ static OMX_ERRORTYPE SF_OMX_SetParameter(
 
             pInputPort->format.video.nStride = width;
             pInputPort->format.video.nSliceHeight = height;
-            pInputPort->nBufferSize = width * height * 2;
+            pInputPort->nBufferSize = width * height / 2;
         }
         else if (portIndex == 1)
         {

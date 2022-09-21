@@ -36,8 +36,8 @@ void SF_LogMsgAppend(int level, const char *format, ...);
 #define FunctionIn()
 #define FunctionOut()
 #endif
-#define VPU_OUTPUT_BUF_NUMBER 10
-#define VPU_INPUT_BUF_NUMBER 5
+#define VPU_OUTPUT_BUF_NUMBER 5
+#define VPU_INPUT_BUF_NUMBER 3
 
 typedef enum SF_BUFFER_TYPE
 {
