@@ -1080,8 +1080,12 @@ static void ProcessThread(void *args)
     Int32 frameIdx = 0;
     JpgDecParam decParam = {0};
     JpgDecOutputInfo outputInfo = {0};
+    Uint32 framebufWidth = 0, framebufHeight = 0;
+    Uint32 decodingWidth, decodingHeight;
+    Uint32 displayWidth, displayHeight;
     Int32 int_reason = 0;
     Int32 instIdx;
+    Uint32 temp;
     JpgRet ret = JPG_RET_SUCCESS;
 
     FunctionIn();
@@ -1166,13 +1170,65 @@ static void ProcessThread(void *args)
             }
         }
     } while (JPG_RET_SUCCESS != ret);
+
+    if (initialInfo->sourceFormat == FORMAT_420 || initialInfo->sourceFormat == FORMAT_422)
+        framebufWidth = JPU_CEIL(16, initialInfo->picWidth);
+    else
+        framebufWidth = JPU_CEIL(8, initialInfo->picWidth);
+
+    if (initialInfo->sourceFormat == FORMAT_420 || initialInfo->sourceFormat == FORMAT_440)
+        framebufHeight = JPU_CEIL(16, initialInfo->picHeight);
+    else
+        framebufHeight = JPU_CEIL(8, initialInfo->picHeight);
+
+    LOG(SF_LOG_DEBUG, "framebufWidth: %d, framebufHeight: %d\r\n", framebufWidth, framebufHeight);
+
+    decodingWidth = framebufWidth >> decConfig->iHorScaleMode;
+    decodingHeight = framebufHeight >> decConfig->iVerScaleMode;
+    if (decOP->packedFormat != PACKED_FORMAT_NONE && decOP->packedFormat != PACKED_FORMAT_444)
+    {
+        // When packed format, scale-down resolution should be multiple of 2.
+        decodingWidth = JPU_CEIL(2, decodingWidth);
+    }
+
+    temp = decodingWidth;
+    decodingWidth = (decConfig->rotation == 90 || decConfig->rotation == 270) ? decodingHeight : decodingWidth;
+    decodingHeight = (decConfig->rotation == 90 || decConfig->rotation == 270) ? temp : decodingHeight;
+    if (decConfig->roiEnable == TRUE)
+    {
+        decodingWidth = framebufWidth = initialInfo->roiFrameWidth;
+        decodingHeight = framebufHeight = initialInfo->roiFrameHeight;
+    }
+
+    LOG(SF_LOG_DEBUG, "decodingWidth: %d, decodingHeight: %d\n", decodingWidth, decodingHeight);
+
+    if (0 != decConfig->iHorScaleMode || 0 != decConfig->iVerScaleMode) {
+        displayWidth  = JPU_FLOOR(2, (framebufWidth >> decConfig->iHorScaleMode));
+        displayHeight = JPU_FLOOR(2, (framebufHeight >> decConfig->iVerScaleMode));
+    }
+    else {
+        displayWidth  = decodingWidth;
+        displayHeight = decodingHeight;
+    }
+
+    LOG(SF_LOG_DEBUG, "displayWidth: %d, displayHeight: %d\n", displayWidth, displayHeight);
+
+    if (decOP->rotation != 0 || decOP->mirror != MIRDIR_NONE)
+    {
+        if (decOP->outputFormat != FORMAT_MAX && decOP->outputFormat != initialInfo->sourceFormat)
+        {
+            LOG(SF_LOG_ERR, "The rotator cannot work with the format converter together.\n");
+            return;
+        }
+    }
+
     //TODO:Set output info
     OMX_PARAM_PORTDEFINITIONTYPE *pPortDefinition = &pSfOMXComponent->portDefinition[OMX_OUTPUT_PORT_INDEX];
-    LOG(SF_LOG_DEBUG, "picWidth = %d, picHeight = %d\r\n", initialInfo->picWidth, initialInfo->picHeight);
-    pPortDefinition->format.video.nFrameWidth = initialInfo->picWidth;
-    pPortDefinition->format.video.nFrameHeight = initialInfo->picHeight;
-    pPortDefinition->format.video.nStride = initialInfo->picWidth;
-    pPortDefinition->format.video.nSliceHeight = initialInfo->picHeight;
+    LOG(SF_LOG_DEBUG, "picWidth = %d, picHeight = %d, output Width = %d, output Height = %d\r\n", initialInfo->picWidth, initialInfo->picHeight,displayWidth, displayHeight);
+    pPortDefinition->format.video.nFrameWidth = displayWidth;
+    pPortDefinition->format.video.nFrameHeight = displayHeight;
+    pPortDefinition->format.video.nStride = displayWidth;
+    pPortDefinition->format.video.nSliceHeight = displayHeight;
     pPortDefinition->format.video.eCompressionFormat = OMX_IMAGE_CodingUnused;
     switch (pSfCodaj12Implement->frameFormat)
     {
@@ -1339,7 +1395,7 @@ static void ProcessThread(void *args)
 
         pBuffer->nFilledLen = pSfCodaj12Implement->functions->SaveYuvImageHelper
                         (pBuffer->pBuffer, &pSfCodaj12Implement->frameBuf[(OMX_U64)(pBuffer->pOutputPortPrivate)],
-                        decOP->chromaInterleave, decOP->packedFormat, initialInfo->picWidth, initialInfo->picHeight, initialInfo->bitDepth);
+                        decOP->chromaInterleave, decOP->packedFormat, displayWidth, displayHeight, initialInfo->bitDepth);
 
         LOG(SF_LOG_DEBUG, "decPicSize = [%d %d], pBuffer = %p\r\n",
             outputInfo.decPicWidth, outputInfo.decPicHeight, pBuffer->pBuffer);
