@@ -188,8 +188,11 @@ OMX_ERRORTYPE InitMjpegStructorCommon(SF_OMX_COMPONENT *pSfOMXComponent)
 
     // strcpy(pSfOMXComponent->portDefinition[1].format.image.cMIMEType, "JPEG");
     // pSfOMXComponent->portDefinition[1].format.image.eColorFormat = OMX_COLOR_FormatYUV420SemiPlanar;
+    pSfOMXComponent->portDefinition[0].format.video.eColorFormat = OMX_COLOR_FormatUnused;
+    pSfOMXComponent->portDefinition[0].format.video.eCompressionFormat = OMX_VIDEO_CodingMJPEG;
     strcpy(pSfOMXComponent->portDefinition[1].format.video.cMIMEType, "JPEG");
     pSfOMXComponent->portDefinition[1].format.video.eColorFormat = OMX_COLOR_FormatYUV420SemiPlanar;
+    pSfOMXComponent->portDefinition[1].format.video.eCompressionFormat = OMX_VIDEO_CodingUnused;
 
     memset(pSfOMXComponent->pBufferArray, 0, sizeof(pSfOMXComponent->pBufferArray));
     pSfOMXComponent->memory_optimization = OMX_TRUE;
