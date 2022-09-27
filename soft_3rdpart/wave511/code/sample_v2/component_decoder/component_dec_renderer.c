@@ -661,7 +661,7 @@ static Component CreateRenderer(ComponentImpl* com, CNMComponentConfig* componen
 
 #ifdef USE_FEEDING_METHOD_BUFFER
     ctx->MemoryOptimization = TRUE;
-    ctx->totalBufferNumber = 5;
+    ctx->totalBufferNumber = 7;
     ctx->currentBufferNumber = 0;
 #endif
     return (Component)com;
