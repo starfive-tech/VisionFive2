@@ -250,28 +250,64 @@ void get_sock_ip_port(SOCKET sock)
 	printf("Sock Address: %s : %d\n", inet_ntoa(addr.sin_addr), ntohs(addr.sin_port));
 }
 
+int parse_cmd(int argc, char* argv[], char* cfg_name, int* width, int* height)
+{
+	int i;
+	int cfg_done = 0;
+
+	for (i = 1; i < argc; i++)
+	{
+		if (strcasecmp(argv[i], "-w") == 0)
+		{
+			i++;
+			*width = atoi(argv[i]);
+		}
+		else if (strcasecmp(argv[i], "-h") == 0)
+		{
+			i++;
+			*height = atoi(argv[i]);
+		}
+		else if (cfg_done == 0)
+		{
+			strcpy(cfg_name, argv[i]);
+			cfg_done = 1;
+		}
+	}
+}
+
 int main(int argc, char* argv[])
 {
 	thrd_t thrd_tuning, thrd_rtsp, thrd_broadcast;
 	char szcfgname[100] = SERVER_CONFIG_FILE;
+	int width = -1, height = -1;
 	int ret;
 
 	if (argc >= 2)
-		strcpy(szcfgname, argv[1]);
+		parse_cmd(argc, argv, szcfgname, &width, &height);
 
 	printf("Load config file: %s\n", szcfgname);
 	ret = main_load_config(&g_cfg, szcfgname);
 	if (ret < 0)
 	{
-		err("load config file fail !n");
+		err("load config file fail !!!\n");
 		return -1;
 	}
 
 	g_cfg.task_status = 0;
-	ispc_main_driver_isp_start();
+	ret = ispc_main_driver_isp_start_w_h(width, height);
+	if (ret)
+	{
+		err("failed to start the ISP thread !!!\n");
+		return -1;
+	}
 	//usleep(1000000);
-	ispc_main_driver_capture_start();
-	
+	ret = ispc_main_driver_capture_start();
+	if (ret)
+	{
+		err("failed to enter the ISP capture mode !!!\n");
+		ispc_main_driver_capture_stop();
+		return -1;
+	}
 
 	//Start Tuning
 	if (thrd_create(&thrd_tuning, tuning_main_listen_task, (void*)0) != thrd_success)

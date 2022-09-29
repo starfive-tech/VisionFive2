@@ -382,6 +382,7 @@ int32_t tuning_base_send_packet(SOCKET sock, void* pdata, uint32_t datasize)
 	uint32_t remainsize = datasize;
 	int32_t sendbytes;
 	uint32_t packetparam[2];
+	uint32_t packet_cnt = 0;
 
 	//printf("Start send packet ...\n");
 	packetparam[0] = datasize;
@@ -404,6 +405,11 @@ int32_t tuning_base_send_packet(SOCKET sock, void* pdata, uint32_t datasize)
 		pbuffer += sendbytes;
 		remainsize -= sendbytes;
 		//printf("sendbytes: %d, datasize: %d\n", sendbytes, datasize);
+		packet_cnt++;
+		if ((remainsize > 0) && ((packet_cnt & 0x000F) == 0))
+		{
+			usleep(100);
+		}
 	}
 	//printf("Finish send packet !!!\n");
 	return 0;

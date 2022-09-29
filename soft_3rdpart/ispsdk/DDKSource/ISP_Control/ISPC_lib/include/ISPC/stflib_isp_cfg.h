@@ -63,6 +63,12 @@ typedef enum _EN_ISP_PARAM_ITEM {
     EN_ISP_PARAM_ITEM_CSI_1,
     EN_ISP_PARAM_ITEM_ISP_0,
     EN_ISP_PARAM_ITEM_ISP_1,
+    EN_ISP_PARAM_ITEM_ISP_0_WIDTH,
+    EN_ISP_PARAM_ITEM_ISP_1_WIDTH,
+    EN_ISP_PARAM_ITEM_ISP_0_HEIGHT,
+    EN_ISP_PARAM_ITEM_ISP_1_HEIGHT,
+    EN_ISP_PARAM_ITEM_ISP_0_AUTO,
+    EN_ISP_PARAM_ITEM_ISP_1_AUTO,
     EN_ISP_PARAM_ITEM_MAX,
 } EN_ISP_PARAM_ITEM, *PEN_ISP_API_PARAM_ITEM;
 
@@ -83,11 +89,15 @@ typedef struct _ST_ISP_PARAMS {
     STF_INT nSensorInterface[3];
     STF_INT nISP[2];
     STF_CHAR szConfigFile[STF_ISP_PARAM_LEN];
+    STF_INT nIspWidth[2];
+    STF_INT nIspHeight[2];
+    STF_BOOL8 bIspAutoDetect[2];
 } ST_ISP_PARAMS, *PST_ISP_PARAMS;
 
 
 /* ISP configuration library variables */
 extern const STF_CHAR g_szSENSOR_NAME[EN_SENSOR_ID_MAX][24];
+#define SENSOR_NAME_ITEM_MAX        (sizeof(g_szSENSOR_NAME) / sizeof(g_szSENSOR_NAME[0]))
 
 
 /* ISP configuration library interface */
@@ -118,6 +128,11 @@ STF_VOID STFLIB_ISP_CFG_ParseConfig(
     STF_CHAR *pszConfigFile,
     ST_ISP_CFG_PARAMS *pstCfgParams,
     ST_ISP_PARAMS *pstParams
+    );
+
+extern
+STF_VOID DumpConfigParam(
+    ST_ISP_PARAMS *pstIspParams
     );
 
 //-----------------------------------------------------------------------------

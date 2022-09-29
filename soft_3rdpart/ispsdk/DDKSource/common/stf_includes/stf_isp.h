@@ -30,11 +30,13 @@
 
 #endif //UNUSED_CODE_AND_VARIABLE
 /** @brief major */
-#define STF_ISP_SDK_VERSION_MAJ 1u
+#define STF_ISP_SDK_VERSION_MAJ 2u
 /** @brief minor */
 #define STF_ISP_SDK_VERSION_MIN 0u
 /** @brief maintenance */
-#define STF_ISP_SDK_VERSION_MNT 0u
+#define STF_ISP_SDK_VERSION_MNT 1u
+/** @brief build */
+#define STF_ISP_SDK_VERSION_BLD 0u
 #define ISP_SETTING_VERSION                     (0x00010000)
 
 

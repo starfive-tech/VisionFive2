@@ -410,6 +410,11 @@ STF_U64 STFAPI_ISP_GetIspVersion(
     );
 
 extern
+STF_U64 STFAPI_ISP_GetIspSdkVersion(
+    STF_VOID
+    );
+
+extern
 STF_RESULT STFAPI_ISP_Pipeline_ModuleEnable(
     STF_U8 u8IspIdx,
     STF_U16 u16ModuleId,
@@ -488,6 +493,18 @@ STF_INT STFAPI_ISP_StartIspMainThread(
 extern
 STF_INT STFAPI_ISP_StopIspMainThread(
     STF_VOID
+    );
+
+extern
+STF_RESULT STFAPI_ISP_GetResolution(
+    STF_S32 *ps32Width,
+    STF_S32 *ps32Height
+    );
+
+extern
+STF_RESULT STFAPI_ISP_SetResolution(
+    STF_S32 s32Width,
+    STF_S32 s32Height
     );
 
 extern

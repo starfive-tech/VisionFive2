@@ -1,0 +1,15 @@
+Internal Release 2.0.1
+========================
+New feature:
+------------
+1) Implement multiple resolution setting file support.
+
+Caution:
+--------
+1) Now only 1080p setting wass tuned.
+
+
+
+Internel Release 2.0.0
+========================
+First internal release. 

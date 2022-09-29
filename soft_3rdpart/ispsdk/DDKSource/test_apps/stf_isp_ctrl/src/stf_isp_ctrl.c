@@ -1623,8 +1623,8 @@ static STF_INT IspCtrl(
     u8SensorIdx = 0;                            // Select index of configure file of sensor.
     u8SensorMode = 0;                           // Select mode 0 1080p 25fps.
     u8SensorFlipping = SENSOR_FLIP_NONE;        // Set sensor flip mode none.
-    //stCaptureSize.u16Cx = SENSOR_WIDTH;
-    //stCaptureSize.u16Cy = SENSOR_HEIGHT;
+    //stCaptureSize.u16Cx = CAPTURE_WIDTH;
+    //stCaptureSize.u16Cy = CAPTURE_HEIGHT;
     //=========================================================================
 
     // Get the video device output size.
@@ -1681,8 +1681,8 @@ static STF_INT IspCtrl(
         }
     }
 #else
-    stCaptureSize.u16Cx = SENSOR_WIDTH;
-    stCaptureSize.u16Cy = SENSOR_HEIGHT;
+    stCaptureSize.u16Cx = CAPTURE_WIDTH;
+    stCaptureSize.u16Cy = CAPTURE_HEIGHT;
 #endif //#if 0
     //=========================================================================
 
@@ -1932,12 +1932,35 @@ static STF_INT IspCtrl(
     // ISP load binary parameters.
     //=========================================================================
     bFileExist = STF_FALSE;
-    sprintf(szIspBinParamFilename, "/root/.isp_setting/IspSetting.ybn");
+    sprintf(szIspBinParamFilename, "/root/.isp_setting/IspSetting_%dx%d.ybn",
+        stPipeline.stIspCtx.stImgSize.u16Cx,
+        stPipeline.stIspCtx.stImgSize.u16Cy
+        );
     bFileExist = (0 == stat(szIspBinParamFilename, &stStat))
         ? STF_TRUE : STF_FALSE;
     if (STF_FALSE == bFileExist) {
-        sprintf(szIspBinParamFilename, "/root/ISP/IspSetting_%s.ybn",
-            szSensorName);
+        sprintf(szIspBinParamFilename, "/root/ISP/IspSetting_%s_%dx%d.ybn",
+            szSensorName,
+            stPipeline.stIspCtx.stImgSize.u16Cx,
+            stPipeline.stIspCtx.stImgSize.u16Cy
+            );
+        bFileExist = (0 == stat(szIspBinParamFilename, &stStat))
+            ? STF_TRUE : STF_FALSE;
+    }
+    if (STF_FALSE == bFileExist) {
+        LOG_ERROR("===== Doesn't found the %dx%d resolution setting, "\
+            "Trying to use the %dx%d resolution setting. =====\n",
+            stPipeline.stIspCtx.stImgSize.u16Cx,
+            stPipeline.stIspCtx.stImgSize.u16Cy,
+            CAPTURE_WIDTH,
+            CAPTURE_HEIGHT
+            );
+
+        sprintf(szIspBinParamFilename, "/root/ISP/IspSetting_%s_%dx%d.ybn",
+            szSensorName,
+            CAPTURE_WIDTH,
+            CAPTURE_HEIGHT
+            );
         bFileExist = (0 == stat(szIspBinParamFilename, &stStat))
             ? STF_TRUE : STF_FALSE;
     }
@@ -1953,6 +1976,8 @@ static STF_INT IspCtrl(
             //*pRet = STF_ERROR_FAILURE;
             //goto Isp_Main_Thread_Failed_Destory_Pipeline_Structure;
         }
+    } else {
+        LOG_ERROR("===== No matching ISP settings file found!!! =====\n");
     }
 
 #if 1
@@ -2473,7 +2498,7 @@ int main(
 #endif //#if 0
     };
     ST_ISP_CFG_PARAMS stIspCtrlCfgParams = {
-        7,
+        13,
         {
             { "Sensor0", "", EN_ISP_CFG_PARAM_TYPE_STR },
             { "Sensor1", "", EN_ISP_CFG_PARAM_TYPE_STR },
@@ -2482,13 +2507,22 @@ int main(
             { "CSI1", "", EN_ISP_CFG_PARAM_TYPE_INT },
             { "ISP0", "", EN_ISP_CFG_PARAM_TYPE_INT },
             { "ISP1", "", EN_ISP_CFG_PARAM_TYPE_INT },
+            { "ISP0_Width", "", EN_ISP_CFG_PARAM_TYPE_INT },
+            { "ISP1_Width", "", EN_ISP_CFG_PARAM_TYPE_INT },
+            { "ISP0_Height", "", EN_ISP_CFG_PARAM_TYPE_INT },
+            { "ISP1_Height", "", EN_ISP_CFG_PARAM_TYPE_INT },
+            { "ISP0_AutoDetect", "", EN_ISP_CFG_PARAM_TYPE_BOOL },
+            { "ISP1_AutoDetect", "", EN_ISP_CFG_PARAM_TYPE_BOOL },
         },
     };
     ST_ISP_PARAMS stIspCtrlParams = {
         { "", "" },
         { -1, -1, -1 },
         { -1, -1 },
-        STF_ISP_CTRL_CFG_DEF
+        STF_ISP_CTRL_CFG_DEF,
+        { -1, -1 },
+        { -1, -1 },
+        { STF_FALSE, STF_FALSE },
     };
     STF_INT nSensor = -1;
     STF_INT nSensorInterface = -1;
@@ -2611,16 +2645,11 @@ int main(
     nIspIdx = EN_ISP_DEV_IDX_0;
 #endif //#if defined(CONFIG_STF_DUAL_ISP)
     //-------------------------------------------------------------------------
-    V_LOG_DEBUG("nIspIdx = %d\n", nIspIdx);
-    V_LOG_DEBUG("szSensor[0] = %s\n", stIspCtrlParams.szSensor[0]);
-    V_LOG_DEBUG("szSensor[1] = %s\n", stIspCtrlParams.szSensor[1]);
-    V_LOG_DEBUG("nSensorInterface[0] = %d\n", stIspCtrlParams.nSensorInterface[0]);
-    V_LOG_DEBUG("nSensorInterface[1] = %d\n", stIspCtrlParams.nSensorInterface[1]);
-    V_LOG_DEBUG("nSensorInterface[2] = %d\n", stIspCtrlParams.nSensorInterface[2]);
-    V_LOG_DEBUG("nISP[0] = %d\n", stIspCtrlParams.nISP[0]);
-    V_LOG_DEBUG("nISP[1] = %d\n", stIspCtrlParams.nISP[1]);
-    V_LOG_DEBUG("szConfigFile = %s\n", stIspCtrlParams.szConfigFile);
+#if 0
+    LOG_INFO("nIspIdx = %d\n", nIspIdx);
+    DumpConfigParam(&stIspCtrlParams);
     //-------------------------------------------------------------------------
+#endif
 
     // Generate the device table.
     V_LOG_DEBUG("Generate the device table.\n");
@@ -2687,8 +2716,8 @@ int main(
             //LOG_INFO("Tryinig to call device SetFormat() function\n");
             if (STF_SUCCESS != stDevice.SetFormat(
                 &stDevice,
-                SENSOR_WIDTH,
-                SENSOR_HEIGHT,
+                CAPTURE_WIDTH,
+                CAPTURE_HEIGHT,
                 g_u32IspPortPixelFormatDef[nIdx]
                 )) {
                 LOG_ERROR("Failed to setup the ISP %d \'%s\' video device "\

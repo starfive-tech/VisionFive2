@@ -114,6 +114,7 @@ int32_t ispc_main_load_image(ISPC_IMAGE* pimg, char* pfilename);
 void ispc_main_free_image(ISPC_IMAGE* pimg);
 int32_t ispc_main_load_next_frame(ISPC_IMAGE* pimg);
 int32_t ispc_main_driver_isp_start();
+int32_t ispc_main_driver_isp_start_w_h(int32_t width, int32_t height);
 int32_t ispc_main_driver_isp_stop();
 int32_t ispc_main_driver_reg_read(uint32_t offset, uint32_t length, uint32_t* pbuffer);
 int32_t ispc_main_driver_reg_write(uint32_t offset, uint32_t length, uint32_t* pbuffer);
@@ -126,6 +127,9 @@ int32_t ispc_main_driver_mem_pop(uint32_t kind, ISPC_IMAGE_PACK* ppack, void **p
 int32_t ispc_main_driver_mem_get_completed_info(uint32_t kind, ISPC_IMAGE *pisp_img);
 int32_t ispc_main_driver_mem_get_completed(uint32_t kind, ISPC_IMAGE *pisp_img);
 uint64_t ispc_main_driver_get_isp_version();
+uint64_t ispc_main_driver_get_isp_sdk_version();
+int32_t ispc_main_driver_get_resolution(int32_t* pwidth, int32_t* pheight);
+int32_t ispc_main_driver_set_resolution(int32_t width, int32_t height);
 int32_t ispc_main_driver_capture_start();
 int32_t ispc_main_driver_capture_stop();
 int32_t ispc_main_driver_get_main_step();

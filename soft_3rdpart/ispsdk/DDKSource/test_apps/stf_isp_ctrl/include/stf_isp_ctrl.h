@@ -29,8 +29,8 @@ extern "C" {
 #include <termios.h>
 
 
-#define SENSOR_WIDTH                (1920)
-#define SENSOR_HEIGHT               (1080)
+#define CAPTURE_WIDTH               (1920)
+#define CAPTURE_HEIGHT              (1080)
 
 
 extern
