@@ -3,6 +3,7 @@
 #include <linux/interrupt.h>
 #include <linux/ioport.h>
 #include <linux/module.h>
+#include <linux/mutex.h>
 #include <linux/platform_device.h>
 #include <linux/dma-mapping.h>
 #include <linux/of.h>
@@ -305,6 +306,8 @@ struct freq_ctrl {
 	const char *fixed_freq;
 	char re_cpu_gov[16];
 	char re_max_freq[16];
+	struct mutex mutex_lock;
+	int count;
 };
 
 static struct freq_ctrl *vpu_freq_ctrl;
@@ -337,6 +340,8 @@ static int vpu_freq_close(void)
 	if (!vpu_freq_ctrl)
 		return -ENODEV;
 
+	mutex_destroy(&vpu_freq_ctrl->mutex_lock);
+
 	if (vpu_freq_ctrl->governor && vpu_freq_ctrl->maxfreq
 		&& vpu_freq_ctrl->parameters_off) {
 		fput(vpu_freq_ctrl->governor);
@@ -357,18 +362,26 @@ static int vpu_freq_save_env(void)
 
 	if (!vpu_freq_ctrl)
 		return -ENODEV;
-	/*save env*/
-	kernel_read(vpu_freq_ctrl->governor, vpu_freq_ctrl->re_cpu_gov,
-			sizeof(vpu_freq_ctrl->re_cpu_gov), NULL);
-	kernel_read(vpu_freq_ctrl->maxfreq, vpu_freq_ctrl->re_max_freq,
-			sizeof(vpu_freq_ctrl->re_max_freq), NULL);
 
-	/*setenv*/
-	rv = kernel_write(vpu_freq_ctrl->maxfreq, fixed_freq,
-			strlen(fixed_freq), NULL);
-	rv = kernel_write(vpu_freq_ctrl->governor, governor_mode,
-			strlen(governor_mode), NULL);
-	rv = kernel_write(vpu_freq_ctrl->parameters_off, "1", 1, NULL);
+	mutex_lock(&vpu_freq_ctrl->mutex_lock);
+
+	if (vpu_freq_ctrl->count == 0) {
+		/*save env*/
+		kernel_read(vpu_freq_ctrl->governor, vpu_freq_ctrl->re_cpu_gov,
+				sizeof(vpu_freq_ctrl->re_cpu_gov), NULL);
+		kernel_read(vpu_freq_ctrl->maxfreq, vpu_freq_ctrl->re_max_freq,
+				sizeof(vpu_freq_ctrl->re_max_freq), NULL);
+
+		/*setenv*/
+		rv = kernel_write(vpu_freq_ctrl->maxfreq, fixed_freq,
+				strlen(fixed_freq), NULL);
+		rv = kernel_write(vpu_freq_ctrl->governor, governor_mode,
+				strlen(governor_mode), NULL);
+		rv = kernel_write(vpu_freq_ctrl->parameters_off, "1", 1, NULL);
+	}
+	vpu_freq_ctrl->count++;
+
+	mutex_unlock(&vpu_freq_ctrl->mutex_lock);
 
 	return 0;
 }
@@ -380,12 +393,19 @@ static int vpu_freq_put_env(void)
 	if (!vpu_freq_ctrl)
 		return -ENODEV;
 
-	rv = kernel_write(vpu_freq_ctrl->governor, vpu_freq_ctrl->re_cpu_gov,
-			strlen(vpu_freq_ctrl->re_cpu_gov), NULL);
-	rv = kernel_write(vpu_freq_ctrl->maxfreq, vpu_freq_ctrl->re_max_freq,
-			strlen(vpu_freq_ctrl->re_max_freq), NULL);
-	rv = kernel_write(vpu_freq_ctrl->parameters_off, "0", 1, NULL);
+	mutex_lock(&vpu_freq_ctrl->mutex_lock);
 
+	vpu_freq_ctrl->count--;
+
+	if (vpu_freq_ctrl->count == 0) {
+		rv = kernel_write(vpu_freq_ctrl->governor, vpu_freq_ctrl->re_cpu_gov,
+				strlen(vpu_freq_ctrl->re_cpu_gov), NULL);
+		rv = kernel_write(vpu_freq_ctrl->maxfreq, vpu_freq_ctrl->re_max_freq,
+				strlen(vpu_freq_ctrl->re_max_freq), NULL);
+		rv = kernel_write(vpu_freq_ctrl->parameters_off, "0", 1, NULL);
+	}
+
+	mutex_unlock(&vpu_freq_ctrl->mutex_lock);
 	return 0;
 }
 
@@ -414,6 +434,9 @@ static int vpu_freq_init(struct device *dev)
 		vpu_freq_ctrl->fixed_freq = of_str;
 	else
 		vpu_freq_ctrl->fixed_freq = "1250000";
+
+	vpu_freq_ctrl->count = 0;
+	mutex_init(&vpu_freq_ctrl->mutex_lock);
 
 	dev_dbg(dev, "fixed_freq:%s\n", vpu_freq_ctrl->fixed_freq);
 
