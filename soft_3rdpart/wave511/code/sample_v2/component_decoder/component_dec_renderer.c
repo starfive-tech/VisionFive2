@@ -516,7 +516,7 @@ static BOOL ExecuteRenderer(ComponentImpl* com, PortContainer* in, PortContainer
                 VLOG(INFO, "pBuffer = %p, dmaBuffer = %p, index = %d/%d\n", output->pBuffer, dmaBuffer, count, total_count);
                 if (count >= total_count)
                 {
-                    VLOG(ERR, "A wrong Frame Found\n");
+                    VLOG(INFO, "A wrong Frame Found\n");
                     output->nFilledLen = 0;
                     break;
                 }
