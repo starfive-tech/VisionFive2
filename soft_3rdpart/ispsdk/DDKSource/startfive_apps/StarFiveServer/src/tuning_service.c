@@ -391,6 +391,7 @@ int tuning_serv_get_pop_image(SOCKET sock, STCOMDDATA* pcomddata)
 
 int tuning_serv_get_isp_version(STCOMDDATA* pcomddata)
 {
+    uint64_t *pisp_sdk_version = NULL;
 
     if (!pcomddata)
     {
@@ -399,6 +400,8 @@ int tuning_serv_get_isp_version(STCOMDDATA* pcomddata)
     }
 
     pcomddata->stComd.utVal.u64Value = ispc_main_driver_get_isp_version();
+    pisp_sdk_version = (uint64_t *)&pcomddata->stComd.utApp;
+    *pisp_sdk_version = ispc_main_driver_get_isp_sdk_version();
 
     return 0;
 }
@@ -723,11 +726,15 @@ int tuning_serv_set_setting_file(STCOMDDATA* pcomddata)
 {
     STCOMD* pcomd = NULL;
     char szFilename[CMD_FILE_BUF_SIZE];
-    char szTemp[512];
+    char szSetting[CMD_FILE_BUF_SIZE];
+    char szTemp[CMD_FILE_BUF_SIZE];
+    char szCmd[512];
     char *pszFilename = NULL;
     struct stat stStat;
     int bFileExist;
     int iIdx;
+    int32_t s32Width;
+    int32_t s32Height;
     int ret;
 
     if (!pcomddata)
@@ -740,6 +747,7 @@ int tuning_serv_set_setting_file(STCOMDDATA* pcomddata)
 
     // Get the setting filename.
     strcpy(szTemp, pcomddata->szBuffer);
+    //printf("The pcomddata->szBuffer is \'%s\'\n", szTemp);
     pszFilename = strrchr(szTemp, '/');
     if (NULL != pszFilename)
     {
@@ -761,40 +769,51 @@ int tuning_serv_set_setting_file(STCOMDDATA* pcomddata)
         return -1;
     }
 
+    ispc_main_driver_get_resolution(&s32Width, &s32Height);
+    if ((0 >= s32Width) || (0 >= s32Height)) {
+        printf("Error: s32Width = %d, s32Height = %d\n", s32Width, s32Height);
+        return -1;
+    }
+
     // Check the seting folder is exist or not?
-    bFileExist = (0 == stat("/root/.isp_setting", &stStat)) ? TRUE : FALSE;
+    sprintf(szSetting, "/root/.isp_setting");
+    bFileExist = (0 == stat(szSetting, &stStat)) ? TRUE : FALSE;
     if (FALSE == bFileExist)
     {
-        printf("The setting folder \'%s\' is not exist\n", szTemp);
-        printf("Create the \'%s\' folder.\n", szTemp);
-        ret = system("mkdir /root/.isp_setting");
+        printf("The setting folder \'%s\' is not exist\n", szSetting);
+        printf("Create the \'%s\' folder.\n", szSetting);
+        sprintf(szCmd, "mkdir %s", szSetting);
+        ret = system(szCmd);
     }
     else if (0 == (stStat.st_mode & S_IFDIR))
     {
-        printf("The \'%s\' is not a folder!!!\n", szTemp);
+        printf("The \'%s\' is not a folder!!!\n", szSetting);
         return -1;
     }
 
     // Remove backup file.
-    bFileExist = (0 == stat("/root/.isp_setting/IspSetting.bak", &stStat))
-        ? TRUE : FALSE;
+    sprintf(szTemp, "/root/.isp_setting/IspSetting_%dx%d.bak",
+        s32Width, s32Height);
+    bFileExist = (0 == stat(szTemp, &stStat)) ? TRUE : FALSE;
     if (TRUE == bFileExist)
     {
-        ret = system("rm /root/.isp_setting/IspSetting.bak");
+        sprintf(szCmd, "rm -rf %s", szTemp);
+        ret = system(szCmd);
     }
 
     // Rename setting file as backup file.
-    bFileExist = (0 == stat("/root/.isp_setting/IspSetting.ybn", &stStat))
-        ? TRUE : FALSE;
+    sprintf(szSetting, "/root/.isp_setting/IspSetting_%dx%d.ybn",
+        s32Width, s32Height);
+    bFileExist = (0 == stat(szSetting, &stStat)) ? TRUE : FALSE;
     if (TRUE == bFileExist)
     {
-        ret = system("mv /root/.isp_setting/IspSetting.ybn "\
-            "/root/.isp_setting/IspSetting.bak");
+        sprintf(szCmd, "mv %s %s", szSetting, szTemp);
+        ret = system(szCmd);
     }
 
     // Move setting file to setting folder.
-    sprintf(szTemp, "mv %s /root/.isp_setting/IspSetting.ybn", szFilename);
-    ret = system(szTemp);
+    sprintf(szCmd, "mv %s %s", szFilename, szSetting);
+    ret = system(szCmd);
     //printf("Move setting file to setting folder completed!!!\n");
 
     return 0;
@@ -802,8 +821,12 @@ int tuning_serv_set_setting_file(STCOMDDATA* pcomddata)
 
 int tuning_serv_set_delete_setting_file(STCOMDDATA* pcomddata)
 {
+    char szSetting[CMD_FILE_BUF_SIZE];
+    char szCmd[512];
     struct stat stStat;
     int bFileExist;
+    int32_t s32Width;
+    int32_t s32Height;
     int ret;
 
     if (!pcomddata)
@@ -813,20 +836,30 @@ int tuning_serv_set_delete_setting_file(STCOMDDATA* pcomddata)
         return -1;
     }
 
+    ispc_main_driver_get_resolution(&s32Width, &s32Height);
+    if ((0 >= s32Width) || (0 >= s32Height)) {
+        printf("Error: s32Width = %d, s32Height = %d\n", s32Width, s32Height);
+        return -1;
+    }
+
     // Remove backup file.
-    bFileExist = (0 == stat("/root/.isp_setting/IspSetting.bak", &stStat))
-        ? TRUE : FALSE;
+    sprintf(szSetting, "/root/.isp_setting/IspSetting_%dx%d.bak",
+        s32Width, s32Height);
+    bFileExist = (0 == stat(szSetting, &stStat)) ? TRUE : FALSE;
     if (TRUE == bFileExist)
     {
-        ret = system("rm /root/.isp_setting/IspSetting.bak");
+        sprintf(szCmd, "rm -rf %s", szSetting);
+        ret = system(szCmd);
     }
 
     // Remove setting file.
-    bFileExist = (0 == stat("/root/.isp_setting/IspSetting.ybn", &stStat))
-        ? TRUE : FALSE;
+    sprintf(szSetting, "/root/.isp_setting/IspSetting_%dx%d.ybn",
+        s32Width, s32Height);
+    bFileExist = (0 == stat(szSetting, &stStat)) ? TRUE : FALSE;
     if (TRUE == bFileExist)
     {
-        ret = system("rm /root/.isp_setting/IspSetting.ybn");
+        sprintf(szCmd, "rm -rf %s", szSetting);
+        ret = system(szCmd);
     }
 
     return 0;

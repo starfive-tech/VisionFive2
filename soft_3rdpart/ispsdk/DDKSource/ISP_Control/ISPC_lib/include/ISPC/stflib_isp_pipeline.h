@@ -1168,7 +1168,7 @@ typedef struct _ST_PIPELINE {
     STF_RESULT (*ModuleGetIqParam)(ST_PIPELINE *pstPipeline, EN_MODULE_ID enModuleId, STF_VOID *pParamBuf, STF_U16 *pu16ParamSize);
 
     /**
-     * @brief Get a module parameters.
+     * @brief Set a module parameters.
      * with the requested flag activated from the pipeline.
      */
     STF_RESULT (*ModuleSetIqParam)(ST_PIPELINE *pstPipeline, EN_MODULE_ID enModuleId, STF_VOID *pParamBuf, STF_U16 u16ParamSize);
@@ -1180,7 +1180,7 @@ typedef struct _ST_PIPELINE {
     STF_RESULT (*ControlGetIqParam)(ST_PIPELINE *pstPipeline, EN_CONTROL_ID enControlId, STF_VOID *pParamBuf, STF_U16 *pu16ParamSize);
 
     /**
-     * @brief Get a control parameters.
+     * @brief Set a control parameters.
      * with the requested flag activated from the pipeline.
      */
     STF_RESULT (*ControlSetIqParam)(ST_PIPELINE *pstPipeline, EN_CONTROL_ID enControlId, STF_VOID *pParamBuf, STF_U16 u16ParamSize);
@@ -1389,7 +1389,7 @@ typedef struct _ST_PIPELINE {
     STF_RESULT (*SetPendingCount)(ST_PIPELINE *pstPipeline, STF_U32 u32PendingCount);
 
     /**
-     * @brief Set the ISP pending count.
+     * @brief Increase the ISP pending count.
      */
     STF_U32 (*IncPendingCount)(ST_PIPELINE *pstPipeline);
 

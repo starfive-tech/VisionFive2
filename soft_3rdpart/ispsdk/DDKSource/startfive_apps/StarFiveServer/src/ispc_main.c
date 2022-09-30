@@ -38,55 +38,46 @@ int32_t ispc_main_load_image(ISPC_IMAGE* pimg, char* pfilename)
 	pimg->pfile = NULL;
 	pimg->width = pimg->height = pimg->bit = 0;
 	pimg->codec = main_parse_filename_info(pimg->filename, &pimg->width, &pimg->height, &pimg->bit);
-	if (pimg->codec == RTSP_CODEC_ID_VIDEO_NV12)
-	{
+	if (pimg->codec == RTSP_CODEC_ID_VIDEO_NV12) {
 		pimg->stride = pimg->width;
 		pimg->memsize = pimg->width * pimg->height * 3 / 2;
 	}
-	else if (pimg->codec >= RTSP_CODEC_ID_VIDEO_RGGB && pimg->codec <= RTSP_CODEC_ID_VIDEO_BGGR)
-	{
+	else if (pimg->codec >= RTSP_CODEC_ID_VIDEO_RGGB && pimg->codec <= RTSP_CODEC_ID_VIDEO_BGGR) {
 		pimg->stride = pimg->width;
 		pimg->memsize = pimg->width * pimg->height;
-	}
-	else
-	{
+	} else {
 		pimg->memsize = 0;
 	}
 
 	printf("ISPC load image file: %s ... ", pimg->filename);
 	pimg->pfile = fopen(pimg->filename, "rb");
-    //struct stat st;
-    //stat(pimg->filename, &st);
-    //pimg->filesize = st.st_size;
-    fseek(pimg->pfile, 0, SEEK_END);
-    pimg->filesize = ftell(pimg->pfile);
-    fseek(pimg->pfile, 0, SEEK_SET);
+	//struct stat st;
+	//stat(pimg->filename, &st);
+	//pimg->filesize = st.st_size;
+	fseek(pimg->pfile, 0, SEEK_END);
+	pimg->filesize = ftell(pimg->pfile);
+	fseek(pimg->pfile, 0, SEEK_SET);
 
-	if (pimg->memsize == 0)
-	{
+	if (pimg->memsize == 0) {
 		pimg->memsize = pimg->filesize;
 	}
 
-	if (pimg->pmemaddr)
+	if (pimg->pmemaddr) {
 		free(pimg->pmemaddr);
+	}
 	pimg->pmemaddr = (uint8_t*)malloc(pimg->memsize);
-	if (!pimg->pmemaddr)
-	{
+	if (!pimg->pmemaddr) {
 		printf("fail !!!\n");
 		return 0;
 	}
-	if (!pimg->pfile)
-	{
+	if (!pimg->pfile) {
 		printf("fail !!!\n");
 		return 0;
 	}
-	if (pimg->memsize > pimg->filesize)
-	{
-	    ret = fread(pimg->pmemaddr, 1, pimg->filesize, pimg->pfile);
-	}
-	else
-	{
-	    ret = fread(pimg->pmemaddr, 1, pimg->memsize, pimg->pfile);
+	if (pimg->memsize > pimg->filesize) {
+		ret = fread(pimg->pmemaddr, 1, pimg->filesize, pimg->pfile);
+	} else {
+		ret = fread(pimg->pmemaddr, 1, pimg->memsize, pimg->pfile);
 	}
 	fclose(pimg->pfile);
 	printf("OK !!!\n");
@@ -115,9 +106,34 @@ int32_t ispc_main_driver_isp_start()
 	ret = STFAPI_ISP_StartIspMainThread();
 
 	printf("Wait STFAPI_ISP_StartIspMainThread() ready ...\n");
-	do
-	{
-	    usleep(10 * 1000);
+	do {
+		usleep(10 * 1000);
+		main_step = ispc_main_driver_get_main_step();
+	} while (main_step != ISP_MAIN_STEP_STOP);
+	printf("STFAPI_ISP_StartIspMainThread() is ready !!!\n");
+
+	return ret;
+}
+
+int32_t ispc_main_driver_isp_start_w_h(int32_t width, int32_t height)
+{
+	int32_t ret = 0;
+	int32_t main_step = 0;
+
+	printf("---- STFAPI_ISP_SetResolution(%d, %d) -----\n", width, height);
+	ret = (int32_t)STFAPI_ISP_SetResolution(width, height);
+	//if (ret) {
+	//	printf("Failed to call STFAPI_ISP_SetResolution(%d, %d)!!!!!\n",
+	//		width, height);
+	//	return ret;
+	//}
+
+	printf("---- STFAPI_ISP_StartIspMainThread() -----\n");
+	ret = STFAPI_ISP_StartIspMainThread();
+
+	printf("Wait STFAPI_ISP_StartIspMainThread() ready ...\n");
+	do {
+		usleep(10 * 1000);
 		main_step = ispc_main_driver_get_main_step();
 	} while (main_step != ISP_MAIN_STEP_STOP);
 	printf("STFAPI_ISP_StartIspMainThread() is ready !!!\n");
@@ -382,6 +398,24 @@ uint64_t ispc_main_driver_get_isp_version()
     return (uint64_t)STFAPI_ISP_GetIspVersion();
 }
 
+uint64_t ispc_main_driver_get_isp_sdk_version()
+{
+
+    return (uint64_t)STFAPI_ISP_GetIspSdkVersion();
+}
+
+int32_t ispc_main_driver_get_resolution(int32_t* pwidth, int32_t* pheight)
+{
+
+    return (int32_t)STFAPI_ISP_GetResolution(pwidth, pheight);
+}
+
+int32_t ispc_main_driver_set_resolution(int32_t width, int32_t height)
+{
+
+    return (int32_t)STFAPI_ISP_SetResolution(width, height);
+}
+
 int32_t ispc_main_driver_capture_start()
 {
 	int32_t ret = 0;
@@ -390,8 +424,8 @@ int32_t ispc_main_driver_capture_start()
 	printf("---- STFAPI_ISP_StartIspCapture() -----\n");
 	STFAPI_ISP_StartIspCapture();
 	printf("Wait STFAPI_ISP_StartIspCapture() ready ...\n");
-	do
-	{
+	do {
+		usleep(10 * 1000);
 		main_step = ispc_main_driver_get_main_step();
 	} while (main_step != ISP_MAIN_STEP_CAPTURE);
 	printf("STFAPI_ISP_StartIspCapture() is ready !!!\n");

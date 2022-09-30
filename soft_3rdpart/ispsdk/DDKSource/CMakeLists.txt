@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 
-set(ISPSDK_VERSION 2.0.0)
+set(ISPSDK_VERSION 2.0.1)
 
 if (DEFINED CROSS_COMPILE)
     message(STATUS "CROSS_COMPILE=${CROSS_COMPILE}")
