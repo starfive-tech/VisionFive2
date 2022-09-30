@@ -179,8 +179,10 @@ static void vpu_clk_put(vpu_clk_t *clk);
 static vpudrv_buffer_t s_instance_pool = {0};
 static vpudrv_buffer_t s_common_memory = {0};
 static vpu_drv_context_t s_vpu_drv_context;
+static dev_t s_vpu_devt;
 static int s_vpu_major;
 static struct cdev s_vpu_cdev;
+static struct class *s_vpu_class;
 
 static struct vpu_clk_t *s_vpu_clk;
 static int s_vpu_open_ref_count;
@@ -1019,6 +1021,7 @@ static int vpu_probe(struct platform_device *pdev)
 {
 	int err = 0;
 	struct resource *res = NULL;
+	struct device *devices;
 
 	DPRINTK("[VPUDRV] vpu_probe\n");
 
@@ -1043,21 +1046,36 @@ static int vpu_probe(struct platform_device *pdev)
 	}
 
 	/* get the major number of the character device */
-	if ((alloc_chrdev_region(&s_vpu_major, 0, 1, VPU_DEV_NAME)) < 0) {
+	if ((alloc_chrdev_region(&s_vpu_devt, 0, 1, VPU_DEV_NAME)) < 0) {
 		err = -EBUSY;
 		printk(KERN_ERR "could not allocate major number\n");
 		goto ERROR_PROVE_DEVICE;
 	}
 	printk(KERN_INFO "SUCCESS alloc_chrdev_region\n");
-
+	s_vpu_major = MAJOR(s_vpu_devt);
 	/* initialize the device structure and register the device with the kernel */
 	cdev_init(&s_vpu_cdev, &vpu_fops);
-	if ((cdev_add(&s_vpu_cdev, s_vpu_major, 1)) < 0) {
+	if ((cdev_add(&s_vpu_cdev, s_vpu_devt, 1)) < 0) {
 		err = -EBUSY;
 		printk(KERN_ERR "could not allocate chrdev\n");
 
 		goto ERROR_PROVE_DEVICE;
 	}
+
+	s_vpu_class = class_create(THIS_MODULE, VPU_DEV_NAME);
+	if (IS_ERR(s_vpu_class)) {
+	    dev_err(vpu_dev, "class creat error.\n");
+	    goto ERROR_CRART_CLASS;
+	}
+
+	devices = device_create(s_vpu_class, 0, MKDEV(s_vpu_major, 0),
+				    NULL, VPU_DEV_NAME);
+	if (IS_ERR(devices)) {
+	    dev_err(vpu_dev, "device creat error.\n");
+	    goto ERROR_CREAT_DEVICE;
+	}
+
+
 
 	if (pdev)
 		s_vpu_clk = vpu_clk_get(pdev);
@@ -1115,6 +1133,10 @@ static int vpu_probe(struct platform_device *pdev)
 
 	return 0;
 
+ERROR_CREAT_DEVICE:
+	class_destroy(s_vpu_class);
+ERROR_CRART_CLASS:
+	cdev_del(&s_vpu_cdev);
 ERROR_PROVE_DEVICE:
 
 	if (s_vpu_major)
@@ -1154,8 +1176,10 @@ static int vpu_remove(struct platform_device *pdev)
 #endif
 
 	if (s_vpu_major > 0) {
+		device_destroy(s_vpu_class, MKDEV(s_vpu_major, 0));
+		class_destroy(s_vpu_class);
 		cdev_del(&s_vpu_cdev);
-		unregister_chrdev_region(s_vpu_major, 1);
+		unregister_chrdev_region(s_vpu_devt, 1);
 		s_vpu_major = 0;
 	}
 
@@ -1501,8 +1525,10 @@ static void __exit vpu_exit(void)
 #endif
 
 	if (s_vpu_major > 0) {
+		device_destroy(s_vpu_class, MKDEV(s_vpu_major, 0));
+		class_destroy(s_vpu_class);
 		cdev_del(&s_vpu_cdev);
-		unregister_chrdev_region(s_vpu_major, 1);
+		unregister_chrdev_region(s_vpu_devt, 1);
 		s_vpu_major = 0;
 	}
 
