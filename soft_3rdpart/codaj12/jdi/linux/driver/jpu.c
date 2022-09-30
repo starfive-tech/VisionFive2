@@ -164,8 +164,10 @@ static void jpu_clk_put(jpu_clk_t *clk);
 
 static jpudrv_buffer_t s_instance_pool = {0};
 static jpu_drv_context_t s_jpu_drv_context;
+static dev_t s_jpu_devt;
 static int s_jpu_major;
 static struct cdev s_jpu_cdev;
+static struct class *s_jpu_class;
 static jpu_clk_t *s_jpu_clk;
 static int s_jpu_open_ref_count;
 #ifdef JPU_SUPPORT_ISR
@@ -844,6 +846,7 @@ static int jpu_probe(struct platform_device *pdev)
 {
     int err = 0;
     struct resource *res = NULL;
+    struct device *devices;
 #ifdef JPU_SUPPORT_RESERVED_VIDEO_MEMORY
 	struct resource res_cma;
 	struct device_node *node;
@@ -871,19 +874,33 @@ static int jpu_probe(struct platform_device *pdev)
         dev_info(jpu_dev,"init device.\n");
     }
     /* get the major number of the character device */
-    if ((alloc_chrdev_region(&s_jpu_major, 0, 1, JPU_DEV_NAME)) < 0) {
+    if ((alloc_chrdev_region(&s_jpu_devt, 0, 1, JPU_DEV_NAME)) < 0) {
         err = -EBUSY;
         printk(KERN_ERR "could not allocate major number\n");
         goto ERROR_PROVE_DEVICE;
     }
 
+    s_jpu_major = MAJOR(s_jpu_devt);
     /* initialize the device structure and register the device with the kernel */
     cdev_init(&s_jpu_cdev, &jpu_fops);
-    if ((cdev_add(&s_jpu_cdev, s_jpu_major, 1)) < 0) {
+    if ((cdev_add(&s_jpu_cdev, s_jpu_devt, 1)) < 0) {
         err = -EBUSY;
         printk(KERN_ERR "could not allocate chrdev\n");
 
         goto ERROR_PROVE_DEVICE;
+    }
+
+    s_jpu_class = class_create(THIS_MODULE, JPU_DEV_NAME);
+    if (IS_ERR(s_jpu_class)) {
+	dev_err(jpu_dev, "class creat error.\n");
+	goto ERROR_CRART_CLASS;
+    }
+
+    devices = device_create(s_jpu_class, 0, MKDEV(s_jpu_major, 0),
+				NULL, JPU_DEV_NAME);
+    if (IS_ERR(devices)) {
+	dev_err(jpu_dev, "device creat error.\n");
+	goto ERROR_CREAT_DEVICE;
     }
 
     if (pdev)
@@ -954,7 +971,10 @@ static int jpu_probe(struct platform_device *pdev)
 
     return 0;
 
-
+ERROR_CREAT_DEVICE:
+	class_destroy(s_jpu_class);
+ERROR_CRART_CLASS:
+	cdev_del(&s_jpu_cdev);
 ERROR_PROVE_DEVICE:
 
     if (s_jpu_major)
@@ -984,8 +1004,10 @@ static int jpu_remove(struct platform_device *pdev)
 #endif
 
     if (s_jpu_major > 0) {
+        device_destroy(s_jpu_class, MKDEV(s_jpu_major, 0));
+        class_destroy(s_jpu_class);
         cdev_del(&s_jpu_cdev);
-        unregister_chrdev_region(s_jpu_major, 1);
+        unregister_chrdev_region(s_jpu_devt, 1);
         s_jpu_major = 0;
     }
 
@@ -1088,8 +1110,10 @@ static void __exit jpu_exit(void)
 #endif /* JPU_SUPPORT_RESERVED_VIDEO_MEMORY */
 
     if (s_jpu_major > 0) {
+        device_destroy(s_jpu_class, MKDEV(s_jpu_major, 0));
+        class_destroy(s_jpu_class);
         cdev_del(&s_jpu_cdev);
-        unregister_chrdev_region(s_jpu_major, 1);
+        unregister_chrdev_region(s_jpu_devt, 1);
         s_jpu_major = 0;
     }
 
