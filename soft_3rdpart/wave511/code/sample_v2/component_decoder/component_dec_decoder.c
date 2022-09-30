@@ -590,7 +590,7 @@ static CNMComponentParamRet GetParameterDecoder(ComponentImpl* from, ComponentIm
             fbNum->linearNum = 0;
         }
 #ifdef USE_FEEDING_METHOD_BUFFER
-        fbNum->linearNum = 7;
+        fbNum->linearNum = 9;
 #endif
         break;
     case GET_PARAM_DEC_BITSTREAM_BUF_POS:
