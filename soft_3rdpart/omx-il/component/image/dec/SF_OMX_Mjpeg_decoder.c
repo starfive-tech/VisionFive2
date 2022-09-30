@@ -1249,8 +1249,16 @@ static void ProcessThread(void *args)
 
     LOG(SF_LOG_DEBUG, "framebufWidth: %d, framebufHeight: %d\r\n", framebufWidth, framebufHeight);
 
-    decodingWidth = framebufWidth >> decConfig->iHorScaleMode;
-    decodingHeight = framebufHeight >> decConfig->iVerScaleMode;
+    if (decConfig->iHorScaleMode)
+        decodingWidth = framebufWidth >> decConfig->iHorScaleMode;
+    else
+        decodingWidth = initialInfo->picWidth;
+
+    if (decConfig->iVerScaleMode)
+        decodingHeight = framebufHeight >> decConfig->iVerScaleMode;
+    else
+        decodingHeight = initialInfo->picHeight;
+
     if (decOP->packedFormat != PACKED_FORMAT_NONE && decOP->packedFormat != PACKED_FORMAT_444)
     {
         // When packed format, scale-down resolution should be multiple of 2.
@@ -1268,12 +1276,21 @@ static void ProcessThread(void *args)
 
     LOG(SF_LOG_DEBUG, "decodingWidth: %d, decodingHeight: %d\n", decodingWidth, decodingHeight);
 
-    if (0 != decConfig->iHorScaleMode || 0 != decConfig->iVerScaleMode) {
+    if (decConfig->iHorScaleMode)
+    {
         displayWidth  = JPU_FLOOR(2, (framebufWidth >> decConfig->iHorScaleMode));
+    }
+    else
+    {
+        displayWidth  = decodingWidth;
+    }
+
+    if (decConfig->iVerScaleMode)
+    {
         displayHeight = JPU_FLOOR(2, (framebufHeight >> decConfig->iVerScaleMode));
     }
-    else {
-        displayWidth  = decodingWidth;
+    else
+    {
         displayHeight = decodingHeight;
     }
 
