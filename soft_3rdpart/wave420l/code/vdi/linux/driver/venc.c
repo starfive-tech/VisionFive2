@@ -52,7 +52,7 @@
 
 /* definitions to be changed as customer  configuration */
 /* if you want to have clock gating scheme frame by frame */
-//#define VPU_SUPPORT_CLOCK_CONTROL
+#define VPU_SUPPORT_CLOCK_CONTROL
 
 /* if clktree is work,try this...*/
 #define STARFIVE_VPU_SUPPORT_CLOCK_CONTROL
@@ -174,6 +174,8 @@ static void vpu_clk_disable(vpu_clk_t *clk);
 static int vpu_clk_enable(vpu_clk_t *clk);
 static vpu_clk_t *vpu_clk_get(struct platform_device *pdev);
 static void vpu_clk_put(vpu_clk_t *clk);
+static int vpu_pmu_enable(struct device *dev);
+static void vpu_pmu_disable(struct device *dev);
 
 /* end customer definition */
 static vpudrv_buffer_t s_instance_pool = {0};
@@ -467,6 +469,8 @@ static irqreturn_t vpu_irq_handler(int irq, void *dev_id)
 static int vpu_open(struct inode *inode, struct file *filp)
 {
 	DPRINTK("[VPUDRV][+] %s\n", __func__);
+	vpu_clk_enable(s_vpu_clk);
+	reset_control_deassert(s_vpu_clk->resets);
 	spin_lock(&s_vpu_lock);
 
 	s_vpu_drv_context.open_count++;
@@ -916,7 +920,9 @@ static int vpu_release(struct inode *inode, struct file *filp)
     }
     up(&s_vpu_sem);
 
-	vpu_hw_reset();
+	//vpu_hw_reset();
+	reset_control_assert(s_vpu_clk->resets);
+	vpu_clk_disable(s_vpu_clk);
 	
     return 0;
 }
@@ -1075,8 +1081,6 @@ static int vpu_probe(struct platform_device *pdev)
 	    goto ERROR_CREAT_DEVICE;
 	}
 
-
-
 	if (pdev)
 		s_vpu_clk = vpu_clk_get(pdev);
 	else
@@ -1087,10 +1091,7 @@ static int vpu_probe(struct platform_device *pdev)
 	else
 		DPRINTK("[VPUDRV] : get clock controller s_vpu_clk=%p\n", s_vpu_clk);
 
-#ifdef VPU_SUPPORT_CLOCK_CONTROL
-#else
-	vpu_clk_enable(s_vpu_clk);
-#endif
+	vpu_pmu_enable(s_vpu_clk->dev);
 
 #ifdef VPU_SUPPORT_ISR
 #ifdef VPU_SUPPORT_PLATFORM_DRIVER_REGISTER
@@ -1193,6 +1194,7 @@ static int vpu_remove(struct platform_device *pdev)
 
 	vpu_clk_disable(s_vpu_clk);
 	vpu_clk_put(s_vpu_clk);
+	vpu_pmu_disable(&pdev->dev);
 
 #endif /*VPU_SUPPORT_PLATFORM_DRIVER_REGISTER*/
 
@@ -1850,14 +1852,10 @@ static int vpu_clk_enable(vpu_clk_t *clk)
 {
 	int ret;
 
-	vpu_pmu_enable(clk->dev);
+
 	ret = clk_bulk_prepare_enable(clk->nr_clks, clk->clks);
 	if (ret)
 		dev_err(clk->dev, "enable clk error.\n");
-
-	ret = reset_control_deassert(clk->resets);
-	if (ret)
-		dev_err(clk->dev, "deassert vpu error.\n");
 
 	DPRINTK("[VPUDRV] vpu_clk_enable\n");
 	return ret;
@@ -1865,14 +1863,7 @@ static int vpu_clk_enable(vpu_clk_t *clk)
 
 static void vpu_clk_disable(vpu_clk_t *clk)
 {
-	int ret;
-
-	ret = reset_control_assert(clk->resets);
-	if (ret)
-		dev_err(clk->dev, "assert vpu error.\n");
-
 	clk_bulk_disable_unprepare(clk->nr_clks, clk->clks);
-	vpu_pmu_disable(clk->dev);
 }
 
 #endif /*STARFIVE_VPU_SUPPORT_CLOCK_CONTROL*/
