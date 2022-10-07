@@ -16,7 +16,7 @@ if [ ! -d $DRI_OPT ];then
 fi
 
 make -f  Wave420Driver.mak
-$CP $DRI_SRC/venc.ko $DRI_SRC/load.sh  $DRI_SRC/unload.sh $DRI_OPT
+$CP $DRI_SRC/venc.ko $DRI_OPT
 make -f  Wave420Driver.mak clean
 
 make -f  Wave420Enc.mak

@@ -23,8 +23,6 @@ cp -rdvp ${jpu_path}/script/* ${obj_jpu}/
 cp -rdvp ${jpu_path}/cfg $obj_jpu
 cp -rdvp ${jpu_path}/yuv $obj_jpu
 cp -rdvp ${jpu_path}/stream $obj_jpu
-cp -dvp ${jpu_driver}/load.sh $obj_jpu_driver
-cp -dvp ${jpu_driver}/unload.sh $obj_jpu_driver
 
 #make linux driver
 cd $jpu_driver
