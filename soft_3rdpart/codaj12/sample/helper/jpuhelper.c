@@ -106,6 +106,36 @@ static void TiledToLinear(Uint8* pSrc, Uint8* pDst, Uint32 width, Uint32 height,
     }
 }
 
+int SaveYuvImageHelper(
+    Uint8*          pYuv,
+    FrameBuffer*    fb,
+    CbCrInterLeave  interLeave,
+    PackedFormat    packed,
+    Uint32          picWidth,
+    Uint32          picHeight,
+    Uint32          bitDepth
+    )
+{
+    int frameSize;
+
+    if (pYuv == NULL) {
+        JLOG(ERR, "%s:%d pYuv is NULL\n", __FUNCTION__, __LINE__);
+        return 0;
+    }
+
+    frameSize = StoreYuvImageBurstFormat_V20(fb->strideC, pYuv, picWidth, picHeight, bitDepth,
+        fb->bufY,
+        fb->bufCb,
+        fb->bufCr,
+        fb->stride,
+        fb->format,
+        fb->endian,
+        interLeave,
+        packed);
+
+    return frameSize;
+}
+
 int StoreYuvImageBurstFormatWhenNotAligned(int chromaStride, Uint8 * dst, int picWidth, int picHeight, Uint32 bitDepth,
     Uint64 addrY, Uint64 addrCb, Uint64 addrCr, Uint32 stride, FrameFormat format, int endian, CbCrInterLeave interLeave, PackedFormat packed)
 {
@@ -247,7 +277,7 @@ int StoreYuvImageBurstFormatWhenNotAligned(int chromaStride, Uint8 * dst, int pi
     return size;
 }//lint !e429
 
-int SaveYuvImageHelper(
+int SaveYuvImageHelperDma(
     Uint8*          pYuv,
     FrameBuffer*    fb,
     CbCrInterLeave  interLeave,

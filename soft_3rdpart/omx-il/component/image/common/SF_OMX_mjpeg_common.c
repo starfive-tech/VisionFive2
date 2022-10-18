@@ -184,7 +184,40 @@ OMX_ERRORTYPE InitMjpegStructorCommon(SF_OMX_COMPONENT *pSfOMXComponent)
         pPortDefinition->bEnabled = OMX_TRUE;
 
         pPortDefinition->eDir = (i == 0 ? OMX_DirInput : OMX_DirOutput);
+        pSfOMXComponent->assignedBufferNum[i] = 0;
     }
+
+    /* Set componentVersion */
+    pSfOMXComponent->componentVersion.s.nVersionMajor = VERSIONMAJOR_NUMBER;
+    pSfOMXComponent->componentVersion.s.nVersionMinor = VERSIONMINOR_NUMBER;
+    pSfOMXComponent->componentVersion.s.nRevision     = REVISION_NUMBER;
+    pSfOMXComponent->componentVersion.s.nStep         = STEP_NUMBER;
+    /* Set specVersion */
+    pSfOMXComponent->specVersion.s.nVersionMajor = VERSIONMAJOR_NUMBER;
+    pSfOMXComponent->specVersion.s.nVersionMinor = VERSIONMINOR_NUMBER;
+    pSfOMXComponent->specVersion.s.nRevision     = REVISION_NUMBER;
+    pSfOMXComponent->specVersion.s.nStep         = STEP_NUMBER;
+
+    memset(pSfOMXComponent->markType, 0, sizeof(pSfOMXComponent->markType));
+    pSfOMXComponent->propagateMarkType.hMarkTargetComponent = NULL;
+    pSfOMXComponent->propagateMarkType.pMarkData = NULL;
+
+    for (int i = 0; i < 2; i++)
+    {
+        ret = SF_SemaphoreCreate(&pSfOMXComponent->portSemaphore[i]);
+        if (ret)
+            goto ERROR;
+        ret = SF_SemaphoreCreate(&pSfOMXComponent->portUnloadSemaphore[i]);
+        if (ret)
+            goto ERROR;
+        ret = SF_SemaphoreCreate(&pSfOMXComponent->portFlushSemaphore[i]);
+        if (ret)
+            goto ERROR;
+    }
+
+    ret = SF_SemaphoreCreate(&pSfCodaj12Implement->pauseOutSemaphore);
+    if (ret)
+        goto ERROR;
 
     // strcpy(pSfOMXComponent->portDefinition[1].format.image.cMIMEType, "JPEG");
     // pSfOMXComponent->portDefinition[1].format.image.eColorFormat = OMX_COLOR_FormatYUV420SemiPlanar;
@@ -195,12 +228,20 @@ OMX_ERRORTYPE InitMjpegStructorCommon(SF_OMX_COMPONENT *pSfOMXComponent)
     pSfOMXComponent->portDefinition[1].format.video.eCompressionFormat = OMX_VIDEO_CodingUnused;
 
     memset(pSfOMXComponent->pBufferArray, 0, sizeof(pSfOMXComponent->pBufferArray));
-    pSfOMXComponent->memory_optimization = OMX_TRUE;
 
     FunctionOut();
 EXIT:
     return ret;
 ERROR:
+    for (int i = 0; i < 2; i++)
+    {
+        SF_SemaphoreTerminate(pSfOMXComponent->portSemaphore[i]);
+        SF_SemaphoreTerminate(pSfOMXComponent->portUnloadSemaphore[i]);
+        SF_SemaphoreTerminate(pSfOMXComponent->portFlushSemaphore[i]);
+    }
+
+    SF_SemaphoreTerminate(pSfCodaj12Implement->pauseOutSemaphore);
+
     if (pSfOMXComponent->pOMXComponent)
     {
         free(pSfOMXComponent->pOMXComponent);
@@ -220,6 +261,7 @@ static void sf_get_component_functions(SF_CODAJ12_FUNCTIONS *funcs, OMX_PTR *soh
     funcs->JPU_DecRegisterFrameBuffer = dlsym(sohandle, "JPU_DecRegisterFrameBuffer");
     funcs->JPU_DecGiveCommand = dlsym(sohandle, "JPU_DecGiveCommand");
     funcs->JPU_DecStartOneFrameBySerialNum = dlsym(sohandle, "JPU_DecStartOneFrameBySerialNum");
+    funcs->JPU_DecStartOneFrame = dlsym(sohandle, "JPU_DecStartOneFrame");
     funcs->JPU_DecGetOutputInfo = dlsym(sohandle, "JPU_DecGetOutputInfo");
     funcs->JPU_SWReset = dlsym(sohandle, "JPU_SWReset");
     funcs->JPU_DecSetRdPtrEx = dlsym(sohandle, "JPU_DecSetRdPtrEx");
@@ -236,6 +278,7 @@ static void sf_get_component_functions(SF_CODAJ12_FUNCTIONS *funcs, OMX_PTR *soh
     funcs->jdi_allocate_dma_memory = dlsym(sohandle, "jdi_allocate_dma_memory");
     funcs->jdi_free_dma_memory = dlsym(sohandle, "jdi_free_dma_memory");
     funcs->AllocateOneFrameBuffer = dlsym(sohandle, "AllocateOneFrameBuffer");
+    funcs->AllocateFrameBuffer = dlsym(sohandle, "AllocateFrameBuffer");
     funcs->FreeFrameBuffer = dlsym(sohandle, "FreeFrameBuffer");
     funcs->GetFrameBuffer = dlsym(sohandle, "GetFrameBuffer");
     funcs->GetFrameBufferCount = dlsym(sohandle, "GetFrameBufferCount");
@@ -243,6 +286,7 @@ static void sf_get_component_functions(SF_CODAJ12_FUNCTIONS *funcs, OMX_PTR *soh
     funcs->SetMaxLogLevel = dlsym(sohandle, "SetMaxLogLevel");
     funcs->AttachOneFrameBuffer = dlsym(sohandle, "AttachOneFrameBuffer");
     funcs->SaveYuvImageHelper = dlsym(sohandle, "SaveYuvImageHelper");
+    funcs->SaveYuvImageHelperDma = dlsym(sohandle, "SaveYuvImageHelperDma");
     FunctionOut();
 }
 
@@ -382,6 +426,7 @@ OMX_BOOL AttachOutputBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U8* pBuffer, 
     return OMX_TRUE;
 
 }
+
 OMX_U8 *AllocateOutputBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U32 nSizeBytes)
 {
     SF_CODAJ12_IMPLEMEMT *pSfCodaj12Implement = pSfOMXComponent->componentImpl;
@@ -535,68 +580,6 @@ OMX_U8 *AllocateOutputBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U32 nSizeByt
     return virtAddr;
 }
 
-OMX_ERRORTYPE CreateThread(OMX_HANDLETYPE *threadHandle, OMX_PTR function_name, OMX_PTR argument)
-{
-    FunctionIn();
-
-    int result = 0;
-    int detach_ret = 0;
-    THREAD_HANDLE_TYPE *thread;
-    OMX_ERRORTYPE ret = OMX_ErrorNone;
-
-    thread = malloc(sizeof(THREAD_HANDLE_TYPE));
-    memset(thread, 0, sizeof(THREAD_HANDLE_TYPE));
-
-    pthread_attr_init(&thread->attr);
-    if (thread->stack_size != 0)
-        pthread_attr_setstacksize(&thread->attr, thread->stack_size);
-
-    /* set priority */
-    if (thread->schedparam.sched_priority != 0)
-        pthread_attr_setschedparam(&thread->attr, &thread->schedparam);
-
-    detach_ret = pthread_attr_setdetachstate(&thread->attr, PTHREAD_CREATE_JOINABLE);
-    if (detach_ret != 0)
-    {
-        free(thread);
-        *threadHandle = NULL;
-        ret = OMX_ErrorUndefined;
-        goto EXIT;
-    }
-
-    result = pthread_create(&thread->pthread, &thread->attr, function_name, (void *)argument);
-    /* pthread_setschedparam(thread->pthread, SCHED_RR, &thread->schedparam); */
-
-    switch (result)
-    {
-    case 0:
-        *threadHandle = (OMX_HANDLETYPE)thread;
-        ret = OMX_ErrorNone;
-        break;
-    case EAGAIN:
-        free(thread);
-        *threadHandle = NULL;
-        ret = OMX_ErrorInsufficientResources;
-        break;
-    default:
-        free(thread);
-        *threadHandle = NULL;
-        ret = OMX_ErrorUndefined;
-        break;
-    }
-
-EXIT:
-    FunctionOut();
-
-    return ret;
-}
-
-void ThreadExit(void *value_ptr)
-{
-    pthread_exit(value_ptr);
-    return;
-}
-
 void CodaJ12FlushBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U32 nPortNumber)
 {
     SF_CODAJ12_IMPLEMEMT *pSfCodaj12Implement = pSfOMXComponent->componentImpl;
@@ -619,26 +602,23 @@ void CodaJ12FlushBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U32 nPortNumber)
             }
 
             pOMXBuffer = data.pBuffer;
-            LOG(SF_LOG_INFO, "Flush Buffer %p\r\n", pOMXBuffer);
+            LOG(SF_LOG_INFO, "get header %p from in q\r\n", pOMXBuffer);
             if (pOMXBuffer != NULL)
             {
                 pOMXBuffer->nFilledLen = 0;
                 pOMXBuffer->nFlags = OMX_BUFFERFLAG_EOS;
+                LOG(SF_LOG_INFO, "Flush input Buffer header %p pBuffer %p\r\n", pOMXBuffer, pOMXBuffer->pBuffer);
                 pSfOMXComponent->callbacks->EmptyBufferDone(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData, pOMXBuffer);
+                pSfOMXComponent->handlingBufferNum[OMX_INPUT_PORT_INDEX]--;
+                if((pSfOMXComponent->handlingBufferNum[OMX_INPUT_PORT_INDEX] == 0) && pSfOMXComponent->bPortFlushing[OMX_INPUT_PORT_INDEX])
+                {
+                    LOG(SF_LOG_INFO, "return all input buff\r\n");
+                    SF_SemaphorePost(pSfOMXComponent->portFlushSemaphore[OMX_INPUT_PORT_INDEX]);
+                }
             }
         }
         break;
     case OMX_OUTPUT_PORT_INDEX:
-        for(int i = 0; i < MCA_MAX_INDEX; i++){
-            pOMXBuffer = pSfCodaj12Implement->mesCacheArr[i].pBuffer;
-            LOG(SF_LOG_INFO, "Flush Buffer %p\r\n", pOMXBuffer);
-            if (pOMXBuffer != NULL)
-            {
-                pOMXBuffer->nFilledLen = 0;
-                pOMXBuffer->nFlags = OMX_BUFFERFLAG_EOS;
-                pSfOMXComponent->callbacks->FillBufferDone(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData, pOMXBuffer);
-            }
-        }
         while (OMX_TRUE)
         {
             if (msgrcv(pSfCodaj12Implement->sOutputMessageQueue, (void *)&data, BUFSIZ, 0, IPC_NOWAIT) < 0)
@@ -648,12 +628,19 @@ void CodaJ12FlushBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U32 nPortNumber)
             }
 
             pOMXBuffer = data.pBuffer;
-            LOG(SF_LOG_INFO, "Flush Buffer %p\r\n", pOMXBuffer);
+            LOG(SF_LOG_INFO, "get header %p from out q\r\n", pOMXBuffer);
             if (pOMXBuffer != NULL)
             {
                 pOMXBuffer->nFilledLen = 0;
                 pOMXBuffer->nFlags = OMX_BUFFERFLAG_EOS;
+                LOG(SF_LOG_INFO, "Flush output Buffer header %p pBuffer %p\r\n", pOMXBuffer, pOMXBuffer->pBuffer);
                 pSfOMXComponent->callbacks->FillBufferDone(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData, pOMXBuffer);
+                pSfOMXComponent->handlingBufferNum[OMX_OUTPUT_PORT_INDEX]--;
+                if((pSfOMXComponent->handlingBufferNum[OMX_OUTPUT_PORT_INDEX] == 0) && pSfOMXComponent->bPortFlushing[OMX_OUTPUT_PORT_INDEX])
+                {
+                    LOG(SF_LOG_INFO, "return all output buff\r\n");
+                    SF_SemaphorePost(pSfOMXComponent->portFlushSemaphore[OMX_OUTPUT_PORT_INDEX]);
+                }
             }
         }
         break;

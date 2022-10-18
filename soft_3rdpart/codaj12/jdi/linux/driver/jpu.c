@@ -160,6 +160,8 @@ static void jpu_clk_disable(jpu_clk_t *clk);
 static int jpu_clk_enable(jpu_clk_t *clk);
 static jpu_clk_t *jpu_clk_get(struct platform_device *pdev);
 static void jpu_clk_put(jpu_clk_t *clk);
+static int jpu_pmu_enable(struct device *dev);
+static void jpu_pmu_disable(struct device *dev);
 // end customer definition
 
 static jpudrv_buffer_t s_instance_pool = {0};
@@ -341,6 +343,8 @@ static int jpu_open(struct inode *inode, struct file *filp)
 {
     DPRINTK("[JPUDRV][+] %s\n", __func__);
 
+    jpu_clk_enable(s_jpu_clk);
+
     spin_lock(&s_jpu_lock);
 
     s_jpu_drv_context.open_count++;
@@ -465,10 +469,7 @@ static long jpu_ioctl(struct file *filp, u_int cmd, u_long arg)
                     break;
                 }
 
-                jbp->filp = filp;
-                spin_lock(&s_jpu_lock);
-                list_add(&jbp->list, &s_jbp_head);
-                spin_unlock(&s_jpu_lock);
+                kfree(jbp);
 
                 up(&s_jpu_sem);
             }
@@ -753,7 +754,7 @@ static int jpu_release(struct inode *inode, struct file *filp)
 
     DPRINTK("[JPUDRV][-] jpu_release\n");
 
-    jpu_hw_reset();
+    jpu_clk_disable(s_jpu_clk);
 
     return 0;
 }
@@ -900,7 +901,7 @@ static int jpu_probe(struct platform_device *pdev)
 
 #ifdef JPU_SUPPORT_CLOCK_CONTROL
 #else
-    jpu_clk_enable(s_jpu_clk);
+    jpu_pmu_enable(s_jpu_clk->dev);
 #endif
 
 
@@ -997,7 +998,7 @@ static int jpu_remove(struct platform_device *pdev)
     if (s_jpu_register.virt_addr)
         iounmap((void*)s_jpu_register.virt_addr);
 
-    jpu_clk_disable(s_jpu_clk);
+    jpu_pmu_disable(s_jpu_clk->dev);
     jpu_clk_put(s_jpu_clk);
 
 #endif /* JPU_SUPPORT_PLATFORM_DRIVER_REGISTER */
@@ -1340,7 +1341,7 @@ static int jpu_of_clk_get(struct platform_device *pdev, jpu_clk_t *jpu_clk)
 	jpu_clk->clks = jpu_clks;
 	jpu_clk->nr_clks = ARRAY_SIZE(jpu_clks);
 
-	jpu_clk->resets = devm_reset_control_array_get_exclusive(dev);
+	jpu_clk->resets = devm_reset_control_array_get_shared(dev);
 	if (IS_ERR(jpu_clk->resets)) {
 		ret = PTR_ERR(jpu_clk->resets);
 		dev_err(dev, "faied to get jpu reset controls\n");
@@ -1384,7 +1385,6 @@ static int jpu_clk_enable(jpu_clk_t *clk)
 {
 	int ret;
 
-	jpu_pmu_enable(clk->dev);
 	ret = clk_bulk_prepare_enable(clk->nr_clks, clk->clks);
 	if (ret)
 		dev_err(clk->dev, "enable clk error.\n");
@@ -1406,6 +1406,5 @@ static void jpu_clk_disable(jpu_clk_t *clk)
 		dev_err(clk->dev, "assert jpu error.\n");
 
 	clk_bulk_disable_unprepare(clk->nr_clks, clk->clks);
-	jpu_pmu_disable(clk->dev);
 }
 #endif /* STARFIVE_JPU_SUPPORT_CLOCK_CONTROL */

@@ -43,6 +43,7 @@ typedef struct DecodeTestContext
     OMX_BUFFERHEADERTYPE *pInputBufferArray[64];
     OMX_BUFFERHEADERTYPE *pOutputBufferArray[64];
     AVFormatContext *avContext;
+    OMX_STATETYPE comState;
     int msgid;
     OMX_S32 RoiLeft;
     OMX_S32 RoiTop;
@@ -55,6 +56,8 @@ typedef struct DecodeTestContext
 } DecodeTestContext;
 DecodeTestContext *decodeTestContext;
 static OMX_S32 FillInputBuffer(DecodeTestContext *decodeTestContext, OMX_BUFFERHEADERTYPE *pInputBuffer);
+
+static OMX_BOOL disableEVnt;
 
 static OMX_ERRORTYPE event_handler(
     OMX_HANDLETYPE hComponent,
@@ -76,10 +79,16 @@ static OMX_ERRORTYPE event_handler(
         OMX_GetParameter(pDecodeTestContext->hComponentDecoder, OMX_IndexParamPortDefinition, &pOutputPortDefinition);
         OMX_U32 nOutputBufferSize = pOutputPortDefinition.nBufferSize;
         OMX_U32 nOutputBufferCount = pOutputPortDefinition.nBufferCountMin;
-        printf("allocate %lu output buffers size %lu\r\n", nOutputBufferCount, nOutputBufferSize);
+        printf("allocate %u output buffers size %u\r\n", nOutputBufferCount, nOutputBufferSize);
+
+        printf("enable output port and alloc buffer\n");
+
         printf("======================================\r\n");
-        printf("out put resolution [%ldx%ld]\r\n", pOutputPortDefinition.format.video.nFrameWidth, pOutputPortDefinition.format.video.nFrameHeight);
+        printf("out put resolution [%dx%d]\r\n", pOutputPortDefinition.format.video.nFrameWidth, pOutputPortDefinition.format.video.nFrameHeight);
         printf("======================================\r\n");
+
+        OMX_SendCommand(pDecodeTestContext->hComponentDecoder, OMX_CommandPortEnable, 1, NULL);
+
         for (int i = 0; i < nOutputBufferCount; i++)
         {
             OMX_BUFFERHEADERTYPE *pBuffer = NULL;
@@ -100,6 +109,25 @@ static OMX_ERRORTYPE event_handler(
         }
     }
     break;
+    case OMX_EventCmdComplete:
+    {
+        switch ((OMX_COMMANDTYPE)(nData1))
+        {
+        case OMX_CommandStateSet:
+        {
+            pDecodeTestContext->comState = (OMX_STATETYPE)(nData2);
+        }
+        case OMX_CommandPortDisable:
+        {
+            if (nData2 == 1)
+                disableEVnt = OMX_TRUE;
+        }
+        break;
+        default:
+        break;
+        }
+    }
+    break;
     default:
         break;
     }
@@ -108,17 +136,17 @@ static OMX_ERRORTYPE event_handler(
 
 static void help()
 {
-    printf("omx_mjpeg_dec_test - omx mjpg hardware decode unit test case\r\n\r\n");
+    printf("mjpeg_dec_test - omx mjpg hardware decode unit test case\r\n\r\n");
     printf("Usage:\r\n\r\n");
-    printf("./omx_mjpeg_dec_test -i <input file>               input file \r\n");
-    printf("                     -o <output file>              output file\r\n");
-    printf("                     -f <format>                   nv12/nv21/i420/i422/nv16/nv61/yuyv/yvyu/uyvy/vyuy/i444/yuv444packed \r\n");
-    printf("                     --roi=<x>,<y>,<w>,<h>         (optional) roi coord and width/height(from left top)\r\n");
-    printf("                     --mirror=<0/1/2/3>            (optional) mirror 0(none), 1(V), 2(H), 3(VH)\r\n");
-    printf("                     --scaleH=<0/1/2/3>            (optional) Horizontal downscale: 0(none), 1(1/2), 2(1/4), 3(1/8)\r\n");
-    printf("                     --scaleV=<0/1/2/3>            (optional) Vertical downscale  : 0(none), 1(1/2), 2(1/4), 3(1/8)\r\n");
-    printf("                     --rotation=<0/90/180/270>     (optional) rotation 0, 90, 180, 270\r\n\r\n");
-    printf("./omx_mjpeg_dec_test --help: show this message\r\n");
+    printf("./mjpeg_dec_test -i <input file>               input file \r\n");
+    printf("                 -o <output file>              output file\r\n");
+    printf("                 -f <format>                   nv12/nv21/i420/i422/nv16/nv61/yuyv/yvyu/uyvy/vyuy/i444/yuv444packed \r\n");
+    printf("                 --roi=<x>,<y>,<w>,<h>         (optional) roi coord and width/height(from left top)\r\n");
+    printf("                 --mirror=<0/1/2/3>            (optional) mirror 0(none), 1(V), 2(H), 3(VH)\r\n");
+    printf("                 --scaleH=<0/1/2/3>            (optional) Horizontal downscale: 0(none), 1(1/2), 2(1/4), 3(1/8)\r\n");
+    printf("                 --scaleV=<0/1/2/3>            (optional) Vertical downscale  : 0(none), 1(1/2), 2(1/4), 3(1/8)\r\n");
+    printf("                 --rotation=<0/90/180/270>     (optional) rotation 0, 90, 180, 270\r\n\r\n");
+    printf("./mjpeg_dec_test --help: show this message\r\n");
 }
 
 static OMX_ERRORTYPE fill_output_buffer_done_handler(
@@ -201,7 +229,7 @@ static OMX_S32 FillInputBuffer(DecodeTestContext *decodeTestContext, OMX_BUFFERH
     pInputBuffer->nFlags = 0x10;
     pInputBuffer->nFilledLen = avpacket->size;
     memcpy(pInputBuffer->pBuffer, avpacket->data, avpacket->size);
-    printf("%s, address = %p, size = %lu, flag = %lx\r\n",
+    printf("%s, address = %p, size = %u, flag = %x\r\n",
         __FUNCTION__, pInputBuffer->pBuffer, pInputBuffer->nFilledLen, pInputBuffer->nFlags);
     return avpacket->size;
 }
@@ -382,7 +410,7 @@ int main(int argc, char **argv)
         printf("%s:%d failed to av_find_best_stream.\n", __FUNCTION__, __LINE__);
         return -1;
     }
-    printf("image index = %lu\r\n", imageIndex);
+    printf("image index = %u\r\n", imageIndex);
     decodeTestContext->avContext = avContext;
     /*get image info*/
     codecParameters = avContext->streams[imageIndex]->codecpar;
@@ -533,6 +561,12 @@ int main(int argc, char **argv)
         OMX_SetConfig(hComponentDecoder, OMX_IndexConfigCommonScale, &ScaleConfig);
     }
 
+    disableEVnt = OMX_FALSE;
+    OMX_SendCommand(hComponentDecoder, OMX_CommandPortDisable, 1, NULL);
+    printf("wait for output port disable\r\n");
+    while (!disableEVnt);
+    printf("output port disabled\r\n");
+
     OMX_SendCommand(hComponentDecoder, OMX_CommandStateSet, OMX_StateIdle, NULL);
 
     OMX_PARAM_PORTDEFINITIONTYPE pInputPortDefinition;
@@ -552,10 +586,19 @@ int main(int argc, char **argv)
         OMX_BUFFERHEADERTYPE *pBuffer = NULL;
         OMX_AllocateBuffer(hComponentDecoder, &pBuffer, 0, NULL, nInputBufferSize);
         decodeTestContext->pInputBufferArray[i] = pBuffer;
-        /*Fill Input Buffer*/
-        FillInputBuffer(decodeTestContext, pBuffer);
-        OMX_EmptyThisBuffer(hComponentDecoder, pBuffer);
     }
+
+    printf("wait for Component idle\r\n");
+    while (decodeTestContext->comState != OMX_StateIdle);
+    printf("Component in idle\r\n");
+
+    for (int i = 0; i < nInputBufferCount; i++)
+    {
+        /*Fill Input Buffer*/
+        FillInputBuffer(decodeTestContext, decodeTestContext->pInputBufferArray[i]);
+        OMX_EmptyThisBuffer(hComponentDecoder, decodeTestContext->pInputBufferArray[i]);
+    }
+
 
     fb = fopen(decodeTestContext->sOutputFilePath, "wb+");
     if (!fb)
@@ -564,6 +607,7 @@ int main(int argc, char **argv)
         goto end;
     }
 
+    printf("start process\r\n");
     OMX_SendCommand(hComponentDecoder, OMX_CommandStateSet, OMX_StateExecuting, NULL);
 
     /*wait until decode finished*/
@@ -587,7 +631,7 @@ int main(int argc, char **argv)
         case 1:
         {
             OMX_BUFFERHEADERTYPE *pBuffer = data.pBuffer;
-            printf("write %lu buffers to file\r\n", pBuffer->nFilledLen);
+            printf("write %u buffers to file\r\n", pBuffer->nFilledLen);
             size_t size = fwrite(pBuffer->pBuffer, 1, pBuffer->nFilledLen, fb);
             int error = ferror(fb);
             printf("write error = %d\r\n", error);
@@ -611,13 +655,18 @@ int main(int argc, char **argv)
 
 end:
     /*free resource*/
-    OMX_SendCommand(hComponentDecoder, OMX_CommandStateSet, OMX_StateIdle, NULL);
+    if (decodeTestContext->comState == OMX_StateExecuting)
+    {
+        OMX_SendCommand(hComponentDecoder, OMX_CommandStateSet, OMX_StateIdle, NULL);
+        printf("wait for Component idle\r\n");
+        while (decodeTestContext->comState != OMX_StateIdle);
+        printf("Component in idle\r\n");
+    }
     OMX_FreeHandle(hComponentDecoder);
     OMX_Deinit();
     avformat_close_input(&avContext);
     avformat_free_context(avContext);
-    if (fb)
-    {
+    if (fb){
         fclose(fb);
     }
 }

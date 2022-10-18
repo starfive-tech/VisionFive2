@@ -13,7 +13,7 @@ OMX_ERRORTYPE GetStateCommon(OMX_IN OMX_HANDLETYPE hComponent, OMX_OUT OMX_STATE
     OMX_COMPONENTTYPE *pOMXComponent = NULL;
     SF_OMX_COMPONENT *pSfOMXComponent = NULL;
     ComponentState state;
-    OMX_STATETYPE nextState;
+    OMX_STATETYPE comState;
     SF_WAVE5_IMPLEMEMT *pSfVideoImplement = NULL;
     FunctionIn();
     if (hComponent == NULL)
@@ -24,14 +24,19 @@ OMX_ERRORTYPE GetStateCommon(OMX_IN OMX_HANDLETYPE hComponent, OMX_OUT OMX_STATE
     pOMXComponent = (OMX_COMPONENTTYPE *)hComponent;
     pSfOMXComponent = pOMXComponent->pComponentPrivate;
     pSfVideoImplement = (SF_WAVE5_IMPLEMEMT *)pSfOMXComponent->componentImpl;
-    nextState = pSfOMXComponent->nextState;
+    comState = pSfOMXComponent->state;
     state = pSfVideoImplement->functions->ComponentGetState(pSfVideoImplement->hSFComponentExecoder);
     LOG(SF_LOG_INFO, "state = %d\r\n", state);
 
     switch (state)
     {
     case COMPONENT_STATE_CREATED:
-        *pState = OMX_StateIdle;
+        if (comState == OMX_StateLoaded)
+        {
+            *pState = OMX_StateLoaded;
+        }else{
+            *pState = OMX_StateIdle;
+        }
         break;
     case COMPONENT_STATE_NONE:
     case COMPONENT_STATE_TERMINATED:
@@ -39,9 +44,9 @@ OMX_ERRORTYPE GetStateCommon(OMX_IN OMX_HANDLETYPE hComponent, OMX_OUT OMX_STATE
         break;
     case COMPONENT_STATE_PREPARED:
     case COMPONENT_STATE_EXECUTED:
-        if (nextState == OMX_StateIdle || nextState == OMX_StateExecuting || nextState == OMX_StatePause)
+        if (comState == OMX_StateIdle || comState == OMX_StateExecuting || comState == OMX_StatePause)
         {
-            *pState = nextState;
+            *pState = comState;
         }
         break;
     default:
@@ -58,8 +63,12 @@ OMX_ERRORTYPE ComponentClearCommon(SF_OMX_COMPONENT *pSfOMXComponent)
 {
     SF_WAVE5_IMPLEMEMT *pSfVideoImplement = (SF_WAVE5_IMPLEMEMT *)pSfOMXComponent->componentImpl;
 
+    pSfVideoImplement->functions->ComponentRelease(pSfVideoImplement->hSFComponentFeeder);
     pSfVideoImplement->functions->ComponentRelease(pSfVideoImplement->hSFComponentExecoder);
+    pSfVideoImplement->functions->ComponentRelease(pSfVideoImplement->hSFComponentRender);
+    pSfVideoImplement->functions->ComponentDestroy(pSfVideoImplement->hSFComponentFeeder, NULL);
     pSfVideoImplement->functions->ComponentDestroy(pSfVideoImplement->hSFComponentExecoder, NULL);
+    pSfVideoImplement->functions->ComponentDestroy(pSfVideoImplement->hSFComponentRender, NULL);
     pSfVideoImplement->functions->DeInitLog();
     dlclose(pSfOMXComponent->soHandle);
     free(pSfVideoImplement->functions);
@@ -306,6 +315,7 @@ OMX_ERRORTYPE InitComponentStructorCommon(SF_OMX_COMPONENT *pSfOMXComponent)
         pHEVCComponent->nPortIndex = i;
         pHEVCComponent->nKeyFrameInterval = 30;
         pHEVCComponent->eProfile = OMX_VIDEO_HEVCProfileMain;
+        pSfOMXComponent->assignedBufferNum[i] = 0;
     }
 
     pSfOMXComponent->portDefinition[0].eDir = OMX_DirInput;
@@ -320,13 +330,43 @@ OMX_ERRORTYPE InitComponentStructorCommon(SF_OMX_COMPONENT *pSfOMXComponent)
     pSfOMXComponent->portDefinition[1].nBufferCountActual = VPU_OUTPUT_BUF_NUMBER;
     pSfOMXComponent->portDefinition[1].nBufferCountMin = VPU_OUTPUT_BUF_NUMBER;
 
+    /* Set componentVersion */
+    pSfOMXComponent->componentVersion.s.nVersionMajor = VERSIONMAJOR_NUMBER;
+    pSfOMXComponent->componentVersion.s.nVersionMinor = VERSIONMINOR_NUMBER;
+    pSfOMXComponent->componentVersion.s.nRevision     = REVISION_NUMBER;
+    pSfOMXComponent->componentVersion.s.nStep         = STEP_NUMBER;
+    /* Set specVersion */
+    pSfOMXComponent->specVersion.s.nVersionMajor = VERSIONMAJOR_NUMBER;
+    pSfOMXComponent->specVersion.s.nVersionMinor = VERSIONMINOR_NUMBER;
+    pSfOMXComponent->specVersion.s.nRevision     = REVISION_NUMBER;
+    pSfOMXComponent->specVersion.s.nStep         = STEP_NUMBER;
+    /* Input port */
+
     memset(pSfOMXComponent->pBufferArray, 0, sizeof(pSfOMXComponent->pBufferArray));
-    pSfOMXComponent->memory_optimization = OMX_TRUE;
+
+    memset(pSfOMXComponent->markType, 0, sizeof(pSfOMXComponent->markType));
+    pSfOMXComponent->propagateMarkType.hMarkTargetComponent = NULL;
+    pSfOMXComponent->propagateMarkType.pMarkData = NULL;
+
+    for (int i = 0; i < 2; i++)
+    {
+        ret = SF_SemaphoreCreate(&pSfOMXComponent->portSemaphore[i]);
+        if (ret)
+            goto ERROR;
+        ret = SF_SemaphoreCreate(&pSfOMXComponent->portUnloadSemaphore[i]);
+        if (ret)
+            goto ERROR;
+    }
 
     FunctionOut();
 EXIT:
     return ret;
 ERROR:
+    for (int i = 0; i < 2; i++)
+    {
+        SF_SemaphoreTerminate(pSfOMXComponent->portSemaphore[i]);
+        SF_SemaphoreTerminate(pSfOMXComponent->portUnloadSemaphore[i]);
+    }
     if (pSfOMXComponent->pOMXComponent)
     {
         free(pSfOMXComponent->pOMXComponent);
@@ -368,20 +408,23 @@ OMX_ERRORTYPE FlushBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U32 nPort)
     if (nPort == 0)
     {
         ComponentImpl *pFeederComponent = (ComponentImpl *)(pSfVideoImplement->hSFComponentFeeder);
-        OMX_U32 inputQueueCount = pSfVideoImplement->functions->Queue_Get_Cnt(pFeederComponent->srcPort.inputQ);
-        LOG(SF_LOG_PERF, "Flush %d buffers on inputPort\r\n", inputQueueCount);
-        if (inputQueueCount > 0)
+        if (pFeederComponent)
         {
-            PortContainerExternal *input = NULL;
-            while ((input = (PortContainerExternal*)pSfVideoImplement->functions->ComponentPortGetData(&pFeederComponent->srcPort)) != NULL)
+            OMX_U32 inputQueueCount = pSfVideoImplement->functions->Queue_Get_Cnt(pFeederComponent->srcPort.inputQ);
+            LOG(SF_LOG_PERF, "Flush %d buffers on inputPort\r\n", inputQueueCount);
+            if (inputQueueCount > 0)
             {
-                if (strstr(pSfOMXComponent->componentName, "OMX.sf.video_decoder") != NULL)
+                PortContainerExternal *input = NULL;
+                while ((input = (PortContainerExternal*)pSfVideoImplement->functions->ComponentPortGetData(&pFeederComponent->srcPort)) != NULL)
                 {
-                    pSfVideoImplement->functions->ComponentNotifyListeners(pFeederComponent, COMPONENT_EVENT_DEC_EMPTY_BUFFER_DONE, (void *)input);
-                }
-                else if (strstr(pSfOMXComponent->componentName, "OMX.sf.video_encoder") != NULL)
-                {
-                    pSfVideoImplement->functions->ComponentNotifyListeners(pFeederComponent, COMPONENT_EVENT_ENC_EMPTY_BUFFER_DONE, (void *)input);
+                    if (strstr(pSfOMXComponent->componentName, "sf.video_decoder") != NULL)
+                    {
+                        pSfVideoImplement->functions->ComponentNotifyListeners(pFeederComponent, COMPONENT_EVENT_DEC_EMPTY_BUFFER_DONE, (void *)input);
+                    }
+                    else if (strstr(pSfOMXComponent->componentName, "sf.video_encoder") != NULL)
+                    {
+                        pSfVideoImplement->functions->ComponentNotifyListeners(pFeederComponent, COMPONENT_EVENT_ENC_EMPTY_BUFFER_DONE, (void *)input);
+                    }
                 }
             }
         }
@@ -389,22 +432,25 @@ OMX_ERRORTYPE FlushBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U32 nPort)
     else if (nPort == 1)
     {
         ComponentImpl *pRendererComponent = (ComponentImpl *)(pSfVideoImplement->hSFComponentRender);
-        OMX_U32 OutputQueueCount = pSfVideoImplement->functions->Queue_Get_Cnt(pRendererComponent->sinkPort.inputQ);
-        LOG(SF_LOG_PERF, "Flush %d buffers on outputPort\r\n", OutputQueueCount);
-        if (OutputQueueCount > 0)
+        if (pRendererComponent)
         {
-            PortContainerExternal *output = NULL;
-            while ((output = (PortContainerExternal*)pSfVideoImplement->functions->ComponentPortGetData(&pRendererComponent->sinkPort)) != NULL)
+            OMX_U32 OutputQueueCount = pSfVideoImplement->functions->Queue_Get_Cnt(pRendererComponent->sinkPort.inputQ);
+            LOG(SF_LOG_PERF, "Flush %d buffers on outputPort\r\n", OutputQueueCount);
+            if (OutputQueueCount > 0)
             {
-                output->nFlags = 0x1;
-                output->nFilledLen = 0;
-                if (strstr(pSfOMXComponent->componentName, "OMX.sf.video_decoder") != NULL)
+                PortContainerExternal *output = NULL;
+                while ((output = (PortContainerExternal*)pSfVideoImplement->functions->ComponentPortGetData(&pRendererComponent->sinkPort)) != NULL)
                 {
-                    pSfVideoImplement->functions->ComponentNotifyListeners(pRendererComponent, COMPONENT_EVENT_DEC_FILL_BUFFER_DONE, (void *)output);
-                }
-                else if (strstr(pSfOMXComponent->componentName, "OMX.sf.video_encoder") != NULL)
-                {
-                    pSfVideoImplement->functions->ComponentNotifyListeners(pRendererComponent, COMPONENT_EVENT_ENC_FILL_BUFFER_DONE, (void *)output);
+                    output->nFlags = 0x1;
+                    output->nFilledLen = 0;
+                    if (strstr(pSfOMXComponent->componentName, "sf.video_decoder") != NULL)
+                    {
+                        pSfVideoImplement->functions->ComponentNotifyListeners(pRendererComponent, COMPONENT_EVENT_DEC_FILL_BUFFER_DONE, (void *)output);
+                    }
+                    else if (strstr(pSfOMXComponent->componentName, "sf.video_encoder") != NULL)
+                    {
+                        pSfVideoImplement->functions->ComponentNotifyListeners(pRendererComponent, COMPONENT_EVENT_ENC_FILL_BUFFER_DONE, (void *)output);
+                    }
                 }
             }
         }
@@ -478,8 +524,10 @@ static void sf_get_component_functions(SF_COMPONENT_FUNCTIONS *funcs, OMX_PTR *s
     funcs->AllocateFrameBuffer2 = dlsym(sohandle, "AllocateFrameBuffer2");
     funcs->AttachDMABuffer = dlsym(sohandle, "AttachDMABuffer");
     funcs->SetRenderTotalBufferNumber = dlsym(sohandle, "SetRenderTotalBufferNumber");
+    funcs->GetRenderTotalBufferNumber = dlsym(sohandle, "GetRenderTotalBufferNumber");
     funcs->SetFeederTotalBufferNumber = dlsym(sohandle, "SetFeederTotalBufferNumber");
     funcs->WaitForExecoderReady = dlsym(sohandle, "WaitForExecoderReady");
+    funcs->RemapDMABuffer = dlsym(sohandle, "RemapDMABuffer");
     FunctionOut();
 }
 
