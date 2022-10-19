@@ -1192,7 +1192,6 @@ static int vpu_remove(struct platform_device *pdev)
 	if (s_vpu_register.virt_addr)
 		iounmap((void *)s_vpu_register.virt_addr);
 
-	vpu_clk_disable(s_vpu_clk);
 	vpu_clk_put(s_vpu_clk);
 	vpu_pmu_disable(&pdev->dev);
 
