@@ -1162,6 +1162,13 @@ void *AllocateDecFrameBuffer2(DecHandle decHandle, TestDecConfig* config, Uint32
     return (void *)vb->virt_addr;
 }
 
+Uint64 RemapVaddr(DecHandle decHandle, Uint64 virtAddress, Uint32 size)
+{
+    Uint32 coreIndex = VPU_HANDLE_CORE_INDEX(decHandle);
+
+    return (Uint64)vdi_remap_vaddr(coreIndex, virtAddress, size);
+}
+
 BOOL AttachDecDMABuffer(DecHandle decHandle, TestDecConfig* config, Uint64 virtAddress, Uint32 size, FrameBuffer* retFbArray, vpu_buffer_t* retFbAddrs)
 {
     RetCode                 ret;

@@ -1044,6 +1044,28 @@ int vdi_virt_to_phys(unsigned long core_idx, vpu_buffer_t *vb)
     return 0;
 }
 
+void* vdi_remap_vaddr(unsigned long coreIndex, unsigned long virtAddress, unsigned int size)
+{
+    vpu_buffer_t            vb;
+    vdi_info_t              *vdi;
+    void                    *vaddr;
+
+    if (coreIndex >= MAX_NUM_VPU_CORE)
+        return NULL;
+
+    vb.virt_addr = virtAddress;
+    vb.size = size;
+
+    vdi = &s_vdi_info[coreIndex];
+
+    vdi_virt_to_phys(coreIndex, &vb);
+
+    vaddr = (void *)mmap(NULL, vb.size, PROT_READ | PROT_WRITE,
+        MAP_SHARED, vdi->vpu_fd, DRAM_MEM2SYS(vb.phys_addr));
+
+    return vaddr;
+}
+
 int vdi_allocate_dma_memory(unsigned long core_idx, vpu_buffer_t *vb, int memTypes, int instIndex)
 {
     vdi_info_t *vdi;

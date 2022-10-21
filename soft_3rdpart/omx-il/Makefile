@@ -47,6 +47,8 @@ SOURCES_COMMON = SF_OMX_Core.c SF_OMX_video_common.c
 SOURCES_COMMON += SF_OMX_Vdec_decoder.c
 SOURCES_COMMON += SF_OMX_Wave420L_encoder.c
 SOURCES_COMMON += sf_queue.c
+SOURCES_COMMON += sf_thread.c
+SOURCES_COMMON += sf_semaphore.c
 #mjpeg
 SOURCES_COMMON += SF_OMX_mjpeg_common.c SF_OMX_Mjpeg_decoder.c
 #test

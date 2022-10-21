@@ -844,7 +844,7 @@ static long vpu_ioctl(struct file *filp, u_int cmd, u_long arg)
                                 struct page *pg = pte_page(*pte);
                                 unsigned long phys = page_to_phys(pg);
                                 unsigned long virt = (unsigned long)phys_to_virt(phys);
-                                printk("phy address = %lx, virt = %lx\r\n", phys, virt);
+                                printk("attach phy address = %lx, virt = %lx\r\n", phys, virt);
                                 vbp->vb.phys_addr = phys;
                                 vbp->vb.base = virt;
                             }

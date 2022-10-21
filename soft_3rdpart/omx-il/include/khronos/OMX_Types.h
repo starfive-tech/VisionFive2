@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2008 The Khronos Group Inc.
+ * Copyright (c) 2016 The Khronos Group Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -30,6 +30,8 @@
 
 #ifndef OMX_Types_h
 #define OMX_Types_h
+
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -104,9 +106,9 @@ extern "C" {
  * Functions and structure related to the OMX IL core
  */
 
-/** @defgroup comp OpenMAX IL component
-* Functions and structure related to the OMX IL component
-*/
+ /** @defgroup comp OpenMAX IL component
+ * Functions and structure related to the OMX IL component
+ */
 
 /** @defgroup rpm Resource and Policy Management
  * Structures for resource and policy management of components
@@ -125,27 +127,27 @@ extern "C" {
  *  @ingroup core
  */
 
-/** @defgroup metadata Metadata handling
- *
- */
+ /** @defgroup metadata Metadata handling
+  *
+  */
 
 /** OMX_U8 is an 8 bit unsigned quantity that is byte aligned */
-typedef unsigned char OMX_U8;
+typedef uint8_t OMX_U8;
 
 /** OMX_S8 is an 8 bit signed quantity that is byte aligned */
-typedef signed char OMX_S8;
+typedef int8_t OMX_S8;
 
 /** OMX_U16 is a 16 bit unsigned quantity that is 16 bit word aligned */
-typedef unsigned short OMX_U16;
+typedef uint16_t OMX_U16;
 
 /** OMX_S16 is a 16 bit signed quantity that is 16 bit word aligned */
-typedef signed short OMX_S16;
+typedef int16_t OMX_S16;
 
 /** OMX_U32 is a 32 bit unsigned quantity that is 32 bit word aligned */
-typedef unsigned long OMX_U32;
+typedef uint32_t OMX_U32;
 
 /** OMX_S32 is a 32 bit signed quantity that is 32 bit word aligned */
-typedef signed long OMX_S32;
+typedef int32_t OMX_S32;
 
 
 /* Users with compilers that cannot accept the "long long" designation should
@@ -173,10 +175,10 @@ typedef signed   __int64  OMX_S64;
 #else /* WIN32 */
 
 /** OMX_U64 is a 64 bit unsigned quantity that is 64 bit word aligned */
-typedef unsigned long long OMX_U64;
+typedef uint64_t OMX_U64;
 
 /** OMX_S64 is a 64 bit signed quantity that is 64 bit word aligned */
-typedef signed long long OMX_S64;
+typedef int64_t OMX_S64;
 
 #endif /* WIN32 */
 #endif
@@ -221,7 +223,8 @@ typedef unsigned char OMX_UUIDTYPE[128];
 /** The OMX_DIRTYPE enumeration is used to indicate if a port is an input or
     an output port.  This enumeration is common across all component types.
  */
-typedef enum OMX_DIRTYPE {
+typedef enum OMX_DIRTYPE
+{
     OMX_DirInput,              /**< Port is an input port */
     OMX_DirOutput,             /**< Port is an output port */
     OMX_DirMax = 0x7FFFFFFF
@@ -230,7 +233,8 @@ typedef enum OMX_DIRTYPE {
 /** The OMX_ENDIANTYPE enumeration is used to indicate the bit ordering
     for numerical data (i.e. big endian, or little endian).
  */
-typedef enum OMX_ENDIANTYPE {
+typedef enum OMX_ENDIANTYPE
+{
     OMX_EndianBig, /**< big endian */
     OMX_EndianLittle, /**< little endian */
     OMX_EndianMax = 0x7FFFFFFF
@@ -240,7 +244,8 @@ typedef enum OMX_ENDIANTYPE {
 /** The OMX_NUMERICALDATATYPE enumeration is used to indicate if data
     is signed or unsigned
  */
-typedef enum OMX_NUMERICALDATATYPE {
+typedef enum OMX_NUMERICALDATATYPE
+{
     OMX_NumericalDataSigned, /**< signed data */
     OMX_NumericalDataUnsigned, /**< unsigned data */
     OMX_NumercialDataMax = 0x7FFFFFFF
@@ -278,7 +283,8 @@ typedef struct OMX_BS32 {
 #ifndef OMX_SKIP64BIT
 typedef OMX_S64 OMX_TICKS;
 #else
-typedef struct OMX_TICKS {
+typedef struct OMX_TICKS
+{
     OMX_U32 nLowPart;    /** low bits of the signed 64 bit tick value */
     OMX_U32 nHighPart;   /** high bits of the signed 64 bit tick value */
 } OMX_TICKS;
@@ -290,7 +296,8 @@ typedef struct OMX_TICKS {
  */
 typedef void* OMX_HANDLETYPE;
 
-typedef struct OMX_MARKTYPE {
+typedef struct OMX_MARKTYPE
+{
     OMX_HANDLETYPE hMarkTargetComponent;   /**< The component that will
                                                 generate a mark event upon
                                                 processing the mark. */
@@ -332,8 +339,10 @@ typedef void* OMX_NATIVE_WINDOWTYPE;
     by accessing one of the structure elements to, for example, check only
     the Major revision.
  */
-typedef union OMX_VERSIONTYPE {
-    struct {
+typedef union OMX_VERSIONTYPE
+{
+    struct
+    {
         OMX_U8 nVersionMajor;   /**< Major version accessor element */
         OMX_U8 nVersionMinor;   /**< Minor version accessor element */
         OMX_U8 nRevision;       /**< Revision version accessor element */

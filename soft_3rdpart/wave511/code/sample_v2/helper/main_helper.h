@@ -1509,7 +1509,11 @@ Uint32 CalcScaleDown(
     Uint32 scaledValue
     );
 
-
+Uint64 RemapVaddr(
+    DecHandle decHandle,
+    Uint64 virtAddress,
+    Uint32 size
+    );
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

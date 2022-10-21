@@ -384,6 +384,7 @@ static void DoThreadWork(void* arg)
         DoYourJob(com);
         osal_msleep(2); // To yield schedule
     }
+    ComponentNotifyListeners(com, COMPONENT_EVENT_TERMINATED, NULL);
 
     com->state = COMPONENT_STATE_TERMINATED;
 }

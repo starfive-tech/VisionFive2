@@ -46,8 +46,9 @@ typedef struct {
     FILE*                       fpOutput[OUTPUT_FP_NUMBER];
 #ifdef USE_FEEDING_METHOD_BUFFER
     BOOL                        MemoryOptimization;
-    int                         totalBufferNumber;
-    int                         currentBufferNumber;
+    BOOL                        useBufferExternal;
+    Uint32                      totalBufferNumber;
+    Uint32                      currentBufferNumber;
     FrameBuffer                 pLinearFrame[MAX_REG_FRAME];
     vpu_buffer_t                pLinearFbMem[MAX_REG_FRAME];
 #endif
@@ -242,12 +243,17 @@ static BOOL FlushFrameBuffers(ComponentImpl* com, Uint32* flushedIndexes)
     return TRUE;
 }
 
-
 #ifdef USE_FEEDING_METHOD_BUFFER
 void SetRenderTotalBufferNumber(ComponentImpl* com, Uint32 number)
 {
     RendererContext*     ctx            = (RendererContext*)com->context;
     ctx->fbCount.linearNum = ctx->totalBufferNumber = number;
+}
+
+Uint32 GetRenderTotalBufferNumber(ComponentImpl* com)
+{
+    RendererContext*     ctx            = (RendererContext*)com->context;
+    return ctx->totalBufferNumber;
 }
 
 void* AllocateFrameBuffer2(ComponentImpl* com, Uint32 size)
@@ -277,6 +283,21 @@ void* AllocateFrameBuffer2(ComponentImpl* com, Uint32 size)
     return ret;
 }
 
+Uint64 RemapDMABuffer(ComponentImpl* com, Uint64 virtAddress, Uint32 size)
+{
+    RendererContext*     ctx;
+    if (!com)
+        return 0;
+    ctx = (RendererContext*)com->context;
+
+    if (ctx->handle == NULL) {
+        ctx->MemoryOptimization = FALSE;
+        return 0;
+    }
+
+    return RemapVaddr(ctx->handle, virtAddress, size);
+}
+
 BOOL AttachDMABuffer(ComponentImpl* com, Uint64 virtAddress, Uint32 size)
 {
     BOOL ret = FALSE;
@@ -301,6 +322,7 @@ BOOL AttachDMABuffer(ComponentImpl* com, Uint64 virtAddress, Uint32 size)
     }
     ret = AttachDecDMABuffer(ctx->handle, &ctx->testDecConfig, virtAddress, size, &ctx->pLinearFrame[i], &ctx->pLinearFbMem[i]);
     ctx->currentBufferNumber ++;
+    ctx->useBufferExternal = TRUE;
     return ret;
 }
 #endif
@@ -321,8 +343,22 @@ static BOOL AllocateFrameBuffer(ComponentImpl* com)
     osal_memset((void*)ctx->pFbMem, 0x00, sizeof(ctx->pFbMem));
     osal_memset((void*)ctx->pFrame, 0x00, sizeof(ctx->pFrame));
 
+#ifdef USE_FEEDING_METHOD_BUFFER
+    if (!ctx->MemoryOptimization || Queue_Get_Cnt(com->sinkPort.inputQ))
+    {
+        compressedNum  = ctx->fbCount.nonLinearNum;
+        linearNum      = ctx->totalBufferNumber;
+        ctx->fbCount.linearNum = ctx->totalBufferNumber;
+    }
+    else{
+        compressedNum  = ctx->fbCount.nonLinearNum;
+        linearNum      = ctx->fbCount.linearNum;
+        ctx->totalBufferNumber = linearNum;
+    }
+#else
     compressedNum  = ctx->fbCount.nonLinearNum;
     linearNum      = ctx->fbCount.linearNum;
+#endif
 
     if (compressedNum == 0 && linearNum == 0) {
         VLOG(ERR, "%s:%d The number of framebuffers are zero. compressed %d, linear: %d\n",
@@ -516,7 +552,7 @@ static BOOL ExecuteRenderer(ComponentImpl* com, PortContainer* in, PortContainer
                 VLOG(INFO, "pBuffer = %p, dmaBuffer = %p, index = %d/%d\n", output->pBuffer, dmaBuffer, count, total_count);
                 if (count >= total_count)
                 {
-                    VLOG(INFO, "A wrong Frame Found\n");
+                    VLOG(ERR, "A wrong Frame Found\n");
                     output->nFilledLen = 0;
                     break;
                 }
@@ -528,7 +564,11 @@ static BOOL ExecuteRenderer(ComponentImpl* com, PortContainer* in, PortContainer
             }
         }
         output->nFilledLen = sizeYuv;
-        output->nFlags = srcData->decInfo.indexFrameDisplay;
+        output->index = srcData->decInfo.indexFrameDisplay;
+
+        if(srcData->last)
+            output->nFlags |= 0x1;
+
         if(ComponentPortGetData(&com->sinkPort))
         {
             ComponentNotifyListeners(com, COMPONENT_EVENT_DEC_FILL_BUFFER_DONE, (void *)output);
@@ -565,6 +605,7 @@ static BOOL ExecuteRenderer(ComponentImpl* com, PortContainer* in, PortContainer
 
     if (srcData->last == TRUE) {
 #ifdef USE_FEEDING_METHOD_BUFFER
+        ComponentNotifyListeners(com, COMPONENT_EVENT_DEC_DECODED_ALL, NULL);
         while ((output = (PortContainerExternal*)ComponentPortGetData(&com->sinkPort)) != NULL)
         {
             output->nFlags = 0x1;
@@ -610,6 +651,10 @@ static void ReleaseRenderer(ComponentImpl* com)
     Uint32           coreIdx = ctx->testDecConfig.coreIdx;
     Uint32           i;
 
+#ifdef USE_FEEDING_METHOD_BUFFER
+    if (!ctx->useBufferExternal)
+    {
+#endif
     for (i=0; i<MAX_REG_FRAME; i++) {
         if (ctx->pFbMem[i].size) {
             if (i < ctx->fbCount.linearNum)
@@ -618,6 +663,9 @@ static void ReleaseRenderer(ComponentImpl* com)
                 vdi_free_dma_memory(coreIdx, &ctx->pFbMem[i], DEC_FB_LINEAR, ctx->handle->instIndex);
         }
     }
+#ifdef USE_FEEDING_METHOD_BUFFER
+    }
+#endif
 
     for (i=0; i<MAX_REG_FRAME; i++) {
         if (ctx->pPPUFrame[i].size) vdi_free_dma_memory(coreIdx, &ctx->pPPUFbMem[i], DEC_ETC, ctx->handle->instIndex);
@@ -660,8 +708,16 @@ static Component CreateRenderer(ComponentImpl* com, CNMComponentConfig* componen
     ctx->ppuQ              = Queue_Create(MAX_REG_FRAME, sizeof(FrameBuffer));
 
 #ifdef USE_FEEDING_METHOD_BUFFER
-    ctx->MemoryOptimization = TRUE;
-    ctx->totalBufferNumber = 7;
+    if (componentParam->MemoryOptimization)
+    {
+        ctx->MemoryOptimization = TRUE;
+    }
+    else
+    {
+        ctx->MemoryOptimization = FALSE;
+    }
+
+    ctx->totalBufferNumber = 12;
     ctx->currentBufferNumber = 0;
 #endif
     return (Component)com;

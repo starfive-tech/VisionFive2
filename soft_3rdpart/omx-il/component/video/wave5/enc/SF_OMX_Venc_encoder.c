@@ -499,7 +499,7 @@ static OMX_ERRORTYPE SF_OMX_GetParameter(
         // ret = OMX_ErrorNotImplemented;
         break;
     default:
-
+        ret = OMX_ErrorUnsupportedIndex;
         break;
     }
 
@@ -720,7 +720,7 @@ static OMX_ERRORTYPE SF_OMX_SetParameter(
     case OMX_IndexParamVideoQuantization:
     case OMX_IndexParamVideoIntraRefresh:
     default:
-
+        ret = OMX_ErrorUnsupportedIndex;
         break;
     }
 
@@ -965,7 +965,7 @@ static OMX_ERRORTYPE SF_OMX_SendCommand(
     switch (Cmd)
     {
     case OMX_CommandStateSet:
-        pSfOMXComponent->nextState = nParam;
+        pSfOMXComponent->state = nParam;
         LOG(SF_LOG_INFO, "OMX dest state = %X\r\n", nParam);
         switch (nParam)
         {
