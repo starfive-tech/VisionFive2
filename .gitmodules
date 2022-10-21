@@ -5,7 +5,7 @@
 [submodule "u-boot"]
 	path = u-boot
 	url = git@192.168.110.45:sdk/u-boot.git
-	branch = jh7110-devel
+	branch = jh7110-master
 [submodule "linux"]
 	path = linux
 	url = git@192.168.110.45:sdk/linux.git
