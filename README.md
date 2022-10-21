@@ -1,89 +1,113 @@
 # StarFiveTech Freedom Unleashed SDK
 
-This builds a complete RISC-V cross-compile toolchain for the StarFiveTech Freedom
-`JH7110` SoC. It also builds U-boot SPL, U-boot and a flattened image tree (FIT)
-image with a Opensbi binary, linux kernel, device tree, ramdisk and rootdisk for the 
-`JH7110 EVB` board.
+This builds a complete RISC-V cross-compile toolchain for the `StarFiveTech` `JH7110` SoC. It also builds U-boot SPL, U-boot and a flattened image tree (FIT) image with a Opensbi binary, linux kernel, device tree, ramdisk image and rootfs image for the `JH7110 EVB` board.
 
 ## Prerequisites
 
-### Ubuntu 16.04/18.04/20.04 x86_64 host
+Recommend OS: Ubuntu 16.04/18.04/20.04 x86_64
 
-- Status: Working
-- Build dependencies: `build-essential g++ git autoconf automake autotools texinfo bison xxd curl flex gawk gdisk gperf libgmp-dev libmpfr-dev libmpc-dev libz-dev libssl-dev libncurses-dev libtool patchutils python screen texinfo unzip zlib1g-dev libyaml-dev wget cpio bc dosfstools`
-- Additional build deps for **QEMU**: `libglib2.0-dev libpixman-1-dev`
-- Additional build deps for **Spike**: `device-tree-compiler`
-- tools require for  **format-boot-loader** target: `mtools`
+Install required additional packages:
 
-## Fetch code Instructions ##
+```
+$ sudo apt update
+$ sudo apt-get install build-essential g++ git autoconf automake autotools texinfo
+bison xxd curl flex gawk gdisk gperf libgmp-dev libmpfr-dev libmpc-dev libz-dev libssl-
+dev libncurses-dev libtool patchutils python screen texinfo unzip zlib1g-dev libyaml-
+dev wget cpio bc dosfstools mtools device-tree-compiler libglib2.0-dev libpixman-1-dev kpartx
+```
 
-Checkout this repository  (branch `jh7110-devel`). Then you will need to checkout all of the linked submodules using:
+Additional packages for Git LFS support:
 
+```
+$ curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash
+$ sudo apt-get install git-lfs
+```
+
+## Fetch Code Instructions ##
+
+Checkout this repository  (e.g.: branch `jh7110-devel`). Then checkout all of the linked submodules using:
+
+	$ git clone git@192.168.110.45:sdk/freelight-u-sdk.git
 	$ git checkout --track origin/jh7110-devel
 	$ git submodule update --init --recursive
 
+In case someone run `git clone git@gitlab.starfivetech.com:sdk/freelight-u-sdk.git`, recommend to add the below at the tail of the /etc/hosts to fix the network domain issue:
+
+```
+192.168.110.45 gitlab.starfivetech.com
+```
+
 This will take some time and require around 7GB of disk space. Some modules may fail because certain dependencies don't have the best git hosting. The only solution is to wait and try again later (or ask someone for a copy of that source repository).
 
-Once the submodules are initialized, 4 submodules `buildroot`, `u-boot`,
-`linux` and `opensbi` need checkout to corresponding branches manually, seeing `.gitmodule`
+For user who build the release tag version, the above command is enough. For developer, need to switch the 4 submodules `buildroot`, `u-boot`, `linux`, `opensbi` to correct branch manually, or refer to `.gitmodule`
 
 ```
 $ cd buildroot && git checkout jh7110-devel && cd ..
-$ cd u-boot && git checkout jh7110-devel && cd ..
-$ cd linux && git checkout --track origin/jh7110-5.15.y-devel && cd ..
+$ cd u-boot && git checkout jh7110-master && cd ..
+$ cd linux && git checkout jh7110-5.15.y-devel && cd ..
 $ cd opensbi && git checkout master && cd ..
 ```
 
-## Build Instructions
+## Quick Build Instructions
 
-After update submodules, run `make` or `make -jx` and the complete toolchain and
-`evb_fw_payload.img` & `image.fit` will be built. The completed build tree will consume about 14G of disk space.
+Below are the quick building for the initramfs image `image.fit` which could be translated to board through tftp and run on board. The completed toolchain, `u-boot-spl.bin.normal.out`, `evb_fw_payload.img`, `image.fit` will be generated under `work/` directory. The completed build tree will consume about 15G of disk space.
 
-By default, the above generated image does not contain VPU driver module(wave511, the video hard decode driver and wave420l, the video hard encode driver)and JPU driver module(codaj12,the jpeg/mjpeg hard decode&encode driver).  The following instructions will add VPU driver module and JPU driver module according to your requirement:
-
-	$ make -jx
+	$ make -j$(nproc)
 	$ make vpudriver-build
 	$ rm -rf work/buildroot_initramfs/images/rootfs.tar
 	$ rm work/initramfs.cpio.gz
-	$ make -jx
+	$ make -j$(nproc)
 
 Then the below target files will be generated, copy files to tftp server workspace path:
 
 ```
-work/image.fit
-work/evb_fw_payload.img
-work/u-boot-spl.bin.normal.out
-
-work/initramfs.cpio.gz
-work/linux/arch/riscv/boot/Image.gz
-
-$ tree work/linux/arch/riscv/boot/dts/starfive
-├── evb-overlay
-│   ├── jh7110-evb-overlay-can.dtbo
-│   ├── jh7110-evb-overlay-rgb2hdmi.dtbo
-│   ├── jh7110-evb-overlay-sdio.dtbo
-│   ├── jh7110-evb-overlay-spi.dtbo
-│   ├── jh7110-evb-overlay-uart4-emmc.dtbo
-│   └── jh7110-evb-overlay-uart5-pwm.dtbo
-├── jh7110-evb-can-pdm-pwmdac.dtb
-├── jh7110-evb.dtb
-├── jh7110-evb-dvp-rgb2hdmi.dtb
-├── jh7110-evb-pcie-i2s-sd.dtb
-├── jh7110-evb-spi-uart2.dtb
-├── jh7110-evb-uart1-rgb2hdmi.dtb
-├── jh7110-evb-uart4-emmc-spdif.dtb
-└── jh7110-evb-uart5-pwm-i2c-tdm.dtb
+work/
+├── evb_fw_payload.img
+├── image.fit
+├── initramfs.cpio.gz
+├── u-boot-spl.bin.normal.out
+├── linux/arch/riscv/boot
+    ├── dts
+    │   └── starfive
+    │       ├── evb-overlay
+    │       │   ├── jh7110-evb-overlay-can.dtbo
+    │       │   ├── jh7110-evb-overlay-rgb2hdmi.dtbo
+    │       │   ├── jh7110-evb-overlay-sdio.dtbo
+    │       │   ├── jh7110-evb-overlay-spi.dtbo
+    │       │   ├── jh7110-evb-overlay-uart4-emmc.dtbo
+    │       │   └── jh7110-evb-overlay-uart5-pwm.dtbo
+    │       ├── jh7110-evb-can-pdm-pwmdac.dtb
+    │       ├── jh7110-evb.dtb
+    │       ├── jh7110-evb-dvp-rgb2hdmi.dtb
+    │       ├── jh7110-evb-i2s-ac108.dtb
+    │       ├── jh7110-evb-pcie-i2s-sd.dtb
+    │       ├── jh7110-evb-spi-uart2.dtb
+    │       ├── jh7110-evb-uart1-rgb2hdmi.dtb
+    │       ├── jh7110-evb-uart4-emmc-spdif.dtb
+    │       ├── jh7110-evb-uart5-pwm-i2c-tdm.dtb
+    │       ├── jh7110-evb-usbdevice.dtb
+    │       ├── jh7110-fpga.dtb
+    └── Image.gz
 ```
 
-Note the make command to config buildroot, uboot, linux, busybox configuration:
+Additional command to config buildroot, uboot, linux, busybox:
 
 ```
-$ make buildroot_initramfs-menuconfig   # initramfs menuconfig
-$ make buildroot_rootfs-menuconfig      # rootfs menuconfig
-$ make uboot-menuconfig      # uboot menuconfig
-$ make linux-menuconfig      # Kernel menuconfig
+$ make buildroot_initramfs-menuconfig   # buildroot initramfs menuconfig
+$ make buildroot_rootfs-menuconfig      # buildroot rootfs menuconfig
+$ make uboot-menuconfig                 # uboot menuconfig
+$ make linux-menuconfig                 # Kernel menuconfig
 $ make -C ./work/buildroot_initramfs/ O=./work/buildroot_initramfs busybox-menuconfig  # for initramfs busybox menuconfig
-$ make -C ./work/buildroot_rootfs/ O=./work/buildroot_rootfs busybox-menuconfig  # for rootfs busybox menuconfig
+$ make -C ./work/buildroot_rootfs/ O=./work/buildroot_rootfs busybox-menuconfig        # for rootfs busybox menuconfig
+```
+
+Additional command to build single package or module:
+
+```
+$ make vmlinu    # build linux kernel
+$ make uboot     # build u-boot
+$ make -C ./work/buildroot_rootfs/ O=./work/buildroot_rootfs busybox-rebuild   # build busybox package
+$ make -C ./work/buildroot_rootfs/ O=./work/buildroot_rootfs ffmpeg-rebuild    # build ffmpeg package
 ```
 
 ## Running on JH7110 EVB Board via Network
@@ -91,26 +115,25 @@ $ make -C ./work/buildroot_rootfs/ O=./work/buildroot_rootfs busybox-menuconfig 
 After the JH7110 EVB Board is properly connected to the serial port cable, network cable and power cord, turn on the power from the wall power socket to power and you will see the startup information as follows:
 
 ```
-U-Boot 2021.10 (Jul 01 2022 - 21:30:49 +0800)
+U-Boot 2021.10 (Oct 10 2022 - 22:49:48 +0800)
 
 CPU:   rv64imacu
 Model: StarFive JH7110 EVB
 DRAM:  4 GiB
-FREQ:  1250 MHz
 MMC:   sdio0@16010000: 0
-Loading Environment from nowhere... OK
+Loading Environment from SPIFlash... SF: Detected gd25lq128 with page size 256 Bytes, erase size 4 KiB, total 16 MiB
 In:    serial@10000000
 Out:   serial@10000000
 Err:   serial@10000000
 Model: StarFive JH7110 EVB
 Net:   eth0: ethernet@16030000, eth1: ethernet@16040000
 Hit any key to stop autoboot:  0 
-StarFive # 
+StarFive #
 ```
 
 Then press any key to stop and enter uboot terminal, there are two way to boot the board
 
-### Running image.fit with the default dtb `jh7110-evb.dtb`
+#### 1. Running image.fit with the default dtb `jh7110-evb.dtb`
 
 transfer image.fit through TFTP:
 
@@ -141,7 +164,7 @@ buildroot login:root
 Password: starfive
 ```
 
-### Running the other dtb with the Image.gz and initramfs.cpio.gz
+#### 2. Running the other dtb with the Image.gz and initramfs.cpio.gz
 
 If we want to loading the other dtb, e.g. `jh7110-evb-pcie-i2s-sd.dtb`, follow the below
 
@@ -173,46 +196,52 @@ buildroot login:root
 Password: starfive
 ```
 
-## Building TF Card Booting Image
+## APPENDIX I: Generate Booting SD Card
 
 If you don't already use a local tftp server, then you probably want to make the TF card target; the default size is 16 GBs. **NOTE THIS WILL DESTROY ALL EXISTING DATA** on the target TF card; The `GPT` Partition Table for the TF card is recommended. 
 
-Please insert the TF card to the host and run command `df -h` to check the device name `/dev/sdXX`, then run command `umount /dev/sdXX`",  then run the following instructions to build TF card image:
+#### Generate SD Card Image File
+
+We could generate a sdcard image file by the below command. The sdcard image file could be burned into sd card or tf card through `dd` command, or `rpi-imager` or `balenaEtcher` tool
 
 ```
-$ make -jx
-$ make buildroot_rootfs -jx
+$ make -j$(nproc)
+$ make buildroot_rootfs -j$(nproc)
 $ make vpudriver-build-rootfs
 $ rm work/buildroot_rootfs/images/rootfs.ext*
-$ make buildroot_rootfs -jx
-$ make DISK=/dev/sdX format-rootfs-image && sync
-```
-
-## Generate SDCard Image file
-
-We could generate a sdcard image file by the below command. The sdcard image file could be burned into sdcard or tf card through `dd` command, or `rpi-imager` or `balenaEtcher` tool
-
-```
-$ make -jx
-$ make buildroot_rootfs -jx
-$ make vpudriver-build-rootfs
-$ rm work/buildroot_rootfs/images/rootfs.ext*
-$ make buildroot_rootfs -jx
+$ make buildroot_rootfs -j$(nproc)
 $ ./genimage.sh
 ```
 
-Then the output file `work/sdcard.img`  will be generated.  Then It can been burn into tf card, e.g. through `dd` command
+The output file `work/sdcard.img`  will be generated.
+
+#### Burn Image File to SD Card
+
+The `sdcard.img` can be burn into a tf card. e.g. through `dd` command as below
 
 ```
 $ sudo dd if=work/sdcard.img of=/dev/sdX bs=4096
 $ sync
+```
+
+Then extend the tf card rootfs partition if needed. There are two ways to implement it. 
+
+The first way could be done on Ubuntu host, need to install the below package:
+
+```
+$ sudo apt install cloud-guest-utils e2fsprogs 
+```
+
+Then insert the tf card to Ubuntu host, run the below, note `/dev/sdX` is the tf card device.
+
+```
 $ sudo growpart /dev/sdX 4  # extend partition 4
 $ sudo e2fsck -f /dev/sdX4
 $ sudo resize2fs /dev/sdX4  # extend filesystem
 $ sudo fsck.ext4 /dev/sdX4
 ```
 
-If your system doesn't have growpart, like buildroot, you can use fdisk instead：
+The second way is when your system doesn't have `growpart` command, e.g. the buildroot on board. The tf card can be insert into the Ubuntu host or  just directly on JH7110 board. you can use fdisk instead：
 
 ```bash
 #!bin/sh
@@ -235,7 +264,57 @@ sudo resize2fs ${disk}${part}
 sudo fsck.ext4 ${disk}${part}
 ```
 
-## Using DTB Overlay Dynamically
+## APPENDIX II: Using DTB Overlay Dynamically
 
-The system support load dtb overlay dynamically when the board is running. The detail process to use the dtbo please reference to the dtbo documents.
+The system support loading dtb overlay dynamically when the board is running. Run below on board:
 
+```
+# mount -t configfs none /sys/kernel/config
+# mkdir -p /sys/kernel/config/device-tree/overlays/dtoverlay
+# cd <the dtoverlay.dtbo path>
+# cat jh7110-evb-overlay-rgb2hdmi.dtbo > /sys/kernel/config/device-tree/overlays/dtoverlay/dtbo
+```
+
+Additional, you could remove the dtbo feature:
+
+```
+# rmdir /sys/kernel/config/device-tree/overlays/dtoverlay
+```
+
+## APPENDIX III: Updating SPL and U-Boot binaries Under U-boot
+
+Prepare the tftp sever. e.g. `sudo apt install tftpd-hpa` for Ubuntu host.
+
+1. Power on the evaluation board and wait until enters the u-boot command line
+
+2. Configure the environment variables by executing:
+
+   ```
+   StarFive # setenv ipaddr 192.168.120.222;setenv serverip 192.168.120.99
+   ```
+
+3. Check the connectivity by pinging the host PC from evaluation board;
+
+4. Initialize SPI flash:
+
+   ```
+   StarFive # sf probe
+   ```
+
+5. Update SPL binary
+
+   ```
+   StarFive # tftpboot 0xa0000000 ${serverip}:u-boot-spl.bin.normal.out
+   StarFive # sf update 0xa0000000 0x0 $filesize
+   ```
+
+6. Update U-Boot binary
+
+   ```
+   StarFive # tftpboot 0xa0000000 ${serverip}:evb_fw_payload.img
+   StarFive # sf update 0xa0000000 0x100000 $filesize
+   ```
+
+## APPENDIX IV:  How to Switch to 4G DDR or 8G DDR
+
+The detail process will add it later
