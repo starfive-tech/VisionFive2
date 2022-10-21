@@ -52,7 +52,7 @@
 
 /* definitions to be changed as customer  configuration */
 /* if you want to have clock gating scheme frame by frame */
-//#define VPU_SUPPORT_CLOCK_CONTROL
+#define VPU_SUPPORT_CLOCK_CONTROL
 
 /* if clktree is work,try this...*/
 #define STARFIVE_VPU_SUPPORT_CLOCK_CONTROL
@@ -174,13 +174,17 @@ static void vpu_clk_disable(vpu_clk_t *clk);
 static int vpu_clk_enable(vpu_clk_t *clk);
 static vpu_clk_t *vpu_clk_get(struct platform_device *pdev);
 static void vpu_clk_put(vpu_clk_t *clk);
+static int vpu_pmu_enable(struct device *dev);
+static void vpu_pmu_disable(struct device *dev);
 
 /* end customer definition */
 static vpudrv_buffer_t s_instance_pool = {0};
 static vpudrv_buffer_t s_common_memory = {0};
 static vpu_drv_context_t s_vpu_drv_context;
+static dev_t s_vpu_devt;
 static int s_vpu_major;
 static struct cdev s_vpu_cdev;
+static struct class *s_vpu_class;
 
 static struct vpu_clk_t *s_vpu_clk;
 static int s_vpu_open_ref_count;
@@ -465,6 +469,8 @@ static irqreturn_t vpu_irq_handler(int irq, void *dev_id)
 static int vpu_open(struct inode *inode, struct file *filp)
 {
 	DPRINTK("[VPUDRV][+] %s\n", __func__);
+	vpu_clk_enable(s_vpu_clk);
+	reset_control_deassert(s_vpu_clk->resets);
 	spin_lock(&s_vpu_lock);
 
 	s_vpu_drv_context.open_count++;
@@ -914,7 +920,9 @@ static int vpu_release(struct inode *inode, struct file *filp)
     }
     up(&s_vpu_sem);
 
-	vpu_hw_reset();
+	//vpu_hw_reset();
+	reset_control_assert(s_vpu_clk->resets);
+	vpu_clk_disable(s_vpu_clk);
 	
     return 0;
 }
@@ -1019,6 +1027,7 @@ static int vpu_probe(struct platform_device *pdev)
 {
 	int err = 0;
 	struct resource *res = NULL;
+	struct device *devices;
 
 	DPRINTK("[VPUDRV] vpu_probe\n");
 
@@ -1043,20 +1052,33 @@ static int vpu_probe(struct platform_device *pdev)
 	}
 
 	/* get the major number of the character device */
-	if ((alloc_chrdev_region(&s_vpu_major, 0, 1, VPU_DEV_NAME)) < 0) {
+	if ((alloc_chrdev_region(&s_vpu_devt, 0, 1, VPU_DEV_NAME)) < 0) {
 		err = -EBUSY;
 		printk(KERN_ERR "could not allocate major number\n");
 		goto ERROR_PROVE_DEVICE;
 	}
 	printk(KERN_INFO "SUCCESS alloc_chrdev_region\n");
-
+	s_vpu_major = MAJOR(s_vpu_devt);
 	/* initialize the device structure and register the device with the kernel */
 	cdev_init(&s_vpu_cdev, &vpu_fops);
-	if ((cdev_add(&s_vpu_cdev, s_vpu_major, 1)) < 0) {
+	if ((cdev_add(&s_vpu_cdev, s_vpu_devt, 1)) < 0) {
 		err = -EBUSY;
 		printk(KERN_ERR "could not allocate chrdev\n");
 
 		goto ERROR_PROVE_DEVICE;
+	}
+
+	s_vpu_class = class_create(THIS_MODULE, VPU_DEV_NAME);
+	if (IS_ERR(s_vpu_class)) {
+	    dev_err(vpu_dev, "class creat error.\n");
+	    goto ERROR_CRART_CLASS;
+	}
+
+	devices = device_create(s_vpu_class, 0, MKDEV(s_vpu_major, 0),
+				    NULL, VPU_DEV_NAME);
+	if (IS_ERR(devices)) {
+	    dev_err(vpu_dev, "device creat error.\n");
+	    goto ERROR_CREAT_DEVICE;
 	}
 
 	if (pdev)
@@ -1069,10 +1091,7 @@ static int vpu_probe(struct platform_device *pdev)
 	else
 		DPRINTK("[VPUDRV] : get clock controller s_vpu_clk=%p\n", s_vpu_clk);
 
-#ifdef VPU_SUPPORT_CLOCK_CONTROL
-#else
-	vpu_clk_enable(s_vpu_clk);
-#endif
+	vpu_pmu_enable(s_vpu_clk->dev);
 
 #ifdef VPU_SUPPORT_ISR
 #ifdef VPU_SUPPORT_PLATFORM_DRIVER_REGISTER
@@ -1115,6 +1134,10 @@ static int vpu_probe(struct platform_device *pdev)
 
 	return 0;
 
+ERROR_CREAT_DEVICE:
+	class_destroy(s_vpu_class);
+ERROR_CRART_CLASS:
+	cdev_del(&s_vpu_cdev);
 ERROR_PROVE_DEVICE:
 
 	if (s_vpu_major)
@@ -1154,8 +1177,10 @@ static int vpu_remove(struct platform_device *pdev)
 #endif
 
 	if (s_vpu_major > 0) {
+		device_destroy(s_vpu_class, MKDEV(s_vpu_major, 0));
+		class_destroy(s_vpu_class);
 		cdev_del(&s_vpu_cdev);
-		unregister_chrdev_region(s_vpu_major, 1);
+		unregister_chrdev_region(s_vpu_devt, 1);
 		s_vpu_major = 0;
 	}
 
@@ -1167,8 +1192,8 @@ static int vpu_remove(struct platform_device *pdev)
 	if (s_vpu_register.virt_addr)
 		iounmap((void *)s_vpu_register.virt_addr);
 
-	vpu_clk_disable(s_vpu_clk);
 	vpu_clk_put(s_vpu_clk);
+	vpu_pmu_disable(&pdev->dev);
 
 #endif /*VPU_SUPPORT_PLATFORM_DRIVER_REGISTER*/
 
@@ -1501,8 +1526,10 @@ static void __exit vpu_exit(void)
 #endif
 
 	if (s_vpu_major > 0) {
+		device_destroy(s_vpu_class, MKDEV(s_vpu_major, 0));
+		class_destroy(s_vpu_class);
 		cdev_del(&s_vpu_cdev);
-		unregister_chrdev_region(s_vpu_major, 1);
+		unregister_chrdev_region(s_vpu_devt, 1);
 		s_vpu_major = 0;
 	}
 
@@ -1824,14 +1851,10 @@ static int vpu_clk_enable(vpu_clk_t *clk)
 {
 	int ret;
 
-	vpu_pmu_enable(clk->dev);
+
 	ret = clk_bulk_prepare_enable(clk->nr_clks, clk->clks);
 	if (ret)
 		dev_err(clk->dev, "enable clk error.\n");
-
-	ret = reset_control_deassert(clk->resets);
-	if (ret)
-		dev_err(clk->dev, "deassert vpu error.\n");
 
 	DPRINTK("[VPUDRV] vpu_clk_enable\n");
 	return ret;
@@ -1839,14 +1862,7 @@ static int vpu_clk_enable(vpu_clk_t *clk)
 
 static void vpu_clk_disable(vpu_clk_t *clk)
 {
-	int ret;
-
-	ret = reset_control_assert(clk->resets);
-	if (ret)
-		dev_err(clk->dev, "assert vpu error.\n");
-
 	clk_bulk_disable_unprepare(clk->nr_clks, clk->clks);
-	vpu_pmu_disable(clk->dev);
 }
 
 #endif /*STARFIVE_VPU_SUPPORT_CLOCK_CONTROL*/

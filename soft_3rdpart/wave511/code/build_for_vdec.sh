@@ -20,7 +20,7 @@ $CP $DEC_FFMPEG_BIN $OUTPUT
 make -f WaveDecode-ffmpeg.mak clean
 
 make -f WaveDecDriver.mak
-$CP $DRI_SRC/vdec.ko $DRI_SRC/load.sh  $DRI_SRC/unload.sh $DRI_OPT
+$CP $DRI_SRC/vdec.ko $DRI_OPT
 make -f WaveDecDriver.mak clean
 
 make -f WaveDecode.mak

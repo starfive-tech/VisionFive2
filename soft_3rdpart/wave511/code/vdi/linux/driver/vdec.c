@@ -3,6 +3,7 @@
 #include <linux/interrupt.h>
 #include <linux/ioport.h>
 #include <linux/module.h>
+#include <linux/mutex.h>
 #include <linux/platform_device.h>
 #include <linux/dma-mapping.h>
 #include <linux/of.h>
@@ -168,8 +169,10 @@ static void vpu_pmu_disable(struct device *dev);
 static vpudrv_buffer_t s_instance_pool = {0};
 static vpudrv_buffer_t s_common_memory = {0};
 static vpu_drv_context_t s_vpu_drv_context;
+static dev_t s_vpu_devt;
 static int s_vpu_major;
 static struct cdev s_vpu_cdev;
+static struct class *s_vpu_class;
 
 static vpu_clk_t *s_vpu_clk;
 static int s_vpu_open_ref_count;
@@ -305,6 +308,8 @@ struct freq_ctrl {
 	const char *fixed_freq;
 	char re_cpu_gov[16];
 	char re_max_freq[16];
+	struct mutex mutex_lock;
+	int count;
 };
 
 static struct freq_ctrl *vpu_freq_ctrl;
@@ -337,6 +342,8 @@ static int vpu_freq_close(void)
 	if (!vpu_freq_ctrl)
 		return -ENODEV;
 
+	mutex_destroy(&vpu_freq_ctrl->mutex_lock);
+
 	if (vpu_freq_ctrl->governor && vpu_freq_ctrl->maxfreq
 		&& vpu_freq_ctrl->parameters_off) {
 		fput(vpu_freq_ctrl->governor);
@@ -357,18 +364,26 @@ static int vpu_freq_save_env(void)
 
 	if (!vpu_freq_ctrl)
 		return -ENODEV;
-	/*save env*/
-	kernel_read(vpu_freq_ctrl->governor, vpu_freq_ctrl->re_cpu_gov,
-			sizeof(vpu_freq_ctrl->re_cpu_gov), NULL);
-	kernel_read(vpu_freq_ctrl->maxfreq, vpu_freq_ctrl->re_max_freq,
-			sizeof(vpu_freq_ctrl->re_max_freq), NULL);
 
-	/*setenv*/
-	rv = kernel_write(vpu_freq_ctrl->maxfreq, fixed_freq,
-			strlen(fixed_freq), NULL);
-	rv = kernel_write(vpu_freq_ctrl->governor, governor_mode,
-			strlen(governor_mode), NULL);
-	rv = kernel_write(vpu_freq_ctrl->parameters_off, "1", 1, NULL);
+	mutex_lock(&vpu_freq_ctrl->mutex_lock);
+
+	if (vpu_freq_ctrl->count == 0) {
+		/*save env*/
+		kernel_read(vpu_freq_ctrl->governor, vpu_freq_ctrl->re_cpu_gov,
+				sizeof(vpu_freq_ctrl->re_cpu_gov), NULL);
+		kernel_read(vpu_freq_ctrl->maxfreq, vpu_freq_ctrl->re_max_freq,
+				sizeof(vpu_freq_ctrl->re_max_freq), NULL);
+
+		/*setenv*/
+		rv = kernel_write(vpu_freq_ctrl->maxfreq, fixed_freq,
+				strlen(fixed_freq), NULL);
+		rv = kernel_write(vpu_freq_ctrl->governor, governor_mode,
+				strlen(governor_mode), NULL);
+		rv = kernel_write(vpu_freq_ctrl->parameters_off, "1", 1, NULL);
+	}
+	vpu_freq_ctrl->count++;
+
+	mutex_unlock(&vpu_freq_ctrl->mutex_lock);
 
 	return 0;
 }
@@ -380,12 +395,19 @@ static int vpu_freq_put_env(void)
 	if (!vpu_freq_ctrl)
 		return -ENODEV;
 
-	rv = kernel_write(vpu_freq_ctrl->governor, vpu_freq_ctrl->re_cpu_gov,
-			strlen(vpu_freq_ctrl->re_cpu_gov), NULL);
-	rv = kernel_write(vpu_freq_ctrl->maxfreq, vpu_freq_ctrl->re_max_freq,
-			strlen(vpu_freq_ctrl->re_max_freq), NULL);
-	rv = kernel_write(vpu_freq_ctrl->parameters_off, "0", 1, NULL);
+	mutex_lock(&vpu_freq_ctrl->mutex_lock);
 
+	vpu_freq_ctrl->count--;
+
+	if (vpu_freq_ctrl->count == 0) {
+		rv = kernel_write(vpu_freq_ctrl->governor, vpu_freq_ctrl->re_cpu_gov,
+				strlen(vpu_freq_ctrl->re_cpu_gov), NULL);
+		rv = kernel_write(vpu_freq_ctrl->maxfreq, vpu_freq_ctrl->re_max_freq,
+				strlen(vpu_freq_ctrl->re_max_freq), NULL);
+		rv = kernel_write(vpu_freq_ctrl->parameters_off, "0", 1, NULL);
+	}
+
+	mutex_unlock(&vpu_freq_ctrl->mutex_lock);
 	return 0;
 }
 
@@ -414,6 +436,9 @@ static int vpu_freq_init(struct device *dev)
 		vpu_freq_ctrl->fixed_freq = of_str;
 	else
 		vpu_freq_ctrl->fixed_freq = "1250000";
+
+	vpu_freq_ctrl->count = 0;
+	mutex_init(&vpu_freq_ctrl->mutex_lock);
 
 	dev_dbg(dev, "fixed_freq:%s\n", vpu_freq_ctrl->fixed_freq);
 
@@ -1489,11 +1514,11 @@ struct file_operations vpu_fops = {
     .mmap = vpu_mmap,
 };
 
-
 static int vpu_probe(struct platform_device *pdev)
 {
     int err = 0;
     struct resource *res = NULL;
+    struct device *devices;
 #ifdef VPU_SUPPORT_RESERVED_VIDEO_MEMORY
 	struct resource res_cma;
 	struct device_node *node;
@@ -1520,20 +1545,34 @@ static int vpu_probe(struct platform_device *pdev)
     }
 
     /* get the major number of the character device */
-    if ((alloc_chrdev_region(&s_vpu_major, 0, 1, VPU_DEV_NAME)) < 0) {
+    if ((alloc_chrdev_region(&s_vpu_devt, 0, 1, VPU_DEV_NAME)) < 0) {
         err = -EBUSY;
         printk(KERN_ERR "could not allocate major number\n");
         goto ERROR_PROVE_DEVICE;
     }
     printk(KERN_INFO "SUCCESS alloc_chrdev_region\n");
 
+    s_vpu_major = MAJOR(s_vpu_devt);
     /* initialize the device structure and register the device with the kernel */
     cdev_init(&s_vpu_cdev, &vpu_fops);
-    if ((cdev_add(&s_vpu_cdev, s_vpu_major, 1)) < 0) {
+    if ((cdev_add(&s_vpu_cdev, s_vpu_devt, 1)) < 0) {
         err = -EBUSY;
         printk(KERN_ERR "could not allocate chrdev\n");
 
         goto ERROR_PROVE_DEVICE;
+    }
+
+    s_vpu_class = class_create(THIS_MODULE, VPU_DEV_NAME);
+    if (IS_ERR(s_vpu_class)) {
+	dev_err(vpu_dev, "class creat error.\n");
+	goto ERROR_CRART_CLASS;
+    }
+
+    devices = device_create(s_vpu_class, 0, MKDEV(s_vpu_major, 0),
+				NULL, VPU_DEV_NAME);
+    if (IS_ERR(devices)) {
+	dev_err(vpu_dev, "device creat error.\n");
+	goto ERROR_CREAT_DEVICE;
     }
 
     if (pdev)
@@ -1601,6 +1640,10 @@ static int vpu_probe(struct platform_device *pdev)
 
     return 0;
 
+ERROR_CREAT_DEVICE:
+	class_destroy(s_vpu_class);
+ERROR_CRART_CLASS:
+	cdev_del(&s_vpu_cdev);
 ERROR_PROVE_DEVICE:
 
     if (s_vpu_major)
@@ -1639,8 +1682,10 @@ static int vpu_remove(struct platform_device *pdev)
 #endif
 
     if (s_vpu_major > 0) {
+        device_destroy(s_vpu_class, MKDEV(s_vpu_major, 0));
+        class_destroy(s_vpu_class);
         cdev_del(&s_vpu_cdev);
-        unregister_chrdev_region(s_vpu_major, 1);
+        unregister_chrdev_region(s_vpu_devt, 1);
         s_vpu_major = 0;
     }
 
@@ -1977,9 +2022,11 @@ static void __exit vpu_exit(void)
 #endif
 
     if (s_vpu_major > 0) {
-        cdev_del(&s_vpu_cdev);
-        unregister_chrdev_region(s_vpu_major, 1);
-        s_vpu_major = 0;
+	device_destroy(s_vpu_class, MKDEV(s_vpu_major, 0));
+	class_destroy(s_vpu_class);
+	cdev_del(&s_vpu_cdev);
+	unregister_chrdev_region(s_vpu_devt, 1);
+	s_vpu_major = 0;
     }
 
 #ifdef VPU_SUPPORT_ISR
