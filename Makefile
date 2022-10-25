@@ -150,8 +150,9 @@ $(buildroot_rootfs_wrkdir)/.config: $(buildroot_srcdir) $(buildroot_initramfs_ta
 	$(MAKE) -C $< RISCV=$(RISCV) PATH=$(RVPATH) O=$(buildroot_rootfs_wrkdir) olddefconfig
 
 $(buildroot_rootfs_ext): $(buildroot_srcdir) $(buildroot_rootfs_wrkdir)/.config $(target_gcc) $(buildroot_rootfs_config)
-	$(MAKE) -C $< RISCV=$(RISCV) PATH=$(RVPATH) O=$(buildroot_rootfs_wrkdir)
+	mkdir -p $(buildroot_rootfs_wrkdir)/target/lib/
 	cp -r $(module_install_path)/lib/modules $(buildroot_rootfs_wrkdir)/target/lib/
+	$(MAKE) -C $< RISCV=$(RISCV) PATH=$(RVPATH) O=$(buildroot_rootfs_wrkdir)
 
 .PHONY: buildroot_rootfs
 buildroot_rootfs: $(buildroot_rootfs_ext)
@@ -186,7 +187,6 @@ $(uboot_wrkdir)/.config: $(uboot_defconfig)
 	cp -p $< $@
 	$(MAKE) -C $(uboot_srcdir) O=$(uboot_wrkdir) ARCH=riscv olddefconfig
 
-vmlinu:$(vmlinux)
 $(vmlinux): $(linux_srcdir) $(linux_wrkdir)/.config $(target_gcc)
 	$(MAKE) -C $< O=$(linux_wrkdir) \
 		ARCH=riscv \
@@ -203,51 +203,13 @@ $(vmlinux): $(linux_srcdir) $(linux_wrkdir)/.config $(target_gcc)
 		INSTALL_MOD_PATH=$(module_install_path) \
 		modules_install
 
-# vpu building depend on the $(vmlinux), $(vmlinux) depend on $(buildroot_initramfs_sysroot)
-# so vpubuild should be built seperately
-vpubuild: $(vmlinux) wave511-build wave420l-build codaj12-build omxil-build vpudriver-build
-wave511-build:
-	$(MAKE) -C $(buildroot_initramfs_wrkdir) O=$(buildroot_initramfs_wrkdir) wave511-dirclean
-	$(MAKE) -C $(buildroot_initramfs_wrkdir) O=$(buildroot_initramfs_wrkdir) wave511-rebuild
-wave420l-build:
-	$(MAKE) -C $(buildroot_initramfs_wrkdir) O=$(buildroot_initramfs_wrkdir) wave420l-dirclean
-	$(MAKE) -C $(buildroot_initramfs_wrkdir) O=$(buildroot_initramfs_wrkdir) wave420l-rebuild
-codaj12-build:
-	$(MAKE) -C $(buildroot_initramfs_wrkdir) O=$(buildroot_initramfs_wrkdir) codaj12-dirclean
-	$(MAKE) -C $(buildroot_initramfs_wrkdir) O=$(buildroot_initramfs_wrkdir) codaj12-rebuild
-omxil-build:
-	$(MAKE) -C $(buildroot_initramfs_wrkdir) O=$(buildroot_initramfs_wrkdir) sf-omx-il-dirclean
-	$(MAKE) -C $(buildroot_initramfs_wrkdir) O=$(buildroot_initramfs_wrkdir) sf-omx-il-rebuild
-	$(MAKE) -C $(buildroot_initramfs_wrkdir) O=$(buildroot_initramfs_wrkdir) sf-omx-il-test-dirclean
-	$(MAKE) -C $(buildroot_initramfs_wrkdir) O=$(buildroot_initramfs_wrkdir) sf-omx-il-test-rebuild
-gstomx-build:
-	$(MAKE) -C $(buildroot_initramfs_wrkdir) O=$(buildroot_initramfs_wrkdir) sf-gst-omx-dirclean
-	$(MAKE) -C $(buildroot_initramfs_wrkdir) O=$(buildroot_initramfs_wrkdir) sf-gst-omx-rebuild
-vpudriver-build:
-	$(MAKE) -C $(buildroot_initramfs_wrkdir) O=$(buildroot_initramfs_wrkdir) wave511driver
-	$(MAKE) -C $(buildroot_initramfs_wrkdir) O=$(buildroot_initramfs_wrkdir) wave420ldriver
-	$(MAKE) -C $(buildroot_initramfs_wrkdir) O=$(buildroot_initramfs_wrkdir) codaj12driver
-
-vpubuild_rootfs: $(vmlinux) wave511-build-rootfs wave420l-build-rootfs codaj12-build-rootfs omxil-build-rootfs gstomx-build-rootfs vpudriver-build-rootfs
-wave511-build-rootfs:
-	$(MAKE) -C $(buildroot_rootfs_wrkdir) O=$(buildroot_rootfs_wrkdir) wave511-dirclean
-	$(MAKE) -C $(buildroot_rootfs_wrkdir) O=$(buildroot_rootfs_wrkdir) wave511-rebuild
-wave420l-build-rootfs:
-	$(MAKE) -C $(buildroot_rootfs_wrkdir) O=$(buildroot_rootfs_wrkdir) wave420l-dirclean
-	$(MAKE) -C $(buildroot_rootfs_wrkdir) O=$(buildroot_rootfs_wrkdir) wave420l-rebuild
-codaj12-build-rootfs:
-	$(MAKE) -C $(buildroot_rootfs_wrkdir) O=$(buildroot_rootfs_wrkdir) codaj12-dirclean
-	$(MAKE) -C $(buildroot_rootfs_wrkdir) O=$(buildroot_rootfs_wrkdir) codaj12-rebuild
-omxil-build-rootfs:
-	$(MAKE) -C $(buildroot_rootfs_wrkdir) O=$(buildroot_rootfs_wrkdir) sf-omx-il-dirclean
-	$(MAKE) -C $(buildroot_rootfs_wrkdir) O=$(buildroot_rootfs_wrkdir) sf-omx-il-rebuild
-gstomx-build-rootfs:
-	$(MAKE) -C $(buildroot_rootfs_wrkdir) O=$(buildroot_rootfs_wrkdir) sf-gst-omx-dirclean
-	$(MAKE) -C $(buildroot_rootfs_wrkdir) O=$(buildroot_rootfs_wrkdir) sf-gst-omx-rebuild
-vpudriver-build-rootfs:
-	$(MAKE) -C $(buildroot_rootfs_wrkdir) O=$(buildroot_rootfs_wrkdir) wave511driver
-	$(MAKE) -C $(buildroot_rootfs_wrkdir) O=$(buildroot_rootfs_wrkdir) wave420ldriver
-	$(MAKE) -C $(buildroot_rootfs_wrkdir) O=$(buildroot_rootfs_wrkdir) codaj12driver
+vpudriver-build: $(vmlinux)
+	$(MAKE) -C $(buildroot_initramfs_wrkdir) O=$(buildroot_initramfs_wrkdir) \
+		INSTALL_MOD_PATH=$(module_install_path) wave511driver
+	$(MAKE) -C $(buildroot_initramfs_wrkdir) O=$(buildroot_initramfs_wrkdir) \
+		INSTALL_MOD_PATH=$(module_install_path) wave420ldriver
+	$(MAKE) -C $(buildroot_initramfs_wrkdir) O=$(buildroot_initramfs_wrkdir) \
+		INSTALL_MOD_PATH=$(module_install_path) codaj12driver
 
 .PHONY: initrd
 initrd: $(initramfs)
@@ -255,7 +217,7 @@ initrd: $(initramfs)
 $(initramfs).d: $(buildroot_initramfs_sysroot)
 	$(linux_srcdir)/usr/gen_initramfs_list.sh -l $(confdir)/initramfs.txt $(buildroot_initramfs_sysroot) > $@
 
-$(initramfs): $(buildroot_initramfs_sysroot) $(vmlinux)
+$(initramfs): $(buildroot_initramfs_sysroot) $(vmlinux) vpudriver-build
 	cp -r $(module_install_path)/lib/modules $(buildroot_initramfs_sysroot)/lib/
 	cd $(linux_wrkdir) && \
 		$(linux_srcdir)/usr/gen_initramfs_list.sh \
@@ -361,7 +323,7 @@ uboot_fit: $(uboot_fit)
 clean:
 	rm -rf work/u-boot
 	rm -rf work/opensbi
-	rm -f work/starfive-visionfive-vfat.part
+	rm -f work/starfive-*-vfat.part
 	rm -f work/image.fit
 	rm -f work/*_fw_payload.img
 	rm -f work/initramfs.cpio.gz
