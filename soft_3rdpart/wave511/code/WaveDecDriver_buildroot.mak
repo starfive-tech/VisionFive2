@@ -23,8 +23,11 @@ obj-m	:= vdec.o
 else
 
 default:
-	$(MAKE) -C $(KERNELDIR)	M=$(DRV_PATH) LDDINCDIR=$(DRV_PATH)/../include modules
-
+	$(MAKE) -C $(KERNELDIR) M=$(DRV_PATH) LDDINCDIR=$(DRV_PATH)/../include modules
+ifneq ($(INSTALL_MOD_PATH),)
+	$(MAKE) -C $(KERNELDIR) M=$(DRV_PATH) LDDINCDIR=$(DRV_PATH)/../include \
+		INSTALL_MOD_PATH=$(INSTALL_MOD_PATH) modules_install
+endif
 endif
 
 

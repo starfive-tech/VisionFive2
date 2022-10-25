@@ -53,10 +53,6 @@ $ cd opensbi && git checkout master && cd ..
 Below are the quick building for the initramfs image `image.fit` which could be translated to board through tftp and run on board. The completed toolchain, `u-boot-spl.bin.normal.out`, `evb_fw_payload.img`, `image.fit` will be generated under `work/` directory. The completed build tree will consume about 15G of disk space.
 
 	$ make -j$(nproc)
-	$ make vpudriver-build
-	$ rm -rf work/buildroot_initramfs/images/rootfs.tar
-	$ rm work/initramfs.cpio.gz
-	$ make -j$(nproc)
 
 Then the below target files will be generated, copy files to tftp server workspace path:
 
@@ -108,6 +104,7 @@ $ make vmlinu    # build linux kernel
 $ make uboot     # build u-boot
 $ make -C ./work/buildroot_rootfs/ O=./work/buildroot_rootfs busybox-rebuild   # build busybox package
 $ make -C ./work/buildroot_rootfs/ O=./work/buildroot_rootfs ffmpeg-rebuild    # build ffmpeg package
+$ make vpudriver-build # build wave511/wave420l/codaj12 driver
 ```
 
 ## Running on JH7110 EVB Board via Network
@@ -206,9 +203,6 @@ We could generate a sdcard image file by the below command. The sdcard image fil
 
 ```
 $ make -j$(nproc)
-$ make buildroot_rootfs -j$(nproc)
-$ make vpudriver-build-rootfs
-$ rm work/buildroot_rootfs/images/rootfs.ext*
 $ make buildroot_rootfs -j$(nproc)
 $ ./genimage.sh
 ```
