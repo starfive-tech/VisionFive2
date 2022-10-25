@@ -554,7 +554,7 @@ int TestEncoder(TestEncConfig *param)
         }
 
         timeoutCount = 0;
-        while (osal_kbhit() == 0) {
+        while (TRUE) {
             int_reason = VPU_WaitInterrupt(coreIdx, VPU_WAIT_TIME_OUT);
 
             if (int_reason == -1) {
