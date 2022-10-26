@@ -59,6 +59,7 @@ static OMX_BOOL inputEndFlag = OMX_FALSE;
 static OMX_S32 FillInputBuffer(EncodeTestContext *encodeTestContext, OMX_BUFFERHEADERTYPE *pInputBuffer);
 
 static OMX_BOOL disableEVnt;
+static OMX_BOOL justQuit = OMX_FALSE;
 
 static OMX_ERRORTYPE event_handler(
     OMX_HANDLETYPE hComponent,
@@ -121,6 +122,12 @@ static OMX_ERRORTYPE event_handler(
         default:
         break;
         }
+    }
+    break;
+    case OMX_EventError:
+    {
+        printf("receive err event %d %d\n", nData1, nData2);
+        justQuit = OMX_TRUE;
     }
     break;
     default:
@@ -441,7 +448,9 @@ int main(int argc, char **argv)
     disableEVnt = OMX_FALSE;
     OMX_SendCommand(hComponentEncoder, OMX_CommandPortDisable, 1, NULL);
     printf("wait for output port disable\r\n");
-    while (!disableEVnt);
+    while (!disableEVnt && !justQuit);
+    if (justQuit)
+        goto end;
     printf("output port disabled\r\n");
 
     OMX_SendCommand(hComponentEncoder, OMX_CommandStateSet, OMX_StateIdle, NULL);
@@ -454,7 +463,9 @@ int main(int argc, char **argv)
     }
 
     printf("wait for Component idle\r\n");
-    while (encodeTestContext->comState != OMX_StateIdle);
+    while (encodeTestContext->comState != OMX_StateIdle && !justQuit);
+    if (justQuit)
+        goto end;
     printf("Component in idle\r\n");
 
     for (int i = 0; i < nInputBufferCount; i++)
@@ -516,7 +527,7 @@ end:
     {
         OMX_SendCommand(hComponentEncoder, OMX_CommandStateSet, OMX_StateIdle, NULL);
         printf("wait for Component idle\r\n");
-        while (encodeTestContext->comState != OMX_StateIdle);
+        while (encodeTestContext->comState != OMX_StateIdle && !justQuit);
         printf("Component in idle\r\n");
     }
     OMX_FreeHandle(hComponentEncoder);

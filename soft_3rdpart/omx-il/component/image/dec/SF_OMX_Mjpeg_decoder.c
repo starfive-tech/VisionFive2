@@ -2267,7 +2267,11 @@ static void CmdThread(void *args)
                 switch (comCurrentState)
                 {
                 case OMX_StateLoaded:
-                    InitDecoder(pSfOMXComponent);
+                    ret = InitDecoder(pSfOMXComponent);
+                    if (ret != OMX_ErrorNone)
+                    {
+                        break;
+                    }
                     for (i = 0; i < 2; i++)
                     {
                         if (pSfOMXComponent->portDefinition[i].bEnabled){
