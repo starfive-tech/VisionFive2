@@ -345,7 +345,7 @@ static int jpu_open(struct inode *inode, struct file *filp)
 {
     DPRINTK("[JPUDRV][+] %s\n", __func__);
 
-    jpu_clk_enable(s_jpu_clk);
+    pm_runtime_get_sync(s_jpu_clk->dev);
 
     spin_lock(&s_jpu_lock);
 
@@ -756,20 +756,16 @@ static int jpu_release(struct inode *inode, struct file *filp)
 
     DPRINTK("[JPUDRV][-] jpu_release\n");
 
-    jpu_clk_disable(s_jpu_clk);
+    pm_runtime_put_sync(s_jpu_clk->dev);
 
     return 0;
 }
-
 
 static int jpu_fasync(int fd, struct file *filp, int mode)
 {
     struct jpu_drv_context_t *dev = (struct jpu_drv_context_t *)filp->private_data;
     return fasync_helper(fd, filp, mode, &dev->async_queue);
 }
-
-
-
 
 static int jpu_map_to_register(struct file *fp, struct vm_area_struct *vm)
 {
@@ -916,11 +912,9 @@ static int jpu_probe(struct platform_device *pdev)
         DPRINTK("[JPUDRV] : get clock controller s_jpu_clk=%p\n", s_jpu_clk);
     }
 
-#ifdef JPU_SUPPORT_CLOCK_CONTROL
-#else
     jpu_pmu_enable(s_jpu_clk->dev);
-#endif
-
+    jpu_clk_enable(s_jpu_clk);
+    reset_control_deassert(s_jpu_clk->resets);
 
 #ifdef JPU_SUPPORT_ISR
 #ifdef JPU_SUPPORT_PLATFORM_DRIVER_REGISTER
@@ -1020,32 +1014,46 @@ static int jpu_remove(struct platform_device *pdev)
     if (s_jpu_register.virt_addr)
         iounmap((void*)s_jpu_register.virt_addr);
 
-    jpu_pmu_disable(s_jpu_clk->dev);
     jpu_clk_put(s_jpu_clk);
+    jpu_pmu_disable(&pdev->dev);
 
 #endif /* JPU_SUPPORT_PLATFORM_DRIVER_REGISTER */
 
 	return 0;
 }
 
-//#ifdef CONFIG_PM
-#if 1
-static int jpu_suspend(struct platform_device *pdev, pm_message_t state)
+#ifdef CONFIG_PM
+static int __maybe_unused  jpu_runtime_suspend(struct device *dev)
 {
-    jpu_clk_disable(s_jpu_clk);
-    return 0;
-
+	reset_control_assert(s_jpu_clk->resets);
+	jpu_clk_disable(s_jpu_clk);
+	return 0;
 }
-static int jpu_resume(struct platform_device *pdev)
+
+static int __maybe_unused jpu_runtime_resume(struct device *dev)
 {
-    jpu_clk_enable(s_jpu_clk);
-
-    return 0;
+	jpu_clk_enable(s_jpu_clk);
+	return reset_control_deassert(s_jpu_clk->resets);
 }
-#else
-#define    jpu_suspend    NULL
-#define    jpu_resume    NULL
-#endif /* !CONFIG_PM */
+#endif /* CONFIG_PM */
+
+#ifdef CONFIG_PM_SLEEP
+static int __maybe_unused  jpu_suspend(struct device *dev)
+{
+	return 0;
+}
+
+static int __maybe_unused jpu_resume(struct device *dev)
+{
+	return 0;
+}
+#endif /* CONFIG_PM_SLEEP */
+
+static const struct dev_pm_ops cm_jpu_pm_ops = {
+	SET_RUNTIME_PM_OPS(jpu_runtime_suspend,
+			   jpu_runtime_resume, NULL)
+	//SET_SYSTEM_SLEEP_PM_OPS(jpu_suspend, jpu_resume)
+};
 
 #ifdef JPU_SUPPORT_PLATFORM_DRIVER_REGISTER
 static const struct of_device_id jpu_of_id_table[] = {
@@ -1058,11 +1066,10 @@ static struct platform_driver jpu_driver = {
     .driver = {
         .name = JPU_PLATFORM_DEVICE_NAME,
         .of_match_table = of_match_ptr(jpu_of_id_table),
+        .pm = &cm_jpu_pm_ops,
     },
     .probe      = jpu_probe,
     .remove     = jpu_remove,
-    .suspend    = jpu_suspend,
-    .resume     = jpu_resume,
 };
 #endif /* JPU_SUPPORT_PLATFORM_DRIVER_REGISTER */
 
@@ -1143,20 +1150,15 @@ module_exit(jpu_exit);
 
 static int jpu_pmu_enable(struct device *dev)
 {
-	int ret;
-
+	pm_runtime_set_active(dev);
 	pm_runtime_enable(dev);
-	ret = pm_runtime_get_sync(dev);
-	if (ret < 0)
-		dev_err(dev, "failed to get pm runtime: %d\n", ret);
-
-	return ret;
+	return 0;
 }
 
 static void jpu_pmu_disable(struct device *dev)
 {
-	pm_runtime_put_sync(dev);
 	pm_runtime_disable(dev);
+	pm_runtime_set_suspended(dev);
 }
 
 #ifndef STARFIVE_JPU_SUPPORT_CLOCK_CONTROL
