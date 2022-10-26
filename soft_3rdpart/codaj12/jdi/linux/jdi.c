@@ -150,7 +150,7 @@ int jdi_init()
 
     jdi->jpu_fd = open(JPU_DEVICE_NAME, O_RDWR);
     if (jdi->jpu_fd < 0) {
-        JLOG(ERR, "[JDI] Can't open jpu driver. [error=%s]. try to run jdi/linux/driver/load.sh script \n", strerror(errno));
+        JLOG(ERR, "[JDI] Can't open jpu driver. [error=%s]. try to load jpu driver first \n", strerror(errno));
         return -1;
     }
 
