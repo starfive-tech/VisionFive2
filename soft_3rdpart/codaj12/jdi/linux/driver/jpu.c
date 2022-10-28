@@ -1061,7 +1061,7 @@ static const struct of_device_id jpu_of_id_table[] = {
 	{ .compatible = "starfive,jpu" },
 	{}
 };
-
+MODULE_DEVICE_TABLE(of, jpu_of_id_table);
 static struct platform_driver jpu_driver = {
     .driver = {
         .name = JPU_PLATFORM_DEVICE_NAME,
