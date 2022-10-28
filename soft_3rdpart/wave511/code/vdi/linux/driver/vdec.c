@@ -810,8 +810,7 @@ static irqreturn_t vpu_irq_handler(int irq, void *dev_id)
 static int vpu_open(struct inode *inode, struct file *filp)
 {
     DPRINTK("[VPUDRV][+] %s\n", __func__);
-    vpu_clk_enable(s_vpu_clk);
-    reset_control_deassert(s_vpu_clk->resets);
+    pm_runtime_get_sync(s_vpu_clk->dev);
     spin_lock(&s_vpu_lock);
 
     s_vpu_drv_context.open_count++;
@@ -1415,8 +1414,7 @@ static int vpu_release(struct inode *inode, struct file *filp)
     }
     up(&s_vpu_sem);
 
-    reset_control_assert(s_vpu_clk->resets);
-    vpu_clk_disable(s_vpu_clk);
+    pm_runtime_put_sync(s_vpu_clk->dev);
     return 0;
 }
 
@@ -1589,6 +1587,8 @@ static int vpu_probe(struct platform_device *pdev)
     vpu_freq_init(&pdev->dev);
 #endif
     vpu_pmu_enable(s_vpu_clk->dev);
+    vpu_clk_enable(s_vpu_clk);
+    reset_control_deassert(s_vpu_clk->resets);
 
 #ifdef VPU_SUPPORT_ISR
 #ifdef VPU_SUPPORT_PLATFORM_DRIVER_REGISTER
@@ -1719,7 +1719,21 @@ static void Wave5BitIssueCommand(int core, u32 cmd)
     return;
 }
 
-static int vpu_suspend(struct platform_device *pdev, pm_message_t state)
+static int __maybe_unused  vpu_runtime_suspend(struct device *dev)
+{
+	reset_control_assert(s_vpu_clk->resets);
+	vpu_clk_disable(s_vpu_clk);
+	return 0;
+}
+
+static int __maybe_unused vpu_runtime_resume(struct device *dev)
+{
+	vpu_clk_enable(s_vpu_clk);
+	return reset_control_deassert(s_vpu_clk->resets);
+}
+
+#ifdef CONFIG_PM_SLEEP
+static int __maybe_unused vpu_suspend(struct device *dev)
 {
     int i;
     int core;
@@ -1727,8 +1741,6 @@ static int vpu_suspend(struct platform_device *pdev, pm_message_t state)
     int product_code;
 
     DPRINTK("[VPUDRV] vpu_suspend\n");
-
-    vpu_clk_enable(s_vpu_clk);
 
     if (s_vpu_open_ref_count > 0) {
         for (core = 0; core < MAX_NUM_VPU_CORE; core++) {
@@ -1773,17 +1785,18 @@ static int vpu_suspend(struct platform_device *pdev, pm_message_t state)
         }
     }
 
-    vpu_clk_disable(s_vpu_clk);
+    pm_runtime_set_suspended(dev);
     return 0;
 
 DONE_SUSPEND:
 
-    vpu_clk_disable(s_vpu_clk);
+    pm_runtime_set_suspended(dev);
 
     return -EAGAIN;
 
 }
-static int vpu_resume(struct platform_device *pdev)
+
+static int __maybe_unused vpu_resume(struct device *dev)
 {
     int i;
     int core;
@@ -1800,7 +1813,10 @@ static int vpu_resume(struct platform_device *pdev)
 
     DPRINTK("[VPUDRV] vpu_resume\n");
 
-    vpu_clk_enable(s_vpu_clk);
+    if (s_vpu_open_ref_count == 0)
+	pm_runtime_get_sync(dev);
+    else
+	pm_runtime_set_active(dev);
 
     for (core = 0; core < MAX_NUM_VPU_CORE; core++) {
 
@@ -1903,20 +1919,20 @@ static int vpu_resume(struct platform_device *pdev)
         }
     }
 
-    if (s_vpu_open_ref_count == 0)
-        vpu_clk_disable(s_vpu_clk);
+    if (s_vpu_open_ref_count == 0) {
+	pm_runtime_put_sync(dev);
+	pm_runtime_set_suspended(dev);
+    }
 
 DONE_WAKEUP:
 
-    if (s_vpu_open_ref_count > 0)
-        vpu_clk_enable(s_vpu_clk);
+    //if (s_vpu_open_ref_count > 0)
+    //    vpu_clk_enable(s_vpu_clk);
 
     return 0;
 }
-#else
-#define vpu_suspend NULL
-#define vpu_resume  NULL
-#endif              /* !CONFIG_PM */
+#endif	/* CONFIG_PM_SLEEP */
+#endif	/* !CONFIG_PM */
 
 #ifdef VPU_SUPPORT_PLATFORM_DRIVER_REGISTER
 
@@ -1933,15 +1949,20 @@ static const struct of_device_id cm_vpu_match[] = {
 };
 MODULE_DEVICE_TABLE(of, cm_vpu_match);
 
+static const struct dev_pm_ops cm_vpu_pm_ops = {
+	SET_RUNTIME_PM_OPS(vpu_runtime_suspend,
+			   vpu_runtime_resume, NULL)
+	//SET_SYSTEM_SLEEP_PM_OPS(vpu_suspend, vpu_resume)
+};
+
 static struct platform_driver vpu_driver = {
     .driver = {
            .name = VPU_PLATFORM_DEVICE_NAME,
            .of_match_table = cm_vpu_match,
+           .pm = &cm_vpu_pm_ops,
     },
     .probe = vpu_probe,
     .remove = vpu_remove,
-    .suspend = vpu_suspend,
-    .resume = vpu_resume,
 };
 #endif /* VPU_SUPPORT_PLATFORM_DRIVER_REGISTER */
 
@@ -2062,20 +2083,15 @@ module_exit(vpu_exit);
 
 static int vpu_pmu_enable(struct device *dev)
 {
-	int ret;
-
+	pm_runtime_set_active(dev);
 	pm_runtime_enable(dev);
-	ret = pm_runtime_get_sync(dev);
-	if (ret < 0)
-		dev_err(dev, "failed to get pm runtime: %d\n", ret);
-
-	return ret;
+	return 0;
 }
 
 static void vpu_pmu_disable(struct device *dev)
 {
-	pm_runtime_put_sync(dev);
 	pm_runtime_disable(dev);
+	pm_runtime_set_suspended(dev);
 }
 
 /* clk&reset for starfive jh7110*/
