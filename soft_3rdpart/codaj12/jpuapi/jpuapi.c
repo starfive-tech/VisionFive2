@@ -178,9 +178,11 @@ JpgRet JPU_Init()
 void JPU_DeInit()
 {
     JpgEnterLock();
+#ifndef USE_FEEDING_METHOD_BUFFER
     if (jdi_get_task_num() == 1) {
         JpuWriteReg(MJPEG_INST_CTRL_START_REG, 0);
     }
+#endif
     JpgLeaveLock();
     jdi_release();
 }
