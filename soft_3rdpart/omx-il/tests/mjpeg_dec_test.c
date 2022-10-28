@@ -687,7 +687,7 @@ end:
     {
         OMX_SendCommand(hComponentDecoder, OMX_CommandStateSet, OMX_StateIdle, NULL);
         printf("wait for Component idle\r\n");
-        while (decodeTestContext->comState != OMX_StateIdle && !justQuit);
+        while (decodeTestContext->comState != OMX_StateIdle);
         printf("Component in idle\r\n");
     }
     OMX_FreeHandle(hComponentDecoder);
