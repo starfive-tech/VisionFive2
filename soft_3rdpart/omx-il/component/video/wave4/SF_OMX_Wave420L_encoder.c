@@ -294,7 +294,7 @@ static OMX_ERRORTYPE SetDefaultConfig(SF_OMX_COMPONENT *pSfOMXComponent)
 
 static OMX_ERRORTYPE InitEncoder(SF_OMX_COMPONENT *pSfOMXComponent)
 {
-    OMX_ERRORTYPE ret = OMX_ErrorNone;
+    RetCode ret;
     SF_WAVE420L_IMPLEMEMT *pImp = (SF_WAVE420L_IMPLEMEMT *)pSfOMXComponent->componentImpl;
     TestEncConfig   *pEncConfig = &pImp->encConfig;
     Int32 productId;
@@ -312,7 +312,7 @@ static OMX_ERRORTYPE InitEncoder(SF_OMX_COMPONENT *pSfOMXComponent)
     }
 
     ret = Warp_VPU_InitWithBitcode(pImp, pEncConfig->coreIdx, (const Uint16*)pusBitCode, BitCodesizeInWord);
-    if (ret)
+    if (ret && ret != RETCODE_CALLED_BEFORE)
     {
         LOG(SF_LOG_ERR, "Failed to boot up VPU with bit code\r\n");
         free(pusBitCode);
@@ -320,8 +320,9 @@ static OMX_ERRORTYPE InitEncoder(SF_OMX_COMPONENT *pSfOMXComponent)
     }
 
     Warp_PrintVpuVersionInfo(pImp, pEncConfig->coreIdx);
+    free(pusBitCode);
 
-    return ret;
+    return OMX_ErrorNone;
     FunctionOut();
 }
 
@@ -416,7 +417,11 @@ static void CmdThread(void *args)
                 switch (comCurrentState)
                 {
                 case OMX_StateLoaded:
-                    InitEncoder(pSfOMXComponent);
+                    ret = InitEncoder(pSfOMXComponent);
+                    if (ret)
+                    {
+                        break;
+                    }
                     for (i = 0; i < 2; i++)
                     {
                         if (pSfOMXComponent->portDefinition[i].bEnabled){

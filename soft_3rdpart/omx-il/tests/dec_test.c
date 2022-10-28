@@ -52,6 +52,7 @@ static OMX_S32 FillInputBuffer(DecodeTestContext *decodeTestContext, OMX_BUFFERH
 
 static OMX_BOOL disableEVnt = OMX_FALSE;
 static OMX_BOOL useNormal = OMX_FALSE;
+static OMX_BOOL justQuit = OMX_FALSE;
 
 static OMX_ERRORTYPE event_handler(
     OMX_HANDLETYPE hComponent,
@@ -121,6 +122,19 @@ static OMX_ERRORTYPE event_handler(
         default:
         break;
         }
+    }
+    break;
+    case OMX_EventError:
+    {
+        printf("receive err event %d %d\n", nData1, nData2);
+        Message data;
+        data.msg_type = 1;
+        data.msg_flag = -1;
+        if (msgsnd(decodeTestContext->msgid, (void *)&data, sizeof(data) - sizeof(data.msg_type), 0) == -1)
+        {
+            fprintf(stderr, "msgsnd failed\n");
+        }
+        justQuit = OMX_TRUE;
     }
     break;
     default:
@@ -194,6 +208,7 @@ static void signal_handle(int sig)
     {
         fprintf(stderr, "msgsnd failed\n");
     }
+    justQuit = OMX_TRUE;
 }
 
 static OMX_S32 FillInputBuffer(DecodeTestContext *decodeTestContext, OMX_BUFFERHEADERTYPE *pInputBuffer)
@@ -385,7 +400,7 @@ int main(int argc, char **argv)
     else if (codecParameters->codec_id == AV_CODEC_ID_HEVC)
     {
         if (useNormal)
-            OMX_GetHandle(&hComponentDecoder, "OMX.sf.video_decoder.hevc.internal", decodeTestContext, &callbacks);
+            OMX_GetHandle(&hComponentDecoder, "OMX.sf.video_decoder.hevc", decodeTestContext, &callbacks);
         else
             OMX_GetHandle(&hComponentDecoder, "OMX.sf.video_decoder.hevc.internal", decodeTestContext, &callbacks);
     }
@@ -429,7 +444,9 @@ int main(int argc, char **argv)
     disableEVnt = OMX_FALSE;
     OMX_SendCommand(hComponentDecoder, OMX_CommandPortDisable, 1, NULL);
     printf("wait for output port disable\r\n");
-    while (!disableEVnt);
+    while (!disableEVnt && !justQuit);
+    if (justQuit)
+        goto end;
     printf("output port disabled\r\n");
 
     OMX_SendCommand(hComponentDecoder, OMX_CommandStateSet, OMX_StateIdle, NULL);
@@ -454,7 +471,9 @@ int main(int argc, char **argv)
     }
 
     printf("wait for Component idle\r\n");
-    while (decodeTestContext->comState != OMX_StateIdle);
+    while (decodeTestContext->comState != OMX_StateIdle && !justQuit);
+    if (justQuit)
+        goto end;
     printf("Component in idle\r\n");
 
     for (int i = 0; i < nInputBufferCount; i++)
@@ -519,7 +538,7 @@ end:
     {
         OMX_SendCommand(hComponentDecoder, OMX_CommandStateSet, OMX_StateIdle, NULL);
         printf("wait for Component idle\r\n");
-        while (decodeTestContext->comState != OMX_StateIdle);
+        while (decodeTestContext->comState != OMX_StateIdle && !justQuit);
         printf("Component in idle\r\n");
     }
     OMX_FreeHandle(hComponentDecoder);
