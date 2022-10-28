@@ -47,6 +47,8 @@
 //#define VPU_IRQ_CONTROL
 #endif
 
+//#define CONFIG_USE_PLL_DYNAMIC_FREQ
+
 #define VPU_SUPPORT_CLOCK_CONTROL
 /* if clktree is work,try this...*/
 #define STARFIVE_VPU_SUPPORT_CLOCK_CONTROL
@@ -293,7 +295,7 @@ static u32  s_vpu_reg_store[MAX_NUM_VPU_CORE][64];
 #define WriteVpuRegister(addr, val) *(volatile unsigned int *)(s_vpu_register.virt_addr + s_bit_firmware_info[core].reg_base_offset + addr) = (unsigned int)val
 #define WriteVpu(addr, val)         *(volatile unsigned int *)(addr) = (unsigned int)val;
 
-#ifdef CONFIG_CPU_FREQ
+#if defined(CONFIG_CPU_FREQ) && defined(CONFIG_USE_PLL_DYNAMIC_FREQ)
 #include <linux/fs.h>
 #include <linux/file.h>
 
@@ -1303,14 +1305,14 @@ INTERRUPT_REMAIN_IN_QUEUE:
 
     case VDI_IOCTL_CPUFREQ_SAVEENV:
         {
-#ifdef CONFIG_CPU_FREQ
+#if defined(CONFIG_CPU_FREQ) && defined(CONFIG_USE_PLL_DYNAMIC_FREQ)
 	    vpu_freq_save_env();
 #endif
         }
 	break;
     case VDI_IOCTL_CPUFREQ_PUTENV:
         {
-#ifdef CONFIG_CPU_FREQ
+#if defined(CONFIG_CPU_FREQ) && defined(CONFIG_USE_PLL_DYNAMIC_FREQ)
 	    vpu_freq_put_env();
 #endif
         }
@@ -1583,7 +1585,7 @@ static int vpu_probe(struct platform_device *pdev)
     else
         DPRINTK("[VPUDRV] : get clock controller s_vpu_clk=%p\n", s_vpu_clk);
 
-#ifdef CONFIG_CPU_FREQ
+#if defined(CONFIG_CPU_FREQ) && defined(CONFIG_USE_PLL_DYNAMIC_FREQ)
     vpu_freq_init(&pdev->dev);
 #endif
     vpu_pmu_enable(s_vpu_clk->dev);
@@ -2029,7 +2031,7 @@ static void __exit vpu_exit(void)
         s_common_memory.base = 0;
     }
 
-#ifdef CONFIG_CPU_FREQ
+#if defined(CONFIG_CPU_FREQ) && defined(CONFIG_USE_PLL_DYNAMIC_FREQ)
 	vpu_freq_close();
 #endif
 
