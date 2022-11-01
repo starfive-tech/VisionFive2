@@ -360,6 +360,7 @@ typedef struct {
 #define COMPONENT_EVENT_DEC_RESET_DONE          (1ULL<<26)      /*!<< The third parameter of listener is NULL. */
 #define COMPONENT_EVENT_DEC_EMPTY_BUFFER_DONE   (1ULL<<27)
 #define COMPONENT_EVENT_DEC_FILL_BUFFER_DONE    (1ULL<<28)
+#define COMPONENT_EVENT_DEC_INSUFFIC_RESOURCE   (1ULL<<29)
 #define COMPONENT_EVENT_DEC_ALL                 0xffff0000ULL
 
 /* ------------------------------------------------ */

@@ -112,6 +112,12 @@ static BOOL RegisterFrameBuffers(ComponentImpl* com)
     if (result != RETCODE_SUCCESS) {
         VLOG(ERR, "%s:%d Failed to VPU_DecRegisterFrameBufferEx(%d)\n", __FUNCTION__, __LINE__, result);
         ChekcAndPrintDebugInfo(ctx->handle, FALSE, result);
+#ifdef USE_FEEDING_METHOD_BUFFER
+        if (result == RETCODE_INSUFFICIENT_RESOURCE)
+        {
+            ComponentNotifyListeners(com, COMPONENT_EVENT_DEC_INSUFFIC_RESOURCE, NULL);
+        }
+#endif
         return FALSE;
     }
 
@@ -745,6 +751,10 @@ static BOOL OpenDecoder(ComponentImpl* com)
 
     if (retCode != RETCODE_SUCCESS) {
         VLOG(ERR, "<%s:%d> Failed to VPU_DecOpen(ret:%d)\n", __FUNCTION__, __LINE__, retCode);
+#ifdef USE_FEEDING_METHOD_BUFFER
+        if (retCode == RETCODE_INSUFFICIENT_RESOURCE)
+            ComponentNotifyListeners(com, COMPONENT_EVENT_DEC_INSUFFIC_RESOURCE, NULL);
+#endif
         if ( retCode == RETCODE_VPU_RESPONSE_TIMEOUT)
             CNMErrorSet(CNM_ERROR_HANGUP);
 

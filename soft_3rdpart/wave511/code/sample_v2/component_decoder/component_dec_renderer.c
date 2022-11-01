@@ -279,7 +279,10 @@ void* AllocateFrameBuffer2(ComponentImpl* com, Uint32 size)
     }
     // TODO: Adjust ctx->fbCount
     void *ret = AllocateDecFrameBuffer2(ctx->handle, &ctx->testDecConfig, size, &ctx->pLinearFrame[i], &ctx->pLinearFbMem[i]);
-    ctx->currentBufferNumber ++;
+    if (!ret)
+        ComponentNotifyListeners(com, COMPONENT_EVENT_DEC_INSUFFIC_RESOURCE, NULL);
+    else
+        ctx->currentBufferNumber ++;
     return ret;
 }
 
@@ -373,6 +376,9 @@ static BOOL AllocateFrameBuffer(ComponentImpl* com)
 
     if (AllocateDecFrameBuffer(ctx->handle, &ctx->testDecConfig, compressedNum, linearNum, ctx->pFrame, ctx->pFbMem, &ctx->framebufStride) == FALSE) {
         VLOG(INFO, "%s:%d Failed to AllocateDecFrameBuffer()\n", __FUNCTION__, __LINE__);
+#ifdef USE_FEEDING_METHOD_BUFFER
+        ComponentNotifyListeners(com, COMPONENT_EVENT_DEC_INSUFFIC_RESOURCE, NULL);
+#endif
         return FALSE;
     }
     ctx->fbAllocated = TRUE;

@@ -298,6 +298,51 @@ static void OnEventArrived(Component com, unsigned long event, void *data, void 
                                                  1, OMX_IndexParamPortDefinition, NULL);
     }
     break;
+    case COMPONENT_EVENT_DEC_INSUFFIC_RESOURCE:
+    {
+        LOG(SF_LOG_ERR, "Lack of memory for decoder buffer, process stop!\r\n");
+        pSfOMXComponent->callbacks->EventHandler(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData, OMX_EventError,
+                                                 OMX_ErrorInsufficientResources, 0, NULL);
+        ComponentImpl *pSFComponentDecoder = (ComponentImpl *)pSfVideoImplement->hSFComponentExecoder;
+        ComponentImpl *pSFComponentFeeder = (ComponentImpl *)pSfVideoImplement->hSFComponentFeeder;
+        ComponentImpl *pSFComponentRender = (ComponentImpl *)pSfVideoImplement->hSFComponentRender;
+        void *ThreadRet = NULL;
+        DEC_CMD cmd;
+        cmd.Cmd = DEC_StopThread;
+        SF_Queue_Enqueue(pSfVideoImplement->CmdQueue, &cmd);
+        pthread_cancel(pSfVideoImplement->pCmdThread->pthread);
+        pthread_join(pSfVideoImplement->pCmdThread->pthread, &ThreadRet);
+        LOG(SF_LOG_INFO, "Cmd thread end %ld\r\n", (Uint64)ThreadRet);
+        if (!pSfOMXComponent->memory_optimization)
+        {
+            LOG(SF_LOG_INFO,"feeder src q cnt %d\r\n",
+                pSfVideoImplement->functions->Queue_Get_Cnt(((ComponentImpl *)(pSfVideoImplement->hSFComponentFeeder))->srcPort.inputQ));
+            pSfVideoImplement->functions->ComponentStop(pSFComponentRender);
+            pSfVideoImplement->functions->ComponentStop(pSFComponentDecoder);
+            pSfVideoImplement->functions->ComponentStop(pSFComponentFeeder);
+            FlushBuffer(pSfOMXComponent, 0);
+            FlushBuffer(pSfOMXComponent, 1);
+            pSfVideoImplement->functions->ComponentWait(pSFComponentRender);
+            pSfVideoImplement->functions->ComponentWait(pSFComponentDecoder);
+            pSfVideoImplement->functions->ComponentWait(pSFComponentFeeder);
+            pSFComponentRender->terminate = OMX_TRUE;
+            pSFComponentDecoder->terminate = OMX_TRUE;
+            pSFComponentFeeder->terminate = OMX_TRUE;
+        }
+        else
+        {
+            pSFComponentDecoder->pause = OMX_TRUE;
+            pSFComponentFeeder->pause = OMX_TRUE;
+            pSFComponentRender->pause = OMX_TRUE;
+            FlushBuffer(pSfOMXComponent, 0);
+            FlushBuffer(pSfOMXComponent, 1);
+        }
+        pSfOMXComponent->state = OMX_StateInvalid;
+        LOG(SF_LOG_ERR, "Component into invalid state!\r\n");
+        pSfOMXComponent->callbacks->EventHandler(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData, OMX_EventError,
+                                                 OMX_ErrorInvalidState, 0, NULL);
+    }
+    break;
     case COMPONENT_EVENT_TERMINATED:
     break;
     case COMPONENT_EVENT_DEC_DECODED_ALL:
@@ -1149,6 +1194,7 @@ static OMX_ERRORTYPE InitDecoder(SF_OMX_COMPONENT *pSfOMXComponent)
     Uint32 sizeInWord;
     char *fwPath = NULL;
     SF_WAVE5_IMPLEMEMT *pSfVideoImplement = (SF_WAVE5_IMPLEMEMT *)pSfOMXComponent->componentImpl;
+    OMX_PARAM_PORTDEFINITIONTYPE *pInputPort = &pSfOMXComponent->portDefinition[0];
 
     if (pSfVideoImplement->hSFComponentExecoder != NULL)
     {
@@ -1192,6 +1238,8 @@ static OMX_ERRORTYPE InitDecoder(SF_OMX_COMPONENT *pSfOMXComponent)
     memcpy(&(config->testDecConfig), testConfig, sizeof(TestDecConfig));
     config->bitcode = (Uint8 *)pSfVideoImplement->pusBitCode;
     config->sizeOfBitcode = sizeInWord;
+    if (pInputPort->format.video.nFrameWidth && pInputPort->format.video.nFrameHeight)
+        config->testDecConfig.bsSize =  (pInputPort->format.video.nFrameWidth * pInputPort->format.video.nFrameHeight / 2);
 
     if (pSfOMXComponent->memory_optimization)
     {
@@ -1221,6 +1269,8 @@ static OMX_ERRORTYPE InitDecoder(SF_OMX_COMPONENT *pSfOMXComponent)
     {
         pSfVideoImplement->functions->ComponentRegisterListener(pSfVideoImplement->hSFComponentExecoder,
                                                               COMPONENT_EVENT_DEC_ALL, pSfVideoImplement->functions->DecoderListener, (void *)pSfVideoImplement->lsnCtx);
+        pSfVideoImplement->functions->ComponentRegisterListener(pSfVideoImplement->hSFComponentExecoder,
+                                                              COMPONENT_EVENT_DEC_INSUFFIC_RESOURCE, OnEventArrived, (void *)pSfOMXComponent);
         pSfVideoImplement->functions->ComponentRegisterListener(pSfVideoImplement->hSFComponentRender,
                                                               COMPONENT_EVENT_DEC_DECODED_ALL, OnEventArrived, (void *)pSfOMXComponent);
         pSfVideoImplement->functions->ComponentRegisterListener(pSfVideoImplement->hSFComponentFeeder,

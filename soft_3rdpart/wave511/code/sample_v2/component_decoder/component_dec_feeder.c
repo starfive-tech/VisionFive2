@@ -179,6 +179,9 @@ static BOOL PrepareFeeder(ComponentImpl* com, BOOL *done)
         bsBuffer[i].size = config->bsSize;
         if (vdi_allocate_dma_memory(config->coreIdx, &bsBuffer[i], DEC_BS, 0) < 0) {    // can't know instIdx now.
             VLOG(ERR, "%s:%d fail to allocate bitstream buffer\n", __FUNCTION__, __LINE__);
+#ifdef USE_FEEDING_METHOD_BUFFER
+            ComponentNotifyListeners(com, COMPONENT_EVENT_DEC_INSUFFIC_RESOURCE, NULL);
+#endif
             return FALSE;
         }
     }

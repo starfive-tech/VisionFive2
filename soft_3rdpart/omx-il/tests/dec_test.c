@@ -127,6 +127,19 @@ static OMX_ERRORTYPE event_handler(
     case OMX_EventError:
     {
         printf("receive err event %d %d\n", nData1, nData2);
+        switch (nData1)
+        {
+        case OMX_ErrorInsufficientResources:
+            printf("out for memory for buffer, stop decode!\n");
+            break;
+        case OMX_ErrorInvalidState:
+            printf("decoder component into invalid state!\n");
+            pDecodeTestContext->comState = OMX_StateInvalid;
+            break;
+        default:
+            break;
+        }
+
         Message data;
         data.msg_type = 1;
         data.msg_flag = -1;
@@ -538,7 +551,7 @@ end:
     {
         OMX_SendCommand(hComponentDecoder, OMX_CommandStateSet, OMX_StateIdle, NULL);
         printf("wait for Component idle\r\n");
-        while (decodeTestContext->comState != OMX_StateIdle && !justQuit);
+        while (decodeTestContext->comState != OMX_StateIdle);
         printf("Component in idle\r\n");
     }
     OMX_FreeHandle(hComponentDecoder);
