@@ -486,6 +486,7 @@ typedef struct _ST_CI_DEVICE {
     /** @brief Number of CI connections */
     STF_S32 s32CiConnections;
     STF_BOOL8 bConnected;
+    STF_BOOL8 bInitDone;
     EN_MEM_TYPE enMemType;
     STF_VOID *pvDevParam;
 
