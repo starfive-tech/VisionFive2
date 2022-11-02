@@ -469,7 +469,7 @@ static OMX_ERRORTYPE SF_OMX_FillThisBuffer(
     pPortContainerExternal->nFilledLen = pBuffer->nAllocLen;
     pPortContainerExternal->pAppPrivate = (void*)pBuffer;
 
-    if (gInitTimeStamp != 0)
+    if (gInitTimeStamp != 0 && pSfOMXComponent->memory_optimization)
     {
         int clear = pSfVideoImplement->frame_array[pSfVideoImplement->frame_array_index];
         pSfVideoImplement->functions->Render_DecClrDispFlag(pRendererComponent->context, clear);
