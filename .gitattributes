@@ -1,3 +1,2 @@
-soft_3rdpart/IMG_GPU/out/img-gpu-powervr-bin-1.15.6052913.tar.gz filter=lfs diff=lfs merge=lfs -text
-soft_3rdpart/IMG_GPU/out/img-gpu-powervr-bin-1.17.6210866.tar.gz filter=lfs diff=lfs merge=lfs -text
+soft_3rdpart/IMG_GPU/out/*.tar.gz filter=lfs diff=lfs merge=lfs -text
 soft_3rdpart/ispsdk/DDKSource/libispsdk/*.a filter=lfs diff=lfs merge=lfs -text
