@@ -1449,7 +1449,8 @@ static void ProcessThread(void *args)
     decOP->mirror = decConfig->mirror;
     decOP->pixelJustification = decConfig->pixelJustification;
 
-    if (decConfig->packedFormat)
+    if (decConfig->packedFormat ||
+        (pSfCodaj12Implement->frameFormat == FORMAT_422 && (decConfig->rotation == 90 || decConfig->rotation == 270)))
     {
         decOP->outputFormat = FORMAT_MAX;
     }
