@@ -347,21 +347,10 @@ static BOOL AllocateFrameBuffer(ComponentImpl* com)
     osal_memset((void*)ctx->pFrame, 0x00, sizeof(ctx->pFrame));
 
 #ifdef USE_FEEDING_METHOD_BUFFER
-    if (!ctx->MemoryOptimization || Queue_Get_Cnt(com->sinkPort.inputQ))
-    {
-        compressedNum  = ctx->fbCount.nonLinearNum;
-        linearNum      = ctx->totalBufferNumber;
-        ctx->fbCount.linearNum = ctx->totalBufferNumber;
-    }
-    else{
-        compressedNum  = ctx->fbCount.nonLinearNum;
-        linearNum      = ctx->fbCount.linearNum;
-        ctx->totalBufferNumber = linearNum;
-    }
-#else
+    ctx->totalBufferNumber = ctx->fbCount.linearNum;
+#endif
     compressedNum  = ctx->fbCount.nonLinearNum;
     linearNum      = ctx->fbCount.linearNum;
-#endif
 
     if (compressedNum == 0 && linearNum == 0) {
         VLOG(ERR, "%s:%d The number of framebuffers are zero. compressed %d, linear: %d\n",

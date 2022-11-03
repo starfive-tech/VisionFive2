@@ -271,12 +271,9 @@ static void OnEventArrived(Component com, unsigned long event, void *data, void 
         pSfOMXComponent->portDefinition[1].format.video.nStride = nWidth;
         pSfOMXComponent->portDefinition[1].format.video.nSliceHeight = nHeight;
 
-        if (pSfOMXComponent->memory_optimization)
-        {
-            ComponentImpl *pRendererComponent = (ComponentImpl *)pSfVideoImplement->hSFComponentRender;
-            pSfOMXComponent->portDefinition[1].nBufferCountActual = pSfVideoImplement->functions->GetRenderTotalBufferNumber(pRendererComponent);
-            pSfOMXComponent->portDefinition[1].nBufferCountMin = pSfOMXComponent->portDefinition[1].nBufferCountActual;
-        }
+        ComponentImpl *pRendererComponent = (ComponentImpl *)pSfVideoImplement->hSFComponentRender;
+        pSfOMXComponent->portDefinition[1].nBufferCountActual = pSfVideoImplement->functions->GetRenderTotalBufferNumber(pRendererComponent);
+        pSfOMXComponent->portDefinition[1].nBufferCountMin = pSfOMXComponent->portDefinition[1].nBufferCountActual;
 
         /*Caculate buffer size by eColorFormat*/
         switch (pSfOMXComponent->portDefinition[1].format.video.eColorFormat)
