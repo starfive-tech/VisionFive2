@@ -509,8 +509,8 @@ static BOOL ExecuteRenderer(ComponentImpl* com, PortContainer* in, PortContainer
         return TRUE;
     }
 #ifdef USE_FEEDING_METHOD_BUFFER
-    PortContainerExternal *output = (PortContainerExternal*)ComponentPortPeekData(&com->sinkPort);
-    if (output == NULL) {
+    PortContainerExternal *output;
+    if (!Queue_Get_Cnt(com->sinkPort.inputQ)) {
         in->reuse = TRUE;
         return TRUE;
     }
@@ -544,17 +544,23 @@ static BOOL ExecuteRenderer(ComponentImpl* com, PortContainer* in, PortContainer
         Uint32 width, height, bpp;
         size_t sizeYuv;
         Uint32 count = 0, total_count = 0;
+
+        output = (PortContainerExternal*)ComponentPortGetData(&com->sinkPort);
+        if (output == NULL) {
+            in->reuse = TRUE;
+            return TRUE;
+        }
+
         if (ctx->MemoryOptimization){
             uint8_t *dmaBuffer = NULL;
             if (FALSE ==GetYUVFromFrameBuffer2(NULL, &dmaBuffer, output->nFilledLen, ctx->handle, &srcData->decInfo.dispFrame, rcDisplay, &width, &height, &bpp, &sizeYuv)) {
                 VLOG(ERR, "GetYUVFromFrameBuffer2 FAIL!\n");
             }
-            total_count = Queue_Get_Cnt(com->sinkPort.inputQ);
+            total_count = Queue_Get_Cnt(com->sinkPort.inputQ) + 1;
             while (output->pBuffer != dmaBuffer)
             {
-                output = (PortContainerExternal*)ComponentPortGetData(&com->sinkPort);
                 Queue_Enqueue(com->sinkPort.inputQ, (void *)output);
-                output = (PortContainerExternal*)ComponentPortPeekData(&com->sinkPort);
+                output = (PortContainerExternal*)ComponentPortGetData(&com->sinkPort);
                 VLOG(INFO, "pBuffer = %p, dmaBuffer = %p, index = %d/%d\n", output->pBuffer, dmaBuffer, count, total_count);
                 if (count >= total_count)
                 {
@@ -575,10 +581,8 @@ static BOOL ExecuteRenderer(ComponentImpl* com, PortContainer* in, PortContainer
         if(srcData->last)
             output->nFlags |= 0x1;
 
-        if(ComponentPortGetData(&com->sinkPort))
-        {
-            ComponentNotifyListeners(com, COMPONENT_EVENT_DEC_FILL_BUFFER_DONE, (void *)output);
-        }
+        ComponentNotifyListeners(com, COMPONENT_EVENT_DEC_FILL_BUFFER_DONE, (void *)output);
+
         (void)DisplayFrame;
         (void)decConfig;
         (void)mapType;
