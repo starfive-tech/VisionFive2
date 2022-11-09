@@ -568,6 +568,7 @@ static BOOL ExecuteRenderer(ComponentImpl* com, PortContainer* in, PortContainer
             if (FALSE ==GetYUVFromFrameBuffer2(output->pBuffer, NULL, output->nFilledLen, ctx->handle, &srcData->decInfo.dispFrame, rcDisplay, &width, &height, &bpp, &sizeYuv)) {
                 VLOG(ERR, "GetYUVFromFrameBuffer2 FAIL!\n");
             }
+            VPU_DecClrDispFlag(ctx->handle, srcData->decInfo.indexFrameDisplay);
         }
         output->nFilledLen = sizeYuv;
         output->index = srcData->decInfo.indexFrameDisplay;
