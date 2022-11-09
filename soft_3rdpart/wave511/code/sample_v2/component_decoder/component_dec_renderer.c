@@ -347,21 +347,10 @@ static BOOL AllocateFrameBuffer(ComponentImpl* com)
     osal_memset((void*)ctx->pFrame, 0x00, sizeof(ctx->pFrame));
 
 #ifdef USE_FEEDING_METHOD_BUFFER
-    if (!ctx->MemoryOptimization || Queue_Get_Cnt(com->sinkPort.inputQ))
-    {
-        compressedNum  = ctx->fbCount.nonLinearNum;
-        linearNum      = ctx->totalBufferNumber;
-        ctx->fbCount.linearNum = ctx->totalBufferNumber;
-    }
-    else{
-        compressedNum  = ctx->fbCount.nonLinearNum;
-        linearNum      = ctx->fbCount.linearNum;
-        ctx->totalBufferNumber = linearNum;
-    }
-#else
+    ctx->totalBufferNumber = ctx->fbCount.linearNum;
+#endif
     compressedNum  = ctx->fbCount.nonLinearNum;
     linearNum      = ctx->fbCount.linearNum;
-#endif
 
     if (compressedNum == 0 && linearNum == 0) {
         VLOG(ERR, "%s:%d The number of framebuffers are zero. compressed %d, linear: %d\n",
@@ -509,8 +498,8 @@ static BOOL ExecuteRenderer(ComponentImpl* com, PortContainer* in, PortContainer
         return TRUE;
     }
 #ifdef USE_FEEDING_METHOD_BUFFER
-    PortContainerExternal *output = (PortContainerExternal*)ComponentPortPeekData(&com->sinkPort);
-    if (output == NULL) {
+    PortContainerExternal *output;
+    if (!Queue_Get_Cnt(com->sinkPort.inputQ)) {
         in->reuse = TRUE;
         return TRUE;
     }
@@ -544,17 +533,23 @@ static BOOL ExecuteRenderer(ComponentImpl* com, PortContainer* in, PortContainer
         Uint32 width, height, bpp;
         size_t sizeYuv;
         Uint32 count = 0, total_count = 0;
+
+        output = (PortContainerExternal*)ComponentPortGetData(&com->sinkPort);
+        if (output == NULL) {
+            in->reuse = TRUE;
+            return TRUE;
+        }
+
         if (ctx->MemoryOptimization){
             uint8_t *dmaBuffer = NULL;
             if (FALSE ==GetYUVFromFrameBuffer2(NULL, &dmaBuffer, output->nFilledLen, ctx->handle, &srcData->decInfo.dispFrame, rcDisplay, &width, &height, &bpp, &sizeYuv)) {
                 VLOG(ERR, "GetYUVFromFrameBuffer2 FAIL!\n");
             }
-            total_count = Queue_Get_Cnt(com->sinkPort.inputQ);
+            total_count = Queue_Get_Cnt(com->sinkPort.inputQ) + 1;
             while (output->pBuffer != dmaBuffer)
             {
-                output = (PortContainerExternal*)ComponentPortGetData(&com->sinkPort);
                 Queue_Enqueue(com->sinkPort.inputQ, (void *)output);
-                output = (PortContainerExternal*)ComponentPortPeekData(&com->sinkPort);
+                output = (PortContainerExternal*)ComponentPortGetData(&com->sinkPort);
                 VLOG(INFO, "pBuffer = %p, dmaBuffer = %p, index = %d/%d\n", output->pBuffer, dmaBuffer, count, total_count);
                 if (count >= total_count)
                 {
@@ -568,6 +563,7 @@ static BOOL ExecuteRenderer(ComponentImpl* com, PortContainer* in, PortContainer
             if (FALSE ==GetYUVFromFrameBuffer2(output->pBuffer, NULL, output->nFilledLen, ctx->handle, &srcData->decInfo.dispFrame, rcDisplay, &width, &height, &bpp, &sizeYuv)) {
                 VLOG(ERR, "GetYUVFromFrameBuffer2 FAIL!\n");
             }
+            VPU_DecClrDispFlag(ctx->handle, srcData->decInfo.indexFrameDisplay);
         }
         output->nFilledLen = sizeYuv;
         output->index = srcData->decInfo.indexFrameDisplay;
@@ -575,10 +571,8 @@ static BOOL ExecuteRenderer(ComponentImpl* com, PortContainer* in, PortContainer
         if(srcData->last)
             output->nFlags |= 0x1;
 
-        if(ComponentPortGetData(&com->sinkPort))
-        {
-            ComponentNotifyListeners(com, COMPONENT_EVENT_DEC_FILL_BUFFER_DONE, (void *)output);
-        }
+        ComponentNotifyListeners(com, COMPONENT_EVENT_DEC_FILL_BUFFER_DONE, (void *)output);
+
         (void)DisplayFrame;
         (void)decConfig;
         (void)mapType;
