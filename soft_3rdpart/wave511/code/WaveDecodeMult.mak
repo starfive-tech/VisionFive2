@@ -134,7 +134,7 @@ endif #USE_FFMPEG
 ifeq ($(USE_PTHREAD), yes)
 LDLIBS  += -lpthread
 endif
-LDLIBS  += -lm
+LDLIBS  += -lm -lrt
 
 TARGET=multi_instance_dec_test
 MAKEFILE=WaveDecodeMult.mak
