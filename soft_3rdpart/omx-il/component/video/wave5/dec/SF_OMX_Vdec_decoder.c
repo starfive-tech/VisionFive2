@@ -247,6 +247,11 @@ static void OnEventArrived(Component com, unsigned long event, void *data, void 
             fclose(fb);
             }
 #endif
+            if (pOMXBuffer->nFlags & OMX_BUFFERFLAG_EOS)
+            {
+                pSfOMXComponent->callbacks->EventHandler(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData, OMX_EventBufferFlag,
+                                                    1, pOMXBuffer->nFlags, NULL);
+            }
             pSfOMXComponent->callbacks->FillBufferDone(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData, pOMXBuffer);
         }
     }
@@ -343,8 +348,7 @@ static void OnEventArrived(Component com, unsigned long event, void *data, void 
     case COMPONENT_EVENT_TERMINATED:
     break;
     case COMPONENT_EVENT_DEC_DECODED_ALL:
-        pSfOMXComponent->callbacks->EventHandler(pSfOMXComponent->pOMXComponent, pSfOMXComponent->pAppData, OMX_EventBufferFlag,
-                                                 1, 1, NULL);
+        LOG(SF_LOG_DEBUG,"renderer meet end\r\n");
     default:
         break;
     }
@@ -1855,7 +1859,7 @@ static void CmdThread(void *args)
                 FlushBuffer(pSfOMXComponent, nPort);
 
                 if (nPort == 0)
-                    FlushInputQ(pSfOMXComponent, pSfVideoImplement->inPauseQ);
+                    FlushInputQ(pSfOMXComponent, pSfVideoImplement->inPortQ);
                 else if (nPort == 1)
                     FlushOutputQ(pSfOMXComponent, pSfVideoImplement->outPortQ);
             }
@@ -1978,7 +1982,7 @@ static OMX_ERRORTYPE SF_OMX_ComponentConstructor(SF_OMX_COMPONENT *pSfOMXCompone
     OMX_ERRORTYPE ret = OMX_ErrorNone;
     FunctionIn();
 
-    if (nInstance >= MAX_NUM_INSTANCE)
+    if (nInstance >= 1)
     {
         ret = OMX_ErrorInsufficientResources;
         goto EXIT;
