@@ -2240,7 +2240,7 @@ static STF_INT IspCtrl(
 #endif //#if 1
     //=========================================================================
     srand(time(0));
-    sleep(1);
+    usleep(100*1000);
 #if 0
     PrintUsage();
 #endif //#if 0
