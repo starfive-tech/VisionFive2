@@ -546,18 +546,19 @@ static BOOL ExecuteRenderer(ComponentImpl* com, PortContainer* in, PortContainer
                 VLOG(ERR, "GetYUVFromFrameBuffer2 FAIL!\n");
             }
             total_count = Queue_Get_Cnt(com->sinkPort.inputQ) + 1;
+            VLOG(INFO, "pBuffer = %p, dmaBuffer = %p, index = %d/%d\n", output->pBuffer, dmaBuffer, count, total_count);
             while (output->pBuffer != dmaBuffer)
             {
                 Queue_Enqueue(com->sinkPort.inputQ, (void *)output);
-                output = (PortContainerExternal*)ComponentPortGetData(&com->sinkPort);
-                VLOG(INFO, "pBuffer = %p, dmaBuffer = %p, index = %d/%d\n", output->pBuffer, dmaBuffer, count, total_count);
+                count ++;
                 if (count >= total_count)
                 {
-                    VLOG(ERR, "A wrong Frame Found\n");
-                    output->nFilledLen = 0;
+                    VLOG(TRACE, "A wrong Frame Found\n");
+                    output = NULL;
                     break;
                 }
-                count ++;
+                output = (PortContainerExternal*)ComponentPortGetData(&com->sinkPort);
+                VLOG(INFO, "pBuffer = %p, dmaBuffer = %p, index = %d/%d\n", output->pBuffer, dmaBuffer, count, total_count);
             }
         } else {
             if (FALSE ==GetYUVFromFrameBuffer2(output->pBuffer, NULL, output->nFilledLen, ctx->handle, &srcData->decInfo.dispFrame, rcDisplay, &width, &height, &bpp, &sizeYuv)) {
@@ -565,13 +566,16 @@ static BOOL ExecuteRenderer(ComponentImpl* com, PortContainer* in, PortContainer
             }
             VPU_DecClrDispFlag(ctx->handle, srcData->decInfo.indexFrameDisplay);
         }
-        output->nFilledLen = sizeYuv;
-        output->index = srcData->decInfo.indexFrameDisplay;
 
-        if(srcData->last)
-            output->nFlags |= 0x1;
+        if (output){
+            output->nFilledLen = sizeYuv;
+            output->index = srcData->decInfo.indexFrameDisplay;
 
-        ComponentNotifyListeners(com, COMPONENT_EVENT_DEC_FILL_BUFFER_DONE, (void *)output);
+            if(srcData->last)
+                output->nFlags |= 0x1;
+
+            ComponentNotifyListeners(com, COMPONENT_EVENT_DEC_FILL_BUFFER_DONE, (void *)output);
+        }
 
         (void)DisplayFrame;
         (void)decConfig;
