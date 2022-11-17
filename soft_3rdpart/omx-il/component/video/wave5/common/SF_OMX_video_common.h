@@ -85,6 +85,7 @@ typedef struct _SF_COMPONENT_FUNCTIONS
     // VPU
     int (*VPU_GetProductId)(int coreIdx);
     BOOL(*Queue_Enqueue)(Queue *queue, void *data);
+    void (*Queue_Flush)(Queue* queue);
     Uint32 (*Queue_Get_Cnt)(Queue *queue);
     RetCode (*VPU_DecClrDispFlag)(DecHandle handle, int index);
     RetCode (*VPU_DecGetFrameBuffer)(DecHandle handle, int frameIdx, FrameBuffer* frameBuf);

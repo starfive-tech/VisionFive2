@@ -63,6 +63,10 @@
 #define SUPPORT_MULTI_INST_INTR
 //#endif
 
+#ifndef PTHREAD_MUTEX_ROBUST_NP
+#define PTHREAD_MUTEX_ROBUST_NP     1
+#endif
+
 
 // do not define BIT_CODE_FILE_PATH in case of multiple product support. because wave410 and coda980 has different firmware binary format.
 #define CORE_0_BIT_CODE_FILE_PATH   "coda960.out"     // for coda960

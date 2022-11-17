@@ -2354,7 +2354,7 @@ static OMX_ERRORTYPE SF_OMX_ComponentConstructor(SF_OMX_COMPONENT *pSfOMXCompone
 
     FunctionIn();
 
-    if (nInstance >= MAX_NUM_INSTANCE)
+    if (nInstance >= 1)
     {
         ret = OMX_ErrorInsufficientResources;
         goto EXIT;
