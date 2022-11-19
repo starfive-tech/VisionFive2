@@ -100,7 +100,7 @@ endif #USE_FFMPEG
 ifeq ($(USE_PTHREAD), yes)
 LDLIBS  += -lpthread
 endif
-LDLIBS  += -lm
+LDLIBS  += -lm -lrt
 
 BUILDLIST=DECTEST
 MAKEFILE=WaveDecode.mak

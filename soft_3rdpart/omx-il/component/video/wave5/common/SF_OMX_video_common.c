@@ -412,7 +412,7 @@ OMX_ERRORTYPE FlushBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U32 nPort)
         {
             OMX_U32 inputQueueCount = pSfVideoImplement->functions->Queue_Get_Cnt(pFeederComponent->srcPort.inputQ);
             LOG(SF_LOG_PERF, "Flush %d buffers on inputPort\r\n", inputQueueCount);
-            if (inputQueueCount > 0)
+            if (inputQueueCount > 0 && pSfOMXComponent->memory_optimization)
             {
                 PortContainerExternal *input = NULL;
                 while ((input = (PortContainerExternal*)pSfVideoImplement->functions->ComponentPortGetData(&pFeederComponent->srcPort)) != NULL)
@@ -427,6 +427,11 @@ OMX_ERRORTYPE FlushBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U32 nPort)
                     }
                 }
             }
+            else
+            {
+                LOG(SF_LOG_PERF, "clear internel Q\r\n");
+                pSfVideoImplement->functions->Queue_Flush(pFeederComponent->srcPort.inputQ);
+            }
         }
     }
     else if (nPort == 1)
@@ -436,7 +441,7 @@ OMX_ERRORTYPE FlushBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U32 nPort)
         {
             OMX_U32 OutputQueueCount = pSfVideoImplement->functions->Queue_Get_Cnt(pRendererComponent->sinkPort.inputQ);
             LOG(SF_LOG_PERF, "Flush %d buffers on outputPort\r\n", OutputQueueCount);
-            if (OutputQueueCount > 0)
+            if (OutputQueueCount > 0 && pSfOMXComponent->memory_optimization)
             {
                 PortContainerExternal *output = NULL;
                 while ((output = (PortContainerExternal*)pSfVideoImplement->functions->ComponentPortGetData(&pRendererComponent->sinkPort)) != NULL)
@@ -452,6 +457,11 @@ OMX_ERRORTYPE FlushBuffer(SF_OMX_COMPONENT *pSfOMXComponent, OMX_U32 nPort)
                         pSfVideoImplement->functions->ComponentNotifyListeners(pRendererComponent, COMPONENT_EVENT_ENC_FILL_BUFFER_DONE, (void *)output);
                     }
                 }
+            }
+            else
+            {
+                LOG(SF_LOG_PERF, "clear internel Q\r\n");
+                pSfVideoImplement->functions->Queue_Flush(pRendererComponent->sinkPort.inputQ);
             }
         }
     }
@@ -510,6 +520,7 @@ static void sf_get_component_functions(SF_COMPONENT_FUNCTIONS *funcs, OMX_PTR *s
     // VPU
     funcs->VPU_GetProductId = dlsym(sohandle, "VPU_GetProductId");
     funcs->Queue_Enqueue = dlsym(sohandle, "Queue_Enqueue");
+    funcs->Queue_Flush = dlsym(sohandle, "Queue_Flush");
     funcs->Queue_Get_Cnt = dlsym(sohandle, "Queue_Get_Cnt");
     funcs->VPU_DecClrDispFlag = dlsym(sohandle, "VPU_DecClrDispFlag");
     funcs->VPU_DecGetFrameBuffer = dlsym(sohandle, "VPU_DecGetFrameBuffer");
