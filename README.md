@@ -195,7 +195,7 @@ transfer image.fit through TFTP:
 Step1: set enviroment parameter:
 
 ```
-setenv bootfile vmlinuz; setenv fdt_addr_r 0x48000000; setenv fdt_high 0xffffffffffffffff; setenv fdtcontroladdr 0xffffffffffffffff; setenv initrd_high 0xffffffffffffffff; setenv kernel_addr_r 0x44000000; setenv ramdisk_addr_r 0x48100000; setenv fileaddr a0000000; setenv ipaddr 192.168.xxx.xxx; setenv serverip 192.168.xxx.xxx;
+setenv bootfile vmlinuz; setenv fileaddr a0000000; setenv fdtcontroladdr 0xffffffffffffffff; setenv ipaddr 192.168.xxx.xxx; setenv serverip 192.168.xxx.xxx;
 ```
 
 Step2: upload image file to ddr:
@@ -224,7 +224,7 @@ If we want to loading the other dtb, e.g. `jh7110-visionfive-v2-wm8960.dtb`, fol
 Step1: set enviroment parameter:
 
 ```
-setenv bootfile vmlinuz; setenv fdt_addr_r 0x48000000; setenv fdt_high 0xffffffffffffffff; setenv fdtcontroladdr 0xffffffffffffffff; setenv initrd_high 0xffffffffffffffff; setenv kernel_addr_r 0x44000000; setenv ramdisk_addr_r 0x48100000; setenv fileaddr a0000000; setenv ipaddr 192.168.xxx.xxx; setenv serverip 192.168.xxx.xxx;
+setenv bootfile vmlinuz; setenv fileaddr a0000000; setenv fdtcontroladdr 0xffffffffffffffff; setenv ipaddr 192.168.xxx.xxx; setenv serverip 192.168.xxx.xxx;
 setenv kernel_comp_addr_r 0xb0000000;setenv kernel_comp_size 0x10000000;
 ```
 
@@ -234,6 +234,7 @@ Step2: upload files to ddr:
 tftpboot ${fdt_addr_r} jh7110-visionfive-v2-wm8960.dtb;
 tftpboot ${kernel_addr_r} Image.gz;
 tftpboot ${ramdisk_addr_r} initramfs.cpio.gz;
+run chipa_set_linux;
 ```
 
 Step3: load and excute:
