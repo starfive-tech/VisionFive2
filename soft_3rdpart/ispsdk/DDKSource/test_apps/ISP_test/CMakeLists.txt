@@ -151,7 +151,7 @@ if (BUILD_RELEASE_VERSION)
         StfCommonLib
         LinkedListLib
         CI_UserLib
-        SensorApiLib
+        SensorApi
         MediaCtrlLib
         ISPCLib
         ISP_APILib
