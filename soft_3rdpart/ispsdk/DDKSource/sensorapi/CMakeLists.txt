@@ -161,20 +161,30 @@ set(SENSORAPI_H
     include/sensorapi/sensorapi.h
 )
 
+set(SENSORAPI_C
+    src/sensorapi/sensor_phy.c
+    src/sensorapi/sensorapi.c
+)
+
 if (SENSOR_SC2235_DVP)
     message(STATUS "add sensor SC2235 DVP")
     set(SENSORS_H ${SENSORS_H} include/sensors/sc2235dvp.h)
+    set(SENSORS_C ${SENSORS_C} src/sensors/sc2235dvp.c)
 endif()
 
 if (SENSOR_OV4689_MIPI)
     message(STATUS "add sensor OV4689 MIPI")
     set(SENSORS_H ${SENSORS_H} include/sensors/ov4689mipi.h)
+    set(SENSORS_C ${SENSORS_C} src/sensors/ov4689mipi.c)
 endif()
 
 if (SENSOR_IMX219_MIPI)
     message(STATUS "add sensor IMX219 MIPI")
     set(SENSORS_H ${SENSORS_H} include/sensors/imx219mipi.h)
+    set(SENSORS_C ${SENSORS_C} src/sensors/imx219mipi.c)
 endif()
 
+add_library(${SENSORAPI_NAME} ${SENSORAPI_H} ${SENSORS_H} ${SENSORAPI_C} ${SENSORS_C})
+add_dependencies(${SENSORAPI_NAME} ${STFDRVAPI_DEPENDENCIES})
 source_group(Sensors_H FILES ${SENSORS_H})
-
+source_group(Sensors_C FILES ${SENSORS_C})
