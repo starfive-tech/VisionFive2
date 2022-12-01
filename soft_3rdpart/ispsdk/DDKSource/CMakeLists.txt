@@ -53,12 +53,12 @@ endif()
 
 option(BUILD_RELEASE_VERSION "Build the ISP SDK as a release version" ON)
 option(BUILD_KERNEL_DRIVER "Build the kernel driver (Mantis Device Driver)" OFF)
-option(BUILD_CAPTUREINTERFACE "Build the Capture Interface (Mantis Hardware Driver)" OFF)
+option(BUILD_CAPTUREINTERFACE "Build the Capture Interface (Mantis Hardware Driver)" ON)
 option(BUILD_ISPCONTROL "Build the ISP Control" OFF)
 option(BUILD_API "Build the ISP API" OFF)
 option(BUILD_TEST_APPS "Build the Test applications" ON)
 option(BUILD_STARFIVE_APPS "Build the StarFive applications" ON)
-option(BUILD_SENSORAPI "Build the Mantis Sensor API" OFF)
+option(BUILD_SENSORAPI "Build the Mantis Sensor API" ON)
 option(BUILD_MEDIA_CTRL "Build the media control API" OFF)
 option(CI_MEM_DMA_ON "Build the CI memory machansim MEM DMA" OFF)
 option(LOAD_TEST_DATA "Load test image or data into memory buffer" OFF)
@@ -356,15 +356,15 @@ if (BUILD_RELEASE_VERSION)
         else()
             message(FATAL_ERROR "Library (CI_UserLib) not found")
         endif()
-        find_library(SensorApiLib
+        find_library(SensorApi
             NAMES "libsensorapi.a"
             PATHS PATHS ${LIBISPSDK_PATH}
             NO_DEFAULT_PATH
         )
-        if (SensorApiLib)
-            #message(STATUS "Library (SensorApiLib) found in ${LIBISPSDK_PATH}")
+        if (SensorApi)
+            #message(STATUS "Library (SensorApi) found in ${LIBISPSDK_PATH}")
         else()
-            message(FATAL_ERROR "Library (SensorApiLib) not found")
+            message(FATAL_ERROR "Library (SensorApi) not found")
         endif()
         find_library(MediaCtrlLib
             NAMES "libmedia-ctrl.a"
@@ -422,10 +422,10 @@ if (BUILD_RELEASE_VERSION)
         #set_target_properties(CI_UserLib PROPERTIES IMPORTED_LOCATION ${LIBISPSDK_PATH}/libCI_User.a)
         
         #===== SensorApi =====
-        add_library(SensorApiLib STATIC IMPORTED)
-        #set_property(TARGET SensorApiLib PROPERTY IMPORTED_LOCATION ${SENSORAPI_LIB_DIRS}/libsensorapi.a)
-        set_property(TARGET SensorApiLib PROPERTY IMPORTED_LOCATION ${LIBISPSDK_PATH}/libsensorapi.a)
-        #set_target_properties(SensorApiLib PROPERTIES IMPORTED_LOCATION ${LIBISPSDK_PATH}/libsensorapi.a)
+        #add_library(SensorApi STATIC IMPORTED)
+        #set_property(TARGET SensorApi PROPERTY IMPORTED_LOCATION ${SENSORAPI_LIB_DIRS}/libsensorapi.a)
+        #set_property(TARGET SensorApi PROPERTY IMPORTED_LOCATION ${LIBISPSDK_PATH}/libsensorapi.a)
+        #set_target_properties(SensorApi PROPERTIES IMPORTED_LOCATION ${LIBISPSDK_PATH}/libsensorapi.a)
     
         #===== MediaCtrl =====
         add_library(MediaCtrlLib STATIC IMPORTED)
