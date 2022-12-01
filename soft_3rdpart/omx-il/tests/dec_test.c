@@ -426,6 +426,14 @@ int main(int argc, char **argv)
         return 0;
     }
     decodeTestContext->hComponentDecoder = hComponentDecoder;
+
+    OMX_PARAM_PORTDEFINITIONTYPE pInputPortDefinition;
+    OMX_INIT_STRUCTURE(pInputPortDefinition);
+    pInputPortDefinition.nPortIndex = 0;
+    OMX_GetParameter(hComponentDecoder, OMX_IndexParamPortDefinition, &pInputPortDefinition);
+    pInputPortDefinition.format.video.nFrameWidth = codecParameters->width;
+    pInputPortDefinition.format.video.nFrameHeight = codecParameters->height;
+    OMX_SetParameter(hComponentDecoder, OMX_IndexParamPortDefinition, &pInputPortDefinition);
      
     OMX_PARAM_PORTDEFINITIONTYPE pOutputPortDefinition;
     OMX_INIT_STRUCTURE(pOutputPortDefinition);
@@ -464,13 +472,6 @@ int main(int argc, char **argv)
 
     OMX_SendCommand(hComponentDecoder, OMX_CommandStateSet, OMX_StateIdle, NULL);
 
-    OMX_PARAM_PORTDEFINITIONTYPE pInputPortDefinition;
-    OMX_INIT_STRUCTURE(pInputPortDefinition);
-    pInputPortDefinition.nPortIndex = 0;
-    OMX_GetParameter(hComponentDecoder, OMX_IndexParamPortDefinition, &pInputPortDefinition);
-    pInputPortDefinition.format.video.nFrameWidth = codecParameters->width;
-    pInputPortDefinition.format.video.nFrameHeight = codecParameters->height;
-    OMX_SetParameter(hComponentDecoder, OMX_IndexParamPortDefinition, &pInputPortDefinition);
     /*Alloc input buffer*/
     OMX_U32 nInputWidth = codecParameters->width;
     OMX_U32 nInputHeight = codecParameters->height;
