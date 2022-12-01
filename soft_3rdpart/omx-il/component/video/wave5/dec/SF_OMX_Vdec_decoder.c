@@ -668,7 +668,12 @@ static OMX_ERRORTYPE SF_OMX_AllocateBuffer(
                 // Alloc DMA memory first
                 if (pSfOMXComponent->memory_optimization)
                 {
-                    temp_bufferHeader->pBuffer = pSfVideoImplement->functions->AllocateFrameBuffer2(pComponentRender, nSizeBytes);
+                    OMX_U32 nLinearBufferSize, nFrameWidth, nFrameHeight;
+                    nFrameWidth = OMX_ALIGN32(pSfOMXComponent->portDefinition[1].format.video.nFrameWidth);
+                    nFrameHeight = pSfOMXComponent->portDefinition[1].format.video.nFrameHeight;
+                    nLinearBufferSize = nFrameWidth * nFrameHeight * 3 / 2;
+                    nLinearBufferSize = (nLinearBufferSize > nSizeBytes)? nLinearBufferSize : nSizeBytes;
+                    temp_bufferHeader->pBuffer = pSfVideoImplement->functions->AllocateFrameBuffer2(pComponentRender, nLinearBufferSize);
                 }
                 // DMA Memory alloc fail, goto normal alloc
                 if (temp_bufferHeader->pBuffer == NULL)
