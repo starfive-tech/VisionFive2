@@ -2104,9 +2104,11 @@ void LoadSrcYUV2(
     )
 {
     Uint32      pix_addr;
-    Uint8*      rowBufferY;
+    Uint8*      rowBuffer;
+    Uint8*      puc;
 
     Int32       baseY;
+    Int32       y;
 
     Uint8       *pY = NULL;
     Uint8       *pCb = NULL;
@@ -2139,15 +2141,43 @@ void LoadSrcYUV2(
 #endif
 
     pix_addr = fbSrc->bufY + 0xffffffff00000000;
-    rowBufferY = pY + (pix_addr - baseY);
-    VLOG(DEBUG, "%s %d ret = %d, pix_addr = %lx,  pY = %p, rowBufferY = %p pSrc = %p pSrc2 = %p\n",
-        __FUNCTION__, __LINE__, ret, pix_addr, pY, rowBufferY, pSrc, pSrc2);
+    rowBuffer = pY + (pix_addr - baseY);
+    VLOG(DEBUG, "%s %d ret = %d, pix_addr = %lx,  pY = %p, rowBuffer = %p pSrc = %p pSrc2 = %p\n",
+        __FUNCTION__, __LINE__, ret, pix_addr, pY, rowBuffer, pSrc, pSrc2);
+
+    /* pSrc and pSrc2 can not be !NULL at same time */
     if (pSrc) {
-        osal_memcpy(pSrc, rowBufferY, srcHeightY*srcWidthY*3/2);
+        puc = pSrc;
+    } else if (pSrc2) {
+        *pSrc2 = rowBuffer;
+        puc = *pSrc2;
     }
-    if (pSrc2) {
-        *pSrc2 = rowBufferY;
+
+    if (fbSrc->stride > srcWidthY) {
+        for (y = 1; y < srcHeightY; y ++) {
+            osal_memcpy(puc + srcWidthY * y, rowBuffer + fbSrc->stride * y, srcWidthY);
+        }
+
+        if (srcHeightC) {
+            puc += srcWidthY * srcHeightY;
+            rowBuffer +=  fbSrc->bufCb - fbSrc->bufY;
+            for (y = 0; y < srcHeightC; y ++) {
+                osal_memcpy(puc + srcWidthC * y, rowBuffer + chroma_stride * y, srcWidthC);
+            }
+
+            if (interLeave != TRUE) {
+                puc = puc + srcWidthC * srcHeightC;
+                rowBuffer +=  fbSrc->bufCr - fbSrc->bufCb;
+                for (y = 0; y < srcHeightC; y ++) {
+                    osal_memcpy(puc + srcWidthC * y, rowBuffer + chroma_stride * y, srcWidthC);
+                }
+            }
+        }
+    } else if (pSrc) {
+        osal_memcpy(pSrc, rowBuffer, srcHeightY*srcWidthY*3/2);
     }
+
+
     // following code store output buffers
 #if 0
     {
