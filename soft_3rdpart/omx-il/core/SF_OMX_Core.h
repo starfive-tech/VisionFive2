@@ -129,6 +129,8 @@ typedef struct _SF_PORT_PRIVATE
     OMX_U32 nPortnumber;
 } SF_PORT_PRIVATE;
 
+#define OMX_ALIGN32(_x)  (((_x)+0x1f)&~0x1f)
+
 #define PRINT_STUCT(a, b)                                   \
     do                                                      \
     {                                                       \
