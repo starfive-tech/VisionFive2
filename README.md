@@ -1,4 +1,4 @@
-# StarFiveTech Freedom Unleashed SDK
+# StarFiveTech VisionFive2 SDK
 
 This builds a complete RISC-V cross-compile toolchain for the `StarFiveTech` `JH7110` SoC. It also builds U-boot SPL, U-boot and a flattened image tree (FIT) image with a Opensbi binary, linux kernel, device tree, ramdisk image and rootfs image for the `JH7110 VisionFive2` board.
 
@@ -10,10 +10,7 @@ Install required additional packages:
 
 ```
 $ sudo apt update
-$ sudo apt-get install build-essential g++ git autoconf automake autotools texinfo
-bison xxd curl flex gawk gdisk gperf libgmp-dev libmpfr-dev libmpc-dev libz-dev libssl-
-dev libncurses-dev libtool patchutils python screen texinfo unzip zlib1g-dev libyaml-
-dev wget cpio bc dosfstools mtools device-tree-compiler libglib2.0-dev libpixman-1-dev kpartx
+$ sudo apt-get install build-essential g++ git autoconf automake autotools-dev texinfo bison xxd curl flex gawk gdisk gperf libgmp-dev libmpfr-dev libmpc-dev libz-dev libssl-dev libncurses-dev libtool patchutils python screen texinfo unzip zlib1g-dev libyaml-dev wget cpio bc dosfstools mtools device-tree-compiler libglib2.0-dev libpixman-1-dev kpartx
 ```
 
 Additional packages for Git LFS support:
@@ -25,13 +22,14 @@ $ sudo apt-get install git-lfs
 
 ## Fetch Code Instructions ##
 
-Checkout this repository  (e.g.: branch `vf2-515-devel`). Then checkout all of the linked submodules using:
+Checkout this repository  (e.g.: branch `JH7110_VisionFive2_devel`). Then checkout all of the linked submodules using:
 
 	$ git clone git@github.com:starfive-tech/VisionFive2.git
-	$ git checkout JH7110_VisionFive2_devel
+	$ cd VisionFive2
+   $ git checkout JH7110_VisionFive2_devel
 	$ git submodule update --init --recursive
 
-This will take some time and require around 7GB of disk space. Some modules may fail because certain dependencies don't have the best git hosting. The only solution is to wait and try again later (or ask someone for a copy of that source repository).
+This will take some time and require around 5GB of disk space. Some modules may fail because certain dependencies don't have the best git hosting. The only solution is to wait and try again later (or ask someone for a copy of that source repository).
 
 For user who build the release tag version, the above command is enough. For developer, need to switch the 4 submodules `buildroot`, `u-boot`, `linux`, `opensbi` to correct branch manually, also could refer to `.gitmodule`
 
@@ -44,7 +42,7 @@ $ cd opensbi && git checkout master && cd ..
 
 ## Quick Build Instructions
 
-Below are the quick building for the initramfs image `image.fit` which could be translated to board through tftp and run on board. The completed toolchain, `u-boot-spl.bin.normal.out`, `visionfive2_fw_payload.img`, `image.fit` will be generated under `work/` directory. The completed build tree will consume about 15G of disk space.
+Below are the quick building for the initramfs image `image.fit` which could be translated to board through tftp and run on board. The completed toolchain, `u-boot-spl.bin.normal.out`, `visionfive2_fw_payload.img`, `image.fit` will be generated under `work/` directory. The completed build tree will consume about 16G of disk space.
 
 	$ make -j$(nproc)
 
