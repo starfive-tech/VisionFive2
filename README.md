@@ -26,7 +26,7 @@ Checkout this repository  (e.g.: branch `JH7110_VisionFive2_devel`). Then checko
 
 	$ git clone git@github.com:starfive-tech/VisionFive2.git
 	$ cd VisionFive2
-   $ git checkout JH7110_VisionFive2_devel
+   	$ git checkout JH7110_VisionFive2_devel
 	$ git submodule update --init --recursive
 
 This will take some time and require around 5GB of disk space. Some modules may fail because certain dependencies don't have the best git hosting. The only solution is to wait and try again later (or ask someone for a copy of that source repository).
