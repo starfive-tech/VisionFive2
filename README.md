@@ -376,3 +376,8 @@ Prepare the tftp sever. e.g. `sudo apt install tftpd-hpa` for Ubuntu host.
    StarFive # sf update 0xa0000000 0x100000 $filesize
    ```
 
+## APPENDIX IV: Recovering Bootloader 
+
+The SPL and U-Boot are stored inside the SPI flash on board. There may be situations where you accidentally emptied the flash or if the flash is damaged on your board. In these situations, it's better to recover the bootloader. 
+
+Please jump to https://github.com/starfive-tech/Tools for more details
