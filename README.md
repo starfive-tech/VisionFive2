@@ -39,13 +39,14 @@ In case someone run `git clone git@gitlab.starfivetech.com:sdk/freelight-u-sdk.g
 
 This will take some time and require around 7GB of disk space. Some modules may fail because certain dependencies don't have the best git hosting. The only solution is to wait and try again later (or ask someone for a copy of that source repository).
 
-For user who build the release tag version, the above command is enough. For developer, need to switch the 4 submodules `buildroot`, `u-boot`, `linux`, `opensbi` to correct branch manually, or refer to `.gitmodule`
+For user who build the release tag version, the above command is enough. For developer, need to switch the 5 submodules `buildroot`, `u-boot`, `linux`, `opensbi`, `soft_3rdpart` to correct branch manually, or refer to `.gitmodule`
 
 ```
 $ cd buildroot && git checkout jh7110-devel && cd ..
 $ cd u-boot && git checkout jh7110-master && cd ..
 $ cd linux && git checkout jh7110-5.15.y-devel && cd ..
 $ cd opensbi && git checkout master && cd ..
+$ cd soft_3rdpart && git checkout jh7110-devel && cd ..
 ```
 
 ## Quick Build Instructions

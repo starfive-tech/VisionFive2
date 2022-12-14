@@ -14,3 +14,7 @@
 	path = opensbi
 	url = git@192.168.110.45:sdk/opensbi.git
 	branch = master
+[submodule "soft_3rdpart"]
+	path = soft_3rdpart
+	url = git@192.168.110.45:sdk/soft_3rdpart.git
+	branch = jh7110-devel
