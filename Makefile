@@ -175,12 +175,11 @@ $(buildroot_rootfs_wrkdir)/.config: $(buildroot_srcdir) $(buildroot_initramfs_ta
 	$(MAKE) -C $< RISCV=$(RISCV) PATH=$(RVPATH) O=$(buildroot_rootfs_wrkdir) olddefconfig
 
 $(buildroot_rootfs_ext): $(buildroot_srcdir) $(buildroot_rootfs_wrkdir)/.config $(target_gcc) $(buildroot_rootfs_config) $(version)	
-	mkdir -p $(buildroot_rootfs_wrkdir)/target/lib/
+	mkdir -p $(buildroot_rootfs_wrkdir)/target/lib
 	cp -r $(module_install_path)/lib/modules $(buildroot_rootfs_wrkdir)/target/lib/
-	cp $(perf_tool_path)/perf $(buildroot_rootfs_wrkdir)/usr/bin/
-	$(MAKE) -C $< RISCV=$(RISCV) PATH=$(RVPATH) O=$(buildroot_rootfs_wrkdir)
+	mkdir -p $(buildroot_rootfs_wrkdir)/target/usr/bin
+	cp $(perf_tool_path)/perf $(buildroot_rootfs_wrkdir)/target/usr/bin/
 	cp $(version) $(buildroot_rootfs_wrkdir)/target/usr/bin/version
-	rm -rf $(buildroot_rootfs_ext)
 	$(MAKE) -C $< RISCV=$(RISCV) PATH=$(RVPATH) O=$(buildroot_rootfs_wrkdir)
 
 .PHONY: buildroot_rootfs
