@@ -323,8 +323,35 @@ old_desc_blocks = 2, new_desc_blocks = 118
 The filesystem on /dev/mmcblk1p4 is now 30859756 (1k) blocks long.
 ```
 
-## APPENDIX II: Using DTB Overlay Dynamically
+If you need to add a new partition, such as a swap partition (here we do set the rest of disk space to swap partition,
+but normally swap partition size should be the same as DDR size or double of DDR size),
+you can use the following shell script afer the image running on board:
 
+```bash
+#!bin/sh
+sgdisk -e /dev/mmcblk0
+disk=/dev/mmcblk0
+gdisk $disk << EOF
+p
+n
+5
+
+
+8200
+p
+c
+5
+hibernation
+w
+y
+EOF
+
+mkswap /dev/mmcblk0p5
+swapoff -a
+swapon /dev/mmcblk0p5
+```
+
+## APPENDIX II: Using DTB Overlay Dynamically
 The system support loading dtb overlay dynamically when the board is running. Run below on board:
 
 ```

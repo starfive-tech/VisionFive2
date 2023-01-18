@@ -42,6 +42,7 @@ vmlinux := $(linux_wrkdir)/vmlinux
 vmlinux_stripped := $(linux_wrkdir)/vmlinux-stripped
 vmlinux_bin := $(wrkdir)/vmlinux.bin
 module_install_path:=$(wrkdir)/module_install_path
+perf_tool_path := $(linux_srcdir)/tools/perf
 
 its_file=$(confdir)/$(HWBOARD)-fit-image.its
 uboot_its_file=$(confdir)/$(HWBOARD)-uboot-fit-image.its
@@ -174,11 +175,11 @@ $(buildroot_rootfs_wrkdir)/.config: $(buildroot_srcdir) $(buildroot_initramfs_ta
 	$(MAKE) -C $< RISCV=$(RISCV) PATH=$(RVPATH) O=$(buildroot_rootfs_wrkdir) olddefconfig
 
 $(buildroot_rootfs_ext): $(buildroot_srcdir) $(buildroot_rootfs_wrkdir)/.config $(target_gcc) $(buildroot_rootfs_config) $(version)	
-	mkdir -p $(buildroot_rootfs_wrkdir)/target/lib/
+	mkdir -p $(buildroot_rootfs_wrkdir)/target/lib
 	cp -r $(module_install_path)/lib/modules $(buildroot_rootfs_wrkdir)/target/lib/
-	$(MAKE) -C $< RISCV=$(RISCV) PATH=$(RVPATH) O=$(buildroot_rootfs_wrkdir)
+	mkdir -p $(buildroot_rootfs_wrkdir)/target/usr/bin
+	cp $(perf_tool_path)/perf $(buildroot_rootfs_wrkdir)/target/usr/bin/
 	cp $(version) $(buildroot_rootfs_wrkdir)/target/usr/bin/version
-	rm -rf $(buildroot_rootfs_ext)
 	$(MAKE) -C $< RISCV=$(RISCV) PATH=$(RVPATH) O=$(buildroot_rootfs_wrkdir)
 
 .PHONY: buildroot_rootfs
@@ -238,14 +239,22 @@ vpudriver-build: $(vmlinux)
 	$(MAKE) -C $(buildroot_initramfs_wrkdir) O=$(buildroot_initramfs_wrkdir) \
 		INSTALL_MOD_PATH=$(module_install_path) codaj12driver
 
+linux-tools-build: $(vmlinux)
+	$(MAKE) -C $(perf_tool_path) \
+		ARCH=riscv \
+		CROSS_COMPILE=$(CROSS_COMPILE) \
+		WERROR=0 NO_GTK2=1 NO_LIBPERL=1 \
+		NO_LIBBIONIC=1
+
 .PHONY: initrd
 initrd: $(initramfs)
 
 $(initramfs).d: $(buildroot_initramfs_sysroot)
 	$(linux_srcdir)/usr/gen_initramfs_list.sh -l $(confdir)/initramfs.txt $(buildroot_initramfs_sysroot) > $@
 
-$(initramfs): $(buildroot_initramfs_sysroot) $(vmlinux) vpudriver-build $(version)
+$(initramfs): $(buildroot_initramfs_sysroot) $(vmlinux) vpudriver-build $(version) linux-tools-build
 	cp -r $(module_install_path)/lib/modules $(buildroot_initramfs_sysroot)/lib/
+	cp $(perf_tool_path)/perf $(buildroot_initramfs_sysroot)/usr/bin/
 	cp $(version) $(buildroot_initramfs_sysroot)/usr/bin/version && \
 	cd $(linux_wrkdir) && \
 		$(linux_srcdir)/usr/gen_initramfs_list.sh \
