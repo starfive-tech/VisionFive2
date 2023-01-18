@@ -13,7 +13,7 @@
 [submodule "opensbi"]
 	path = opensbi
 	url = git@github.com:starfive-tech/opensbi.git
-	branch = master
+	branch = JH7110_VisionFive2_devel
 [submodule "soft_3rdpart"]
 	path = soft_3rdpart
 	url = git@github.com:starfive-tech/soft_3rdpart.git
