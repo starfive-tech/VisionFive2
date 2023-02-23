@@ -486,7 +486,7 @@ sdimg: $(buildroot_rootfs_ext)
 	@./genimage.sh
 
 img: sdimg
-	@./genimage_generic
+	$(wrkdir)/$(spl_tool) -i -f $(wrkdir)/sdcard.img
 
 #usb config
 format-usb-disk: $(sbi_bin) $(uboot) $(fit) $(vfat_image)
