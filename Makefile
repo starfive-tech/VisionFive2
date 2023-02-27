@@ -79,8 +79,10 @@ uboot_dtb_file := $(wrkdir)/u-boot/arch/riscv/dts/starfive_$(HWBOARD).dtb
 
 uboot := $(uboot_wrkdir)/u-boot.bin
 
-spl_tool_srcdir :=$(CURDIR)/soft_3rdpart/spl_tool/
-spl_bin_normal_out :=$(wrkdir)/u-boot-spl.bin.normal.out
+spl_tool_srcdir :=$(CURDIR)/soft_3rdpart/spl_tool
+spl_tool := spl_tool
+
+spl_bin_normal_out := u-boot-spl.bin.normal.out
 
 uboot_config := starfive_$(HWBOARD)_defconfig
 
@@ -335,12 +337,14 @@ $(uboot): $(uboot_srcdir) $(target_gcc)
 	$(MAKE) -C $(uboot_srcdir) O=$(uboot_wrkdir) $(uboot_config)
 	$(MAKE) -C $(uboot_srcdir) O=$(uboot_wrkdir) CROSS_COMPILE=$(CROSS_COMPILE)
 
-$(spl_bin_normal_out): $(spl_tool_srcdir) $(uboot)
-	cd $(spl_tool_srcdir) && \
-	./create_sbl $(uboot_wrkdir)/spl/u-boot-spl.bin 0x01010101 && \
-	cd -
-	cp $(spl_tool_srcdir)/u-boot-spl.bin.normal.out $(spl_bin_normal_out)
-	rm -f $(spl_tool_srcdir)/u-boot-spl.bin*
+.PHONY: spl_tool
+spl_tool: $(spl_tool_srcdir)
+	$(MAKE) -C $(spl_tool_srcdir)
+	cp $(spl_tool_srcdir)/$(spl_tool) $(wrkdir)
+
+$(spl_bin_normal_out): spl_tool $(uboot)
+	$(wrkdir)/$(spl_tool) -c -f $(uboot_wrkdir)/spl/u-boot-spl.bin
+	cp $(uboot_wrkdir)/spl/$(spl_bin_normal_out) $(wrkdir)
 
 $(uboot_fit): $(sbi_bin) $(uboot_its_file) $(uboot)
 	$(uboot_wrkdir)/tools/mkimage -f $(uboot_its_file) -A riscv -O u-boot -T firmware $(uboot_fit)
@@ -367,6 +371,7 @@ clean:
 	rm -f work/linux/vmlinux*
 	rm -f work/u-boot-spl.bin.normal.out
 	rm -f work/version
+	rm -rf work/$(spl_tool)
 
 .PHONY: distclean
 distclean:
@@ -481,7 +486,7 @@ sdimg: $(buildroot_rootfs_ext)
 	@./genimage.sh
 
 img: sdimg
-	@./genimage_generic
+	$(wrkdir)/$(spl_tool) -i -f $(wrkdir)/sdcard.img
 
 #usb config
 format-usb-disk: $(sbi_bin) $(uboot) $(fit) $(vfat_image)
