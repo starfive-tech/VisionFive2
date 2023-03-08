@@ -24,11 +24,10 @@ $ sudo apt-get install git-lfs
 
 Checkout this repository  (e.g.: branch `JH7110_VisionFive2_devel`). Then checkout all of the linked submodules using:
 
-	$ git clone git@github.com:starfive-tech/VisionFive2.git
+	$ git clone https://github.com/starfive-tech/VisionFive2.git
 	$ cd VisionFive2
-   	$ git checkout JH7110_VisionFive2_devel
+	$ git checkout JH7110_VisionFive2_devel
 	$ git submodule update --init --recursive
-
 This will take some time and require around 5GB of disk space. Some modules may fail because certain dependencies don't have the best git hosting. The only solution is to wait and try again later (or ask someone for a copy of that source repository).
 
 For user who build the release tag version, the above command is enough. For developer, need to switch the 5 submodules `buildroot`, `u-boot`, `linux`, `opensbi`, `soft_3rdpart` to correct branch manually, also could refer to `.gitmodule`
