@@ -9,7 +9,7 @@ partnum=3
 fitfile=starfiveu.fit
 
 # for debugging boot
-bootargs_ext=if test ${devnum} = 0; then setenv bootargs "earlyprintk console=ttyS0,115200 debug rootwait earlycon=sbi root=/dev/mmcblk0p4"; else setenv bootargs "earlyprintk console=ttyS0,115200 debug rootwait earlycon=sbi root=/dev/mmcblk1p4"; fi;
+bootargs_ext=if test ${devnum} = 0; then setenv bootargs "earlyprintk console=tty1 console=ttyS0,115200 debug rootwait earlycon=sbi root=/dev/mmcblk0p4"; else setenv bootargs "earlyprintk console=tty1 console=ttyS0,115200 debug rootwait earlycon=sbi root=/dev/mmcblk1p4"; fi;
 #bootargs=earlyprintk console=ttyS0,115200 debug rootwait earlycon=sbi root=/dev/mmcblk1p4
 
 # for addr info
