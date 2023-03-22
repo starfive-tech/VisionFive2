@@ -197,7 +197,7 @@ tftpboot ${fileaddr} ${serverip}:image.fit;
 Step3: load and excute:
 
 ```
-bootm start ${fileaddr};bootm loados ${fileaddr};run chipa_set_linux;booti 0x40200000 0x46100000:${filesize} 0x46000000
+bootm start ${fileaddr};bootm loados ${fileaddr};run chipa_set_linux;run cpu_vol_set;booti 0x40200000 0x46100000:${filesize} 0x46000000
 ```
 
 When you see the `buildroot login:` message, then congratulations, the launch was successful
@@ -224,7 +224,7 @@ Step2: upload files to ddr:
 tftpboot ${fdt_addr_r} jh7110-visionfive-v2-wm8960.dtb;
 tftpboot ${kernel_addr_r} Image.gz;
 tftpboot ${ramdisk_addr_r} initramfs.cpio.gz;
-run chipa_set_linux;
+run chipa_set_linux;run cpu_vol_set;
 ```
 
 Step3: load and excute:
