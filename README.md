@@ -10,7 +10,7 @@ Install required additional packages:
 
 ```
 $ sudo apt update
-$ sudo apt-get install build-essential g++ git autoconf automake autotools-dev texinfo bison xxd curl flex gawk gdisk gperf libgmp-dev libmpfr-dev libmpc-dev libz-dev libssl-dev libncurses-dev libtool patchutils python screen texinfo unzip zlib1g-dev libyaml-dev wget cpio bc dosfstools mtools device-tree-compiler libglib2.0-dev libpixman-1-dev kpartx
+$ sudo apt-get install build-essential g++ git autoconf automake autotools-dev texinfo bison xxd curl flex gawk gdisk gperf libgmp-dev libmpfr-dev libmpc-dev libz-dev libssl-dev libncurses-dev libtool patchutils python3-pip screen texinfo unzip zlib1g-dev libyaml-dev wget cpio bc dosfstools mtools device-tree-compiler libglib2.0-dev libpixman-1-dev kpartx
 ```
 
 Additional packages for Git LFS support:
