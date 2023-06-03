@@ -404,7 +404,7 @@ Prepare the tftp sever. e.g. `sudo apt install tftpd-hpa` for Ubuntu host.
 
 If you have installed a distro on VF2, upgrading firmware will be much easier. You just need to run the following command:  
 ```bsah
-curl -fsSL https://raw.githubusercontent.com/starfive-tech/VisionFive2/JH7110_VisionFive2_devel/upgrade-firmware.sh | sudo bash
+wget -O upgrade-firmware.sh https://raw.githubusercontent.com/starfive-tech/VisionFive2/JH7110_VisionFive2_devel/upgrade-firmware.sh && sudo bash upgrade-firmware.sh
 ```
 
 ## APPENDIX V: Recovering Bootloader 
