@@ -400,7 +400,7 @@ Prepare the tftp sever. e.g. `sudo apt install tftpd-hpa` for Ubuntu host.
    StarFive # sf update 0xa0000000 0x100000 $filesize
    ```
 
-## APPENDIX IV: Upgarde firmware through the installed distro 
+## APPENDIX IV: Upgrading firmware through the installed distro 
 
 If you have installed a distro on VF2, upgrading firmware will be much easier. You just need to run the following command:  
 ```bsah
