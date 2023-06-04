@@ -68,16 +68,28 @@ then
         -nv \
         -O ${u_boot_file} \
         ${fw_url}/${latest_version}/visionfive2_fw_payload.img
-    
 
-    if [[ $os_release == *"Debian GNU/Linux 12 (bookworm)"* ]]; # Debian 12
+    echo ""
+    ls -hl ${spl_file} ${u_boot_file}
+    echo ""
+
+    echo "${spl_file} and ${u_boot_file} have already been downloaded."
+    read \
+        -p "Upgrade now?(Yy/[N]n,irrevocable.)" \
+        upgrade_yn0
+
+    if [[ $upgrade_yn0 =~ ^[Yy]$ ]] ;
     then
-        echo "Debian 12 was detected, upgrading......"
-        upgrade_through_debian12
-    # Other distros will be added by you. (^_^)
-    else
-        echo "'Unable to update the firmware on your distro."
-        echo "Feel free to contribute your code on: ${vf2_repo_url}"
+        # Debian 12
+        if [[ $os_release == *"Debian GNU/Linux 12 (bookworm)"* ]];
+        then
+            echo "Debian 12 was detected, upgrading......"
+            upgrade_through_debian12
+        # Other distros will be added by you. (^_^)
+        else
+            echo "'Unable to update the firmware on your distro."
+            echo "Feel free to contribute your code on: ${vf2_repo_url}"
+        fi
     fi
 fi
 
