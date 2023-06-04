@@ -87,8 +87,9 @@ then
             upgrade_through_debian12
         # Other distros will be added by you. (^_^)
         else
-            echo "'Unable to update the firmware on your distro."
-            echo "Feel free to contribute your code on: ${vf2_repo_url}"
+            echo "Unable to update the firmware on your distro."
+            echo "Feel free to contribute your code on:"
+            echo -e "\t${vf2_repo_url}/blob/JH7110_VisionFive2_devel/upgrade-firmware.sh"
         fi
     fi
 fi
