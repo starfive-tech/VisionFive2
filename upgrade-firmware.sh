@@ -9,6 +9,7 @@ u_boot_file="visionfive2_fw_payload.${date_now}.img"
 vf2_repo_url="https://github.com/starfive-tech/VisionFive2"
 fw_release_url="${vf2_repo_url}/releases"
 fw_url="${fw_release_url}/download"
+script_url="${vf2_repo_url}/blob/JH7110_VisionFive2_devel/upgrade-firmware.sh"
 
 echo "Download releases page......"
 wget -nv -O ${releases_page} ${fw_release_url}
@@ -89,7 +90,7 @@ then
         else
             echo "Unable to update the firmware on your distro."
             echo "Feel free to contribute your code on:"
-            echo -e "\t${vf2_repo_url}/blob/JH7110_VisionFive2_devel/upgrade-firmware.sh"
+            echo -e "\t${script_url}"
         fi
     fi
 fi
