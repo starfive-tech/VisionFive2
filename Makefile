@@ -80,8 +80,8 @@ uboot_dtb_file := $(wrkdir)/u-boot/arch/riscv/dts/starfive_$(HWBOARD).dtb
 
 uboot := $(uboot_wrkdir)/u-boot.bin
 
-spl_tool_srcdir :=$(CURDIR)/soft_3rdpart/spl_tool
-spl_tool := spl_tool
+spl_tool_srcdir := $(srcdir)/soft_3rdpart/spl_tool
+spl_tool_wrkdir := $(wrkdir)/spl_tool
 
 spl_bin_normal_out := u-boot-spl.bin.normal.out
 
@@ -333,13 +333,16 @@ $(uboot): $(uboot_srcdir) $(target_gcc)
 	$(MAKE) -C $(uboot_srcdir) O=$(uboot_wrkdir) $(uboot_config)
 	$(MAKE) -C $(uboot_srcdir) O=$(uboot_wrkdir) CROSS_COMPILE=$(CROSS_COMPILE)
 
-.PHONY: spl_tool
-spl_tool: $(spl_tool_srcdir)
-	$(MAKE) -C $(spl_tool_srcdir)
-	cp $(spl_tool_srcdir)/$(spl_tool) $(wrkdir)
+$(spl_tool_wrkdir)/spl_tool: $(spl_tool_srcdir)
+	rm -rf $(spl_tool_wrkdir)
+	cp -ar $< $(spl_tool_wrkdir)
+	$(MAKE) -C $(spl_tool_wrkdir)
 
-$(spl_bin_normal_out): spl_tool $(uboot)
-	$(wrkdir)/$(spl_tool) -c -f $(uboot_wrkdir)/spl/u-boot-spl.bin
+.PHONY: spl_tool
+spl_tool: $(spl_tool_wrkdir)/spl_tool
+
+$(spl_bin_normal_out): $(uboot) $(spl_tool_wrkdir)/spl_tool
+	$(spl_tool_wrkdir)/spl_tool -c -f $(uboot_wrkdir)/spl/u-boot-spl.bin
 	cp $(uboot_wrkdir)/spl/$(spl_bin_normal_out) $(wrkdir)
 
 $(uboot_fit): $(sbi_bin) $(uboot_its_file) $(uboot)
@@ -367,7 +370,7 @@ clean:
 	rm -f work/linux/vmlinux*
 	rm -f work/u-boot-spl.bin.normal.out
 	rm -f work/version
-	rm -rf work/$(spl_tool)
+	rm -rf $(spl_tool_wrkdir)
 	rm -rf $(perf_tool_wrkdir)
 
 .PHONY: distclean
@@ -483,8 +486,8 @@ format-rootfs-image: format-boot-loader
 sdimg: $(buildroot_rootfs_ext)
 	@./genimage.sh
 
-img: sdimg
-	$(wrkdir)/$(spl_tool) -i -f $(wrkdir)/sdcard.img
+img: sdimg $(spl_tool_wrkdir)/spl_tool
+	$(spl_tool_wrkdir)/spl_tool -i -f $(wrkdir)/sdcard.img
 
 #usb config
 format-usb-disk: $(sbi_bin) $(uboot) $(fit) $(vfat_image)
