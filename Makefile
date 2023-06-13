@@ -42,7 +42,8 @@ vmlinux := $(linux_wrkdir)/vmlinux
 vmlinux_stripped := $(linux_wrkdir)/vmlinux-stripped
 vmlinux_bin := $(wrkdir)/vmlinux.bin
 module_install_path:=$(wrkdir)/module_install_path
-perf_tool_path := $(linux_srcdir)/tools/perf
+perf_tool_srcdir := $(linux_srcdir)/tools/perf
+perf_tool_wrkdir := $(linux_wrkdir)/tools/perf
 
 its_file=$(confdir)/$(HWBOARD)-fit-image.its
 uboot_its_file=$(confdir)/$(HWBOARD)-uboot-fit-image.its
@@ -180,7 +181,7 @@ $(buildroot_rootfs_ext): $(buildroot_srcdir) $(buildroot_rootfs_wrkdir)/.config 
 	mkdir -p $(buildroot_rootfs_wrkdir)/target/lib
 	cp -r $(module_install_path)/lib/modules $(buildroot_rootfs_wrkdir)/target/lib/
 	mkdir -p $(buildroot_rootfs_wrkdir)/target/usr/bin
-	cp $(perf_tool_path)/perf $(buildroot_rootfs_wrkdir)/target/usr/bin/
+	cp $(perf_tool_wrkdir)/perf $(buildroot_rootfs_wrkdir)/target/usr/bin/
 	cp $(version) $(buildroot_rootfs_wrkdir)/target/usr/bin/version
 	$(MAKE) -C $< RISCV=$(RISCV) PATH=$(RVPATH) O=$(buildroot_rootfs_wrkdir)
 
@@ -232,12 +233,16 @@ vpudriver-build: $(vmlinux)
 	$(MAKE) -C $(buildroot_initramfs_wrkdir) O=$(buildroot_initramfs_wrkdir) \
 		INSTALL_MOD_PATH=$(module_install_path) codaj12driver
 
-linux-tools-build: $(vmlinux)
-	$(MAKE) -C $(perf_tool_path) \
+$(perf_tool_wrkdir)/perf: $(linux_srcdir) $(vmlinux)
+	mkdir -p $(perf_tool_wrkdir)
+	$(MAKE) -C $(perf_tool_srcdir) O=$(perf_tool_wrkdir)/ \
 		ARCH=riscv \
 		CROSS_COMPILE=$(CROSS_COMPILE) \
 		WERROR=0 NO_GTK2=1 NO_LIBPERL=1 \
 		NO_LIBBIONIC=1
+
+.PHONY: perf
+perf: $(perf_tool_wrkdir)/perf
 
 .PHONY: initrd
 initrd: $(initramfs)
@@ -245,9 +250,9 @@ initrd: $(initramfs)
 $(initramfs).d: $(buildroot_initramfs_sysroot)
 	$(linux_srcdir)/usr/gen_initramfs_list.sh -l $(confdir)/initramfs.txt $(buildroot_initramfs_sysroot) > $@
 
-$(initramfs): $(buildroot_initramfs_sysroot) $(vmlinux) vpudriver-build $(version) linux-tools-build
+$(initramfs): $(buildroot_initramfs_sysroot) $(vmlinux) vpudriver-build $(version) $(perf_tool_wrkdir)/perf
 	cp -r $(module_install_path)/lib/modules $(buildroot_initramfs_sysroot)/lib/
-	cp $(perf_tool_path)/perf $(buildroot_initramfs_sysroot)/usr/bin/
+	cp $(perf_tool_wrkdir)/perf $(buildroot_initramfs_sysroot)/usr/bin/
 	cp $(version) $(buildroot_initramfs_sysroot)/usr/bin/version && \
 	cd $(linux_wrkdir) && \
 		$(linux_srcdir)/usr/gen_initramfs_list.sh \
@@ -363,6 +368,7 @@ clean:
 	rm -f work/u-boot-spl.bin.normal.out
 	rm -f work/version
 	rm -rf work/$(spl_tool)
+	rm -rf $(perf_tool_wrkdir)
 
 .PHONY: distclean
 distclean:
