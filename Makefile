@@ -207,14 +207,13 @@ $(linux_wrkdir)/.config: $(linux_defconfig) $(linux_srcdir)
 $(uboot_wrkdir)/.config: $(uboot_defconfig)
 	mkdir -p $(dir $@)
 	cp -p $< $@
-	$(MAKE) -C $(uboot_srcdir) O=$(uboot_wrkdir) ARCH=riscv olddefconfig
+	$(MAKE) -C $(uboot_srcdir) O=$(uboot_wrkdir) CROSS_COMPILE=$(CROSS_COMPILE) ARCH=riscv olddefconfig
 
 $(vmlinux): $(linux_srcdir) $(linux_wrkdir)/.config $(target_gcc)
 	$(MAKE) -C $< O=$(linux_wrkdir) \
 		ARCH=riscv \
 		CROSS_COMPILE=$(CROSS_COMPILE) \
 		PATH=$(RVPATH) \
-		HWBOARD_FLAG=$(HWBOARD_FLAG) \
 		vmlinux \
 		all \
 		modules
@@ -268,8 +267,8 @@ $(vmlinux_bin): $(vmlinux)
 
 .PHONY: linux-menuconfig
 linux-menuconfig: $(linux_wrkdir)/.config
-	$(MAKE) -C $(linux_srcdir) O=$(dir $<) ARCH=riscv menuconfig
-	$(MAKE) -C $(linux_srcdir) O=$(dir $<) ARCH=riscv savedefconfig
+	$(MAKE) -C $(linux_srcdir) O=$(dir $<) ARCH=riscv CROSS_COMPILE=$(CROSS_COMPILE) menuconfig
+	$(MAKE) -C $(linux_srcdir) O=$(dir $<) ARCH=riscv CROSS_COMPILE=$(CROSS_COMPILE) savedefconfig
 	cp $(dir $<)defconfig $(linux_defconfig)
 
 # Note: opensbi generic platform default FW_TEXT_START is 0x80000000
@@ -322,8 +321,8 @@ $(qemu): $(qemu_srcdir)
 
 .PHONY: uboot-menuconfig
 uboot-menuconfig: $(uboot_wrkdir)/.config
-	$(MAKE) -C $(uboot_srcdir) O=$(dir $<) ARCH=riscv menuconfig
-	$(MAKE) -C $(uboot_srcdir) O=$(dir $<) ARCH=riscv savedefconfig
+	$(MAKE) -C $(uboot_srcdir) O=$(dir $<) CROSS_COMPILE=$(CROSS_COMPILE) ARCH=riscv menuconfig
+	$(MAKE) -C $(uboot_srcdir) O=$(dir $<) CROSS_COMPILE=$(CROSS_COMPILE) ARCH=riscv savedefconfig
 	cp $(dir $<)defconfig $(uboot_defconfig)
 
 $(uboot): $(uboot_srcdir) $(target_gcc)
