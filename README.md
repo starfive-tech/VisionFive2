@@ -185,19 +185,19 @@ transfer image.fit through TFTP:
 Step1: set enviroment parameter:
 
 ```
-setenv bootfile vmlinuz; setenv fileaddr a0000000; setenv fdtcontroladdr 0xffffffffffffffff; setenv ipaddr 192.168.xxx.xxx; setenv serverip 192.168.xxx.xxx;
+setenv 192.168.xxx.xxx; setenv serverip 192.168.xxx.xxx;
 ```
 
 Step2: upload image file to ddr:
 
 ```
-tftpboot ${fileaddr} ${serverip}:image.fit;
+tftpboot ${loadaddr} image.fit;
 ```
 
 Step3: load and excute:
 
 ```
-bootm start ${fileaddr};bootm loados ${fileaddr};run chipa_set_linux;run cpu_vol_set;booti 0x40200000 0x46100000:${filesize} 0x46000000
+bootm start ${loadaddr};bootm loados ${loadaddr};run chipa_set_linux;run cpu_vol_set; booti ${kernel_addr_r} ${ramdisk_addr_r}:${filesize} ${fdt_addr_r};
 ```
 
 When you see the `buildroot login:` message, then congratulations, the launch was successful
@@ -214,8 +214,7 @@ If we want to loading the other dtb, e.g. `jh7110-visionfive-v2-wm8960.dtb`, fol
 Step1: set enviroment parameter:
 
 ```
-setenv bootfile vmlinuz; setenv fileaddr a0000000; setenv fdtcontroladdr 0xffffffffffffffff; setenv ipaddr 192.168.xxx.xxx; setenv serverip 192.168.xxx.xxx;
-setenv kernel_comp_addr_r 0xb0000000;setenv kernel_comp_size 0x10000000;
+setenv ipaddr 192.168.xxx.xxx; setenv serverip 192.168.xxx.xxx;
 ```
 
 Step2: upload files to ddr:
@@ -389,15 +388,15 @@ Prepare the tftp sever. e.g. `sudo apt install tftpd-hpa` for Ubuntu host.
 5. Update SPL binary
 
    ```
-   StarFive # tftpboot 0xa0000000 ${serverip}:u-boot-spl.bin.normal.out
-   StarFive # sf update 0xa0000000 0x0 $filesize
+   StarFive # tftpboot ${loadaddr}  u-boot-spl.bin.normal.out
+   StarFive # sf update ${loadaddr} 0x0 $filesize
    ```
 
 6. Update U-Boot binary
 
    ```
-   StarFive # tftpboot 0xa0000000 ${serverip}:visionfive2_fw_payload.img
-   StarFive # sf update 0xa0000000 0x100000 $filesize
+   StarFive # tftpboot ${loadaddr}  visionfive2_fw_payload.img
+   StarFive # sf update ${loadaddr} 0x100000 $filesize
    ```
 
 ## APPENDIX IV: Recovering Bootloader 
