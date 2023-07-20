@@ -9,7 +9,7 @@
 [submodule "linux"]
 	path = linux
 	url = git@192.168.110.45:sbc/linux.git
-	branch = vf2-515-devel
+	branch = vf2-6.1.y-devel
 [submodule "opensbi"]
 	path = opensbi
 	url = git@192.168.110.45:sbc/opensbi.git
