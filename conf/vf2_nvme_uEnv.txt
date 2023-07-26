@@ -19,7 +19,7 @@ irdsize=5f00000
 # Use the FDT in the FIT image..
 setupfdt1=fdt addr ${fdtaddr}; fdt resize;
 
-setupird=setexpr irdend ${ramdisk_addr_r} + ${irdsize}; fdt set /chosen linux,initrd-start <0x0 0x${ramdisk_addr_r}>; fdt set /chosen linux,initrd-end <0x0 0x${irdend}>
+setupird=setexpr irdend ${ramdisk_addr_r} + ${irdsize}; fdt set /chosen linux,initrd-start <0x0 ${ramdisk_addr_r}>; fdt set /chosen linux,initrd-end <0x0 0x${irdend}>
 
 setupfdt2=fdt set /chosen bootargs "${bootargs}";
 
