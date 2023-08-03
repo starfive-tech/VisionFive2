@@ -4,13 +4,17 @@ This builds a complete RISC-V cross-compile toolchain for the `StarFiveTech` `JH
 
 ## Prerequisites
 
-Recommend OS: Ubuntu 16.04/18.04/20.04 x86_64
+Recommend OS: Ubuntu 16.04/18.04/20.04/22.04 x86_64
 
 Install required additional packages:
 
 ```
 $ sudo apt update
-$ sudo apt-get install build-essential g++ git autoconf automake autotools-dev texinfo bison xxd curl flex gawk gdisk gperf libgmp-dev libmpfr-dev libmpc-dev libz-dev libssl-dev libncurses-dev libtool patchutils python screen texinfo unzip zlib1g-dev libyaml-dev wget cpio bc dosfstools mtools device-tree-compiler libglib2.0-dev libpixman-1-dev kpartx
+$ sudo apt-get install build-essential automake libtool texinfo bison flex gawk
+g++ git xxd curl wget gdisk gperf cpio bc screen texinfo unzip libgmp-dev
+libmpfr-dev libmpc-dev libssl-dev libncurses-dev libglib2.0-dev libpixman-1-dev
+libyaml-dev patchutils python3-pip zlib1g-dev device-tree-compiler dosfstools
+mtools kpartx rsync
 ```
 
 Additional packages for Git LFS support:
