@@ -2,15 +2,12 @@
 # The current convention (SUBJECT TO CHANGE) is that this file
 # will be loaded from the third partition on the
 # MMC card.
-#devnum=1
-partnum=3
 
 # The FIT file to boot from
 fitfile=starfiveu.fit
 
 # for debugging boot
-bootargs_ext=if test ${devnum} = 0; then setenv bootargs "earlyprintk console=tty1 console=ttyS0,115200 debug rootwait earlycon=sbi root=/dev/mmcblk0p4"; else setenv bootargs "earlyprintk console=tty1 console=ttyS0,115200 debug rootwait earlycon=sbi root=/dev/mmcblk1p4"; fi;
-#bootargs=earlyprintk console=ttyS0,115200 debug rootwait earlycon=sbi root=/dev/mmcblk1p4
+bootargs_ext=setenv bootargs "console=tty1 console=ttyS0,115200 debug rootwait earlycon=sbi root=/dev/${sdev_blk}";
 
 # for addr info
 # boot Linux flat or compressed 'Image' stored at 'kernel_addr_r'
@@ -25,4 +22,4 @@ setupfdt2=fdt set /chosen bootargs "${bootargs}";
 
 bootwait=setenv _delay ${bootdelay}; echo ${_delay}; while test ${_delay} > 0; do sleep 1; setexpr _delay ${_delay} - 1; echo ${_delay}; done
 
-boot2=run bootargs_ext; mmc dev ${devnum}; fatload mmc ${devnum}:${partnum} ${loadaddr} ${fitfile}; bootm start ${loadaddr}; run setupfdt1;run setupird;run setupfdt2; bootm loados ${loadaddr}; run chipa_set_linux; run cpu_vol_set; echo "Booting kernel in"; booti ${kernel_addr_r} ${ramdisk_addr_r}:${filesize} ${fdtaddr}
+boot2=run bootargs_ext; fatload ${bootdev} ${devnum}:${bootpart} ${loadaddr} ${fitfile}; bootm start ${loadaddr}; run setupfdt1;run setupird;run setupfdt2; bootm loados ${loadaddr}; run chipa_set_linux; run cpu_vol_set; echo "Booting kernel in"; booti ${kernel_addr_r} ${ramdisk_addr_r}:${filesize} ${fdtaddr}
