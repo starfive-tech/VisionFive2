@@ -198,7 +198,7 @@ Step2: upload image file to ddr:
 tftpboot ${loadaddr} image.fit;
 ```
 
-Step3: load and excute:
+Step3: load and execute:
 
 ```
 bootm start ${loadaddr};bootm loados ${loadaddr};run chipa_set_linux;run cpu_vol_set; booti ${kernel_addr_r} ${ramdisk_addr_r}:${filesize} ${fdt_addr_r};
@@ -215,7 +215,7 @@ Password: starfive
 
 If we want to loading the other dtb, e.g. `jh7110-visionfive-v2-wm8960.dtb`, follow the below
 
-Step1: set enviroment parameter:
+Step1: set environment parameter:
 
 ```
 setenv ipaddr 192.168.xxx.xxx; setenv serverip 192.168.xxx.xxx;
@@ -230,7 +230,7 @@ tftpboot ${ramdisk_addr_r} initramfs.cpio.gz;
 run chipa_set_linux;run cpu_vol_set;
 ```
 
-Step3: load and excute:
+Step3: load and execute:
 
 ```
 booti ${kernel_addr_r} ${ramdisk_addr_r}:${filesize} ${fdt_addr_r}
@@ -261,7 +261,7 @@ The output file `work/sdcard.img`  will be generated.
 
 #### Burn Image File to SD Card
 
-The `sdcard.img` can be burn into a tf card. e.g. through `dd` command as below
+The `sdcard.img` can be burned onto a tf card. e.g. through `dd` command as below
 
 ```
 $ sudo dd if=work/sdcard.img of=/dev/sdX bs=4096
