@@ -189,7 +189,7 @@ transfer image.fit through TFTP:
 Step1: set enviroment parameter:
 
 ```
-setenv 192.168.xxx.xxx; setenv serverip 192.168.xxx.xxx;
+setenv ipaddr 192.168.xxx.xxx; setenv serverip 192.168.xxx.xxx;
 ```
 
 Step2: upload image file to ddr:
