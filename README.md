@@ -1,4 +1,4 @@
-# StarFiveTech Freedom Unleashed SDK
+# StarFiveTech VisionFive2 SDK
 
 This builds a complete RISC-V cross-compile toolchain for the `StarFiveTech` `JH7110` SoC. It also builds U-boot SPL, U-boot and a flattened image tree (FIT) image with a Opensbi binary, linux kernel, device tree, ramdisk image and rootfs image for the `JH7110 VisionFive2` board. This is built for `6.1` Kernel SDK.
 
@@ -26,28 +26,23 @@ $ sudo apt-get install git-lfs
 
 ## Fetch Code Instructions ##
 
-Checkout this repository  (e.g.: branch `vf2-6.1.y-devel`). Then checkout all of the linked submodules using:
+Checkout this repository  (e.g.: branch `JH7110_VisionFive2_6.1.y_devel`). Then checkout all of the linked submodules using:
 
-	$ git clone git@192.168.110.45:sbc/visionfive.git
-	$ git checkout --track origin/vf2-6.1.y-devel
+	$ git clone https://github.com/starfive-tech/VisionFive2.git
+	$ cd VisionFive2
+	$ git checkout --track origin/JH7110_VisionFive2_6.1.y_devel
 	$ git submodule update --init --recursive
-
-In case someone run `git clone git@gitlab.starfivetech.com:sbc/visionfive.git`, recommend to add the below at the tail of the /etc/hosts to fix the network domain issue:
-
-```
-192.168.110.45 gitlab.starfivetech.com
-```
 
 This will take some time and require around 7GB of disk space. Some modules may fail because certain dependencies don't have the best git hosting. The only solution is to wait and try again later (or ask someone for a copy of that source repository).
 
 For user who build the release tag version, the above command is enough. For developer, need to switch the 5 submodules `buildroot`, `u-boot`, `linux`, `opensbi`, `soft_3rdpart` to correct branch manually, or refer to `.gitmodule`
 
 ```
-$ cd buildroot && git checkout --track origin/vf2-devel && cd ..
-$ cd u-boot && git checkout --track origin/vf2-devel && cd ..
-$ cd linux && git checkout --track origin/vf2-6.1.y-devel && cd ..
+$ cd buildroot && git checkout --track origin/JH7110_VisionFive2_devel && cd ..
+$ cd u-boot && git checkout --track origin/JH7110_VisionFive2_devel && cd ..
+$ cd linux && git checkout --track origin/JH7110_VisionFive2_6.1.y_devel && cd ..
 $ cd opensbi && git checkout master && cd ..
-$ cd soft_3rdpart && git checkout jh7110-devel && cd ..
+$ cd soft_3rdpart && git checkout JH7110_VisionFive2_devel && cd ..
 ```
 
 ## Quick Build Instructions
@@ -67,8 +62,6 @@ work/
 ├── linux/arch/riscv/boot
     ├── dts
     │   └── starfive
-    │       ├── jh7110-visionfive-v2-A10.dtb
-    │       ├── jh7110-visionfive-v2-A11.dtb
     │       ├── jh7110-visionfive-v2-ac108.dtb
     │       ├── jh7110-visionfive-v2.dtb
     │       ├── jh7110-visionfive-v2-wm8960.dtb
@@ -411,3 +404,8 @@ Prepare the tftp sever. e.g. `sudo apt install tftpd-hpa` for Ubuntu host.
    StarFive # sf update ${loadaddr} 0x100000 $filesize
    ```
 
+## APPENDIX IV: Recovering Bootloader
+
+The SPL and U-Boot are stored inside the SPI flash on board. There may be situations where you accidentally emptied the flash or if the flash is damaged on your board. In these situations, it's better to recover the bootloader.
+
+Please jump to https://github.com/starfive-tech/Tools for more details
