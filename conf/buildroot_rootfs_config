@@ -4,6 +4,7 @@ BR2_RISCV_ISA_CUSTOM_RVM=y
 BR2_RISCV_ISA_CUSTOM_RVF=y
 BR2_RISCV_ISA_CUSTOM_RVD=y
 BR2_RISCV_ISA_CUSTOM_RVC=y
+BR2_STRIP_EXCLUDE_FILES="ipa_starfive.so* libcamera-base.so* libcamera.so* libgstlibcamera.so v4l2-compat.so starfive_ipa_proxy"
 BR2_KERNEL_HEADERS_CUSTOM_GIT=y
 BR2_KERNEL_HEADERS_CUSTOM_REPO_URL="https://github.com/starfive-tech/linux.git"
 BR2_KERNEL_HEADERS_CUSTOM_REPO_VERSION="JH7110_VisionFive2_devel"
