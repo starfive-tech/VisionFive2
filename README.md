@@ -261,7 +261,7 @@ The output file `work/sdcard.img`  will be generated.
 
 #### Burn Image File to SD Card
 
-The `sdcard.img` can be burned onto a tf card. e.g. through `dd` command as below
+The `sdcard.img` can be copied to a tf card. e.g. through `dd` command as below
 
 ```
 $ sudo dd if=work/sdcard.img of=/dev/sdX bs=4096
