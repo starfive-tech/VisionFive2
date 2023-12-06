@@ -75,10 +75,12 @@ qemu := $(qemu_wrkdir)/prefix/bin/qemu-system-riscv64
 
 uboot_srcdir := $(srcdir)/u-boot
 uboot_wrkdir := $(wrkdir)/u-boot
+rt_thread_wrkdir := $(srcdir)/rtthread/bsp/starfive/jh7110
 
 uboot_dtb_file := $(wrkdir)/u-boot/arch/riscv/dts/starfive_$(HWBOARD).dtb
 
-uboot := $(uboot_wrkdir)/u-boot.bin
+uboot    := $(uboot_wrkdir)/u-boot.bin
+uboot_rt := $(wrkdir)/u-boot-rtthread.bin
 
 spl_tool_srcdir := $(srcdir)/soft_3rdpart/spl_tool
 spl_tool_wrkdir := $(wrkdir)/spl_tool
@@ -279,7 +281,7 @@ $(sbi_bin): $(uboot) $(vmlinux)
 	rm -rf $(sbi_wrkdir)
 	mkdir -p $(sbi_wrkdir)
 	cd $(sbi_wrkdir) && O=$(sbi_wrkdir) CFLAGS="-mabi=$(ABI) -march=$(ISA)" ${MAKE} -C $(sbi_srcdir) CROSS_COMPILE=$(CROSS_COMPILE) \
-		PLATFORM=generic FW_PAYLOAD_PATH=$(uboot) FW_FDT_PATH=$(uboot_dtb_file) FW_TEXT_START=0x40000000
+		PLATFORM=generic FW_PAYLOAD_PATH=$(uboot_rt) FW_FDT_PATH=$(uboot_dtb_file) FW_TEXT_START=0x40000000
 
 $(fit): $(sbi_bin) $(vmlinux_bin) $(uboot) $(its_file) ${initramfs}
 	$(uboot_wrkdir)/tools/mkimage -f $(its_file) -A riscv -O linux -T flat_dt $@
@@ -331,6 +333,13 @@ $(uboot): $(uboot_srcdir) $(target_gcc)
 	mkdir -p $(dir $@)
 	$(MAKE) -C $(uboot_srcdir) O=$(uboot_wrkdir) $(uboot_config)
 	$(MAKE) -C $(uboot_srcdir) O=$(uboot_wrkdir) CROSS_COMPILE=$(CROSS_COMPILE)
+	cd $(rt_thread_wrkdir) && scons -c && scons
+	cd -
+	cp $(rt_thread_wrkdir)/rtthread.bin $(wrkdir)
+	cp $(uboot) $(wrkdir)/tmp.bin
+	truncate $(wrkdir)/tmp.bin -c -s 2048K
+	cat $(wrkdir)/rtthread.bin >> $(wrkdir)/tmp.bin
+	cp $(wrkdir)/tmp.bin $(uboot_rt)
 
 $(spl_tool_wrkdir)/spl_tool: $(spl_tool_srcdir)
 	rm -rf $(spl_tool_wrkdir)
