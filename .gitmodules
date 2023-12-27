@@ -5,16 +5,20 @@
 [submodule "u-boot"]
 	path = u-boot
 	url = https://github.com/starfive-tech/u-boot.git
-	branch = JH7110_VisionFive2_devel
+	branch = rtthread_AMP
 [submodule "linux"]
 	path = linux
 	url = https://github.com/starfive-tech/linux.git
-	branch = JH7110_VisionFive2_devel
+	branch = rtthread_AMP
 [submodule "opensbi"]
 	path = opensbi
 	url = https://github.com/starfive-tech/opensbi.git
-	branch = JH7110_VisionFive2_devel
+	branch = rtthread_AMP
 [submodule "soft_3rdpart"]
 	path = soft_3rdpart
 	url = https://github.com/starfive-tech/soft_3rdpart.git
 	branch = JH7110_VisionFive2_devel
+[submodule "rtthread"]
+	path = rtthread
+	url = https://github.com/starfive-tech/rt-thread.git
+	branch = rtthread_AMP
