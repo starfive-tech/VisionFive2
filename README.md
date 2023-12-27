@@ -1,6 +1,6 @@
 # StarFiveTech VisionFive2 SDK
 
-This builds a complete RISC-V cross-compile toolchain for the `StarFiveTech` `JH7110` SoC. It also builds U-boot SPL, U-boot and a flattened image tree (FIT) image with a Opensbi binary, linux kernel, device tree, ramdisk image and rootfs image for the `JH7110 VisionFive2` board. This is built for `6.1` Kernel SDK.
+This builds a complete RISC-V cross-compile toolchain for the `StarFiveTech` `JH7110` SoC. It also builds U-boot SPL, U-boot and a flattened image tree (FIT) image with a Opensbi binary, linux kernel, device tree, ramdisk image and rootfs image for the `JH7110 VisionFive2` board. Note this SDK is built with the linux kernel version `6.1`.
 
 ## Prerequisites
 
@@ -33,7 +33,7 @@ Checkout this repository  (e.g.: branch `JH7110_VisionFive2_6.1.y_devel`). Then 
 	$ git checkout --track origin/JH7110_VisionFive2_6.1.y_devel
 	$ git submodule update --init --recursive
 
-This will take some time and require around 7GB of disk space. Some modules may fail because certain dependencies don't have the best git hosting. The only solution is to wait and try again later (or ask someone for a copy of that source repository).
+This will take some time and require around 9GB of disk space. Some modules may fail because certain dependencies don't have the best git hosting. The only solution is to wait and try again later (or ask someone for a copy of that source repository).
 
 For user who build the release tag version, the above command is enough. For developer, need to switch the 5 submodules `buildroot`, `u-boot`, `linux`, `opensbi`, `soft_3rdpart` to correct branch manually, or refer to `.gitmodule`
 
@@ -47,7 +47,7 @@ $ cd soft_3rdpart && git checkout JH7110_VisionFive2_devel && cd ..
 
 ## Quick Build Instructions
 
-Below are the quick building for the initramfs image `image.fit` which could be translated to board through tftp and run on board. The completed toolchain, `u-boot-spl.bin.normal.out`, `visionfive2_fw_payload.img`, `image.fit` will be generated under `work/` directory. The completed build tree will consume about 15G of disk space.
+Below are the quick building for the initramfs image `image.fit` which could be translated to board through tftp and run on board. The completed toolchain, `u-boot-spl.bin.normal.out`, `visionfive2_fw_payload.img`, `image.fit` will be generated under `work/` directory. The completed build tree will consume about 18G of disk space.
 
 	$ make -j$(nproc)
 
@@ -85,6 +85,7 @@ Additional command to build single package or module:
 
 ```
 $ make vmlinux   # build linux kernel
+$ make uboot     # build u-boot
 $ make -C ./work/buildroot_rootfs/ O=./work/buildroot_rootfs busybox-rebuild   # build busybox package
 $ make -C ./work/buildroot_rootfs/ O=./work/buildroot_rootfs ffmpeg-rebuild    # build ffmpeg package
 ```
@@ -187,10 +188,10 @@ Then press any key to stop and enter uboot terminal, there are two way to boot t
 
 transfer image.fit through TFTP:
 
-Step1: set enviroment parameter:
+Step1: set environment parameters:
 
 ```
-setenv 192.168.xxx.xxx; setenv serverip 192.168.xxx.xxx;
+setenv ipaddr 192.168.xxx.xxx; setenv serverip 192.168.xxx.xxx;
 ```
 
 Step2: upload image file to ddr:
@@ -199,7 +200,7 @@ Step2: upload image file to ddr:
 tftpboot ${loadaddr} image.fit;
 ```
 
-Step3: load and excute:
+Step3: load and execute:
 
 ```
 bootm start ${loadaddr};bootm loados ${loadaddr};run chipa_set_linux;run cpu_vol_set; booti ${kernel_addr_r} ${ramdisk_addr_r}:${filesize} ${fdt_addr_r};
@@ -214,9 +215,9 @@ Password: starfive
 
 #### 2. Running the other dtb with the Image.gz and initramfs.cpio.gz
 
-If we want to loading the other dtb, e.g. `jh7110-visionfive-v2-wm8960.dtb`, follow the below
+If we want to load the other dtb, e.g. `jh7110-visionfive-v2-wm8960.dtb`, follow the below
 
-Step1: set enviroment parameter:
+Step1: set environment parameters:
 
 ```
 setenv ipaddr 192.168.xxx.xxx; setenv serverip 192.168.xxx.xxx;
@@ -231,7 +232,7 @@ tftpboot ${ramdisk_addr_r} initramfs.cpio.gz;
 run chipa_set_linux;run cpu_vol_set;
 ```
 
-Step3: load and excute:
+Step3: load and execute:
 
 ```
 booti ${kernel_addr_r} ${ramdisk_addr_r}:${filesize} ${fdt_addr_r}
@@ -246,11 +247,11 @@ Password: starfive
 
 ## APPENDIX I: Generate Booting SD Card
 
-If you don't already use a local tftp server, then you probably want to make the TF card target; the default size is 16 GBs. **NOTE THIS WILL DESTROY ALL EXISTING DATA** on the target TF card; The `GPT` Partition Table for the TF card is recommended. 
+If you don't already use a local tftp server, then you probably want to make the TF card target; the default size is 16 GBs. **NOTE THIS WILL DESTROY ALL EXISTING DATA** on the target TF card; The `GPT` Partition Table for the TF card is recommended.
 
 #### Generate SD Card Image File
 
-We could generate a sdcard image file by the below command. The sdcard image file could be burned into sd card or tf card through `dd` command, or `rpi-imager` or `balenaEtcher` tool
+We could generate a sdcard image file by the below command. The sdcard image file could be copied to sd card or tf card through `dd` command, or `rpi-imager` or `balenaEtcher` tool
 
 ```
 $ make -j$(nproc)
@@ -260,21 +261,21 @@ $ make img
 
 The output file `work/sdcard.img`  will be generated.
 
-#### Burn Image File to SD Card
+#### Copy Image File to SD Card
 
-The `sdcard.img` can be burn into a tf card. e.g. through `dd` command as below
+The `sdcard.img` can be copied to a tf card. e.g. through `dd` command as below
 
 ```
 $ sudo dd if=work/sdcard.img of=/dev/sdX bs=4096
 $ sync
 ```
 
-Then extend the tf card rootfs partition if needed. There are two ways to implement it. 
+Then extend the tf card rootfs partition if needed. There are two ways to implement it.
 
 The first way could be done on Ubuntu host, need to install the below package:
 
 ```
-$ sudo apt install cloud-guest-utils e2fsprogs 
+$ sudo apt install cloud-guest-utils e2fsprogs
 ```
 
 Then insert the tf card to Ubuntu host, run the below, note `/dev/sdX` is the tf card device.
