@@ -14,7 +14,7 @@ $ sudo apt-get install build-essential automake libtool texinfo bison flex gawk
 g++ git xxd curl wget gdisk gperf cpio bc screen texinfo unzip libgmp-dev
 libmpfr-dev libmpc-dev libssl-dev libncurses-dev libglib2.0-dev libpixman-1-dev
 libyaml-dev patchutils python3-pip zlib1g-dev device-tree-compiler dosfstools
-mtools kpartx rsync
+mtools kpartx rsync scons
 ```
 
 Additional packages for Git LFS support:
@@ -24,25 +24,34 @@ $ curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb
 $ sudo apt-get install git-lfs
 ```
 
-## Fetch Code Instructions ##
+## Fetch Code Instructions for RTThread AMP Project ##
 
-Checkout this repository  (e.g.: branch `JH7110_VisionFive2_devel`). Then checkout all of the linked submodules using:
+Checkout this repository  (e.g.: branch `rtthread_AMP`). Then checkout all of the linked submodules using:
 
 	$ git clone https://github.com/starfive-tech/VisionFive2.git
 	$ cd VisionFive2
-	$ git checkout JH7110_VisionFive2_devel
+	$ git checkout --track origin/rtthread_AMP
 	$ git submodule update --init --recursive
 This will take some time and require around 9GB of disk space. Some modules may fail because certain dependencies don't have the best git hosting. The only solution is to wait and try again later (or ask someone for a copy of that source repository).
 
-For user who build the release tag version, the above command is enough. For developer, need to switch the 5 submodules `buildroot`, `u-boot`, `linux`, `opensbi`, `soft_3rdpart` to correct branch manually, also could refer to `.gitmodule`
+For user who build the release tag version, the above command is enough. For developer, need to switch the 6 submodules `buildroot`, `u-boot`, `linux`, `opensbi`, `soft_3rdpart`, `rtthread` to correct branch manually, or refer to `.gitmodule`
 
 ```
 $ cd buildroot && git checkout --track origin/JH7110_VisionFive2_devel && cd ..
-$ cd u-boot && git checkout --track origin/JH7110_VisionFive2_devel && cd ..
-$ cd linux && git checkout --track origin/JH7110_VisionFive2_devel && cd ..
-$ cd opensbi && git checkout master && cd ..
+$ cd u-boot && git checkout --track origin/rtthread_AMP && cd ..
+$ cd linux && git checkout --track origin/rtthread_AMP && cd ..
+$ cd opensbi && git checkout rtthread_AMP && cd ..
 $ cd soft_3rdpart && git checkout JH7110_VisionFive2_devel && cd ..
+$ cd rtthread && git checkout rtthread_AMP && cd ..
 ```
+
+Prepare `rt-thread`'s **toolchain**:
+
+```
+$ sudo tar xf rtthread/toolchain/tool-root1.tar.gz -C /opt/
+```
+
+
 
 ## Quick Build Instructions
 
