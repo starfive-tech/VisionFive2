@@ -192,7 +192,7 @@ StarFive #
 
 Then press any key to stop and enter uboot terminal, there are two way to boot the board
 
-#### 1. Running image.fit with the default dtb `jh7110-visionfive-v2.dtb`
+#### 1. Running image.fit with the default dtb `jh7110-starfive-visionfive-2-v1.3b.dtb`
 
 transfer image.fit through TFTP:
 
@@ -223,7 +223,7 @@ Password: starfive
 
 #### 2. Running the other dtb with the Image.gz and initramfs.cpio.gz
 
-If we want to load the other dtb, e.g. `jh7110-visionfive-v2-wm8960.dtb`, follow the below
+If we want to load the other dtb, e.g. `jh7110-starfive-visionfive-2-wm8960.dtb`, follow the below
 
 Step1: set environment parameters:
 
@@ -234,7 +234,7 @@ setenv ipaddr 192.168.xxx.xxx; setenv serverip 192.168.xxx.xxx;
 Step2: upload files to ddr:
 
 ```
-tftpboot ${fdt_addr_r} jh7110-visionfive-v2-wm8960.dtb;
+tftpboot ${fdt_addr_r} jh7110-starfive-visionfive-2-wm8960.dtb;
 tftpboot ${kernel_addr_r} Image.gz;
 tftpboot ${ramdisk_addr_r} initramfs.cpio.gz;
 run chipa_set_linux;run cpu_vol_set;
