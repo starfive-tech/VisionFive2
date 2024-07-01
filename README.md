@@ -14,7 +14,7 @@ $ sudo apt-get install build-essential automake libtool texinfo bison flex gawk
 g++ git xxd curl wget gdisk gperf cpio bc screen texinfo unzip libgmp-dev
 libmpfr-dev libmpc-dev libssl-dev libncurses-dev libglib2.0-dev libpixman-1-dev
 libyaml-dev patchutils python3-pip zlib1g-dev device-tree-compiler dosfstools
-mtools kpartx rsync
+mtools kpartx rsync scons
 ```
 
 Additional packages for Git LFS support:
@@ -363,7 +363,46 @@ swapoff -a
 swapon /dev/mmcblk0p5
 ```
 
-## APPENDIX II: Using DTB Overlay Dynamically
+## APPENDIX II: Build RT-Thread AMP Image
+
+The sdk also support building RT-Thread AMP Image which will run both rt-thread os and linux os on JH7110 quad cpu core. For the details about the starfive rtthread amp usage, please reference to the [Starfive RVspace](https://doc.rvspace.org/VisionFive2/Application_Notes/RT-Thread/).
+
+First need to download RT-Thread code:
+
+```
+$ git clone -b amp-5.0.2-devel git@192.168.110.45:sdk/rtthread.git rtthread
+```
+
+Then download and prepare the toolchain needed for RT-Thread code:
+
+```
+# For Ubuntu 18.04:
+$ wget https://github.com/riscv-collab/riscv-gnu-toolchain/releases/download/2022.04.12/riscv64-elf-ubuntu-18.04-nightly-2022.04.12-nightly.tar.gz
+$ sudo tar xf riscv64-elf-ubuntu-18.04-nightly-2022.04.12-nightly.tar.gz -C /opt/
+$ /opt/riscv/bin/riscv64-unknown-elf-gcc --version
+riscv64-unknown-elf-gcc (g5964b5cd727) 11.1.0
+```
+
+Generate rtthread amp sdcard image:
+
+```
+$ make -j$(nproc)
+$ make ampuboot_fit  # build amp uboot image
+$ make buildroot_rootfs -j$(nproc)
+$ make img
+$ make amp_img       # generate sdcard img
+```
+
+Or just run script to implement the download rtthread and toolchain, and generate rtthread amp sdcard image:
+
+```
+$ build-rtthread-amp-sdk.sh
+```
+
+The output file `work/sdcard_amp.img` will be generated. How to write the sdcard img file to sdcard, please reference to the [APPENDIX I: Generate Booting SD Card](#Copy Image File to SD Card).
+
+## APPENDIX III: Using DTB Overlay Dynamically
+
 The system support loading dtb overlay dynamically when the board is running. Run below on board:
 
 ```
@@ -379,7 +418,7 @@ Additional, you could remove the dtbo feature:
 # rmdir /sys/kernel/config/device-tree/overlays/dtoverlay
 ```
 
-## APPENDIX III: Updating SPL and U-Boot binaries Under U-boot
+## APPENDIX IV: Updating SPL and U-Boot binaries Under U-boot
 
 Prepare the tftp sever. e.g. `sudo apt install tftpd-hpa` for Ubuntu host.
 
@@ -413,7 +452,7 @@ Prepare the tftp sever. e.g. `sudo apt install tftpd-hpa` for Ubuntu host.
    StarFive # sf update ${loadaddr} 0x100000 $filesize
    ```
 
-## APPENDIX IV: Recovering Bootloader
+## APPENDIX V: Recovering Bootloader
 
 The SPL and U-Boot are stored inside the SPI flash on board. There may be situations where you accidentally emptied the flash or if the flash is damaged on your board. In these situations, it's better to recover the bootloader.
 

@@ -11,6 +11,7 @@ srcdir := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 srcdir := $(srcdir:/=)
 confdir := $(srcdir)/conf
 wrkdir := $(CURDIR)/work
+ampwrkdir := $(CURDIR)/work/amp
 
 buildroot_srcdir := $(srcdir)/buildroot
 buildroot_initramfs_wrkdir := $(wrkdir)/buildroot_initramfs
@@ -47,8 +48,11 @@ perf_tool_wrkdir := $(linux_wrkdir)/tools/perf
 
 its_file=$(confdir)/$(HWBOARD)-fit-image.its
 uboot_its_file=$(confdir)/$(HWBOARD)-uboot-fit-image.its
+uboot_amp_its_file=$(confdir)/$(HWBOARD)-uboot-amp-fit-image.its
+amp_its_file=$(confdir)/$(HWBOARD)-amp-fit-image.its
 
 vfat_image := $(wrkdir)/starfive-$(HWBOARD)-vfat.part
+amp_vfat_image := $(ampwrkdir)/starfive-$(HWBOARD)-vfat.part
 #ext_image := $(wrkdir)  # TODO
 
 initramfs := $(wrkdir)/initramfs.cpio.gz
@@ -57,9 +61,12 @@ sbi_srcdir := $(srcdir)/opensbi
 sbi_wrkdir := $(wrkdir)/opensbi
 
 sbi_bin := $(wrkdir)/opensbi/platform/generic/firmware/fw_payload.bin
+ampsbi_bin := $(ampwrkdir)/opensbi/platform/generic/firmware/fw_payload.bin
 
 fit := $(wrkdir)/image.fit
 uboot_fit := $(wrkdir)/$(HWBOARD)_fw_payload.img
+ampfit := $(ampwrkdir)/image.fit
+ampuboot_fit := $(wrkdir)/$(HWBOARD)_fw_payload_amp.img
 
 fesvr_srcdir := $(srcdir)/riscv-fesvr
 fesvr_wrkdir := $(wrkdir)/riscv-fesvr
@@ -75,15 +82,30 @@ qemu := $(qemu_wrkdir)/prefix/bin/qemu-system-riscv64
 
 uboot_srcdir := $(srcdir)/u-boot
 uboot_wrkdir := $(wrkdir)/u-boot
+rt_thread_wrkdir := $(srcdir)/rtthread/bsp/starfive/jh7110
+uboot_amp_wrkdir := $(wrkdir)/amp/u-boot
 
 uboot_dtb_file := $(wrkdir)/u-boot/arch/riscv/dts/starfive_$(HWBOARD).dtb
+uboot_amp_dtb_file := $(ampwrkdir)/u-boot/arch/riscv/dts/starfive_jh7110-amp.dtb
 
-uboot := $(uboot_wrkdir)/u-boot.bin
+amp_dts	       := starfive_jh7110-amp
+uboot          := $(uboot_wrkdir)/u-boot.bin
+uboot_amp_orig := $(ampwrkdir)/u-boot/u-boot.bin
+uboot_amp      := $(ampwrkdir)/u-boot.bin
+ampsbi_wrkdir  := $(ampwrkdir)/opensbi
+rtos_file      := rtthread.bin
+rtos_elf       := rtthread.elf
+rtos_map       := rtthread.map
+amp_uboot_size := 1216K
+rtos_compile   := scons
+rtos_defconfig := vf2_defconfig
+rtos_boardfile := vf2_rtconfig.h
 
 spl_tool_srcdir := $(srcdir)/soft_3rdpart/spl_tool
 spl_tool_wrkdir := $(wrkdir)/spl_tool
 
 spl_bin_normal_out := u-boot-spl.bin.normal.out
+amp_spl_bin_normal_out := u-boot-amp-spl.bin.normal.out
 
 uboot_config := starfive_$(HWBOARD)_defconfig
 
@@ -347,6 +369,42 @@ $(spl_bin_normal_out): $(uboot) $(spl_tool_wrkdir)/spl_tool
 $(uboot_fit): $(sbi_bin) $(uboot_its_file) $(uboot)
 	$(uboot_wrkdir)/tools/mkimage -f $(uboot_its_file) -A riscv -O u-boot -T firmware $(uboot_fit)
 
+$(uboot_amp_orig): $(uboot_srcdir) $(target_gcc)
+	rm -rf $(uboot_amp_wrkdir)
+	mkdir -p $(uboot_amp_wrkdir)
+	mkdir -p $(dir $@)
+	$(MAKE) DEVICE_TREE=$(amp_dts) -C $(uboot_srcdir) O=$(uboot_amp_wrkdir) $(uboot_config)
+	$(MAKE) DEVICE_TREE=$(amp_dts) -C $(uboot_srcdir) O=$(uboot_amp_wrkdir) CROSS_COMPILE=$(CROSS_COMPILE)
+	cp $(rt_thread_wrkdir)/configs/$(rtos_defconfig) $(rt_thread_wrkdir)/.config
+	cp $(rt_thread_wrkdir)/configs/$(rtos_boardfile) $(rt_thread_wrkdir)/rtconfig.h
+	cd $(rt_thread_wrkdir) && $(rtos_compile) -c && $(rtos_compile)
+	cd -
+	cp $(rt_thread_wrkdir)/$(rtos_file) $(ampwrkdir)
+	cp $(rt_thread_wrkdir)/$(rtos_elf) $(ampwrkdir)
+	cp $(rt_thread_wrkdir)/$(rtos_map) $(ampwrkdir)
+	cp $(uboot_amp_orig) $(uboot_amp)
+	truncate $(uboot_amp) -c -s $(amp_uboot_size)
+	cat $(ampwrkdir)/$(rtos_file) >> $(uboot_amp)
+
+$(ampsbi_bin): $(uboot_amp_orig)
+	rm -rf $(ampsbi_wrkdir)
+	mkdir -p $(ampsbi_wrkdir)
+	cd $(ampsbi_wrkdir) && O=$(ampsbi_wrkdir) CFLAGS="-mabi=$(ABI) -march=$(ISA)" ${MAKE} -C $(sbi_srcdir) CROSS_COMPILE=$(CROSS_COMPILE) \
+		PLATFORM=generic FW_PAYLOAD_PATH=$(uboot_amp) FW_FDT_PATH=$(uboot_amp_dtb_file) FW_TEXT_START=0x40000000
+
+$(ampuboot_fit): $(ampsbi_bin) $(uboot_amp_its_file) $(amp_uboot) $(spl_tool_wrkdir)/spl_tool
+	$(spl_tool_wrkdir)/spl_tool -c -f $(uboot_amp_wrkdir)/spl/u-boot-spl.bin
+	cp $(uboot_amp_wrkdir)/spl/$(spl_bin_normal_out) $(wrkdir)/$(amp_spl_bin_normal_out)
+	$(uboot_amp_wrkdir)/tools/mkimage -f $(uboot_amp_its_file) -A riscv -O u-boot -T firmware $(ampuboot_fit)
+
+$(ampfit): $(ampsbi_bin) $(vmlinux_bin) $(ampuboot_fit) $(amp_its_file) ${initramfs}
+	$(uboot_wrkdir)/tools/mkimage -f $(amp_its_file) -A riscv -O linux -T flat_dt $@
+	@if [ -f fsz.sh ]; then ./fsz.sh $(sbi_bin); fi
+
+$(amp_vfat_image): $(ampfit) $(vfat_image)
+	cp $(vfat_image) $(amp_vfat_image)
+	PATH=$(RVPATH) MTOOLS_SKIP_CHECK=1 mcopy -i $(amp_vfat_image) -o $(ampfit) ::starfiveu.fit
+
 $(rootfs): $(buildroot_rootfs_ext)
 	cp $< $@
 
@@ -357,6 +415,17 @@ buildroot_initramfs_sysroot: $(buildroot_initramfs_sysroot)
 vmlinux: $(vmlinux)
 fit: $(fit)
 uboot_fit: $(uboot_fit)
+
+.PHONY: ampuboot_fit ampfit
+ampuboot_fit: $(ampuboot_fit)
+ampfit: $(ampfit)
+amp_vfat_image: $(amp_vfat_image)
+
+.PHONY: amp-clean
+amp-clean:
+	rm -rf work/amp
+	rm -f work/u-boot-amp-spl.bin.normal.out
+	rm -f work/visionfive2_fw_payload_amp.img
 
 .PHONY: clean
 clean:
@@ -483,10 +552,17 @@ format-rootfs-image: format-boot-loader
 
 .PHONY: sdimg img
 sdimg: $(buildroot_rootfs_ext)
-	@./genimage.sh
+	@./genimage.sh visionfive2
 
 img: sdimg $(spl_tool_wrkdir)/spl_tool
 	$(spl_tool_wrkdir)/spl_tool -i -f $(wrkdir)/sdcard.img
+
+.PHONY: sd_amp amp_img
+sd_amp: $(buildroot_rootfs_ext) $(amp_vfat_image) $(img)
+	@./genimage.sh vf2-amp
+
+amp_img: sd_amp $(spl_tool_wrkdir)/spl_tool
+	$(spl_tool_wrkdir)/spl_tool -i -f $(wrkdir)/sdcard_amp.img
 
 #usb config
 format-usb-disk: $(sbi_bin) $(uboot) $(fit) $(vfat_image)

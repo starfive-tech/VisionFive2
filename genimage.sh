@@ -18,7 +18,7 @@ COLOR_GREEN="\033[1;32m"
 COLOR_YELLOW="\033[1;33m"
 COLOR_RED="\033[1;31m"
 COLOR_GREY="\033[1;30m"
-HWBOARD=visionfive2
+HWBOARD=$1
 
 TOPDIR=`dirname $0`
 BUILD_DIR=$TOPDIR/work
@@ -26,6 +26,8 @@ INPUT_DIR=$TOPDIR
 OUTPUT_DIR=$TOPDIR/work
 if [ $HWBOARD == "visionfive2" ]; then
 	GENIMAGE_CFG=$TOPDIR/conf/genimage-vf2.cfg
+elif [ $HWBOARD == "vf2-amp" ]; then
+	GENIMAGE_CFG=$TOPDIR/conf/genimage-vf2-amp.cfg
 else
 	GENIMAGE_CFG=$TOPDIR/conf/genimage.cfg
 fi
