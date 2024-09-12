@@ -7,6 +7,9 @@ BOARD_FLAGS	:=
 HWBOARD ?= visionfive2
 HWBOARD_FLAG ?= HWBOARD_VISIONFIVE2
 
+# HWBOARD_CONFIG=[default | debug], add more config for various scenario here
+HWBOARD_CONFIG ?= default
+
 srcdir := $(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 srcdir := $(srcdir:/=)
 confdir := $(srcdir)/conf
@@ -30,6 +33,12 @@ buildroot_initramfs_sysroot := $(wrkdir)/buildroot_initramfs_sysroot
 buildroot_rootfs_wrkdir := $(wrkdir)/buildroot_rootfs
 buildroot_rootfs_ext := $(buildroot_rootfs_wrkdir)/images/rootfs.ext4
 buildroot_rootfs_config := $(confdir)/buildroot_rootfs_config
+
+# override buildroot config if specify the HWBOARD_CONFIG
+ifeq ($(HWBOARD_CONFIG), debug)
+buildroot_initramfs_config := $(confdir)/buildroot_initramfs_config_debug
+buildroot_rootfs_config := $(confdir)/buildroot_rootfs_config
+endif
 
 linux_srcdir := $(srcdir)/linux
 linux_wrkdir := $(wrkdir)/linux
@@ -133,6 +142,9 @@ check_arg:
 ifeq ( , $(filter $(HWBOARD), visionfive2 evb fpga))
 	$(error board $(HWBOARD) is not supported, BOARD=[visionfive2 | evb | fpga(deflault)])
 endif
+ifeq ( , $(filter $(HWBOARD_CONFIG), default debug))
+	$(error board config $(HWBOARD_CONFIG) is not supported, HWBOARD_CONFIG=[default | debug])
+endif
 
 # TODO: depracated for now
 #ifneq ($(RISCV),$(buildroot_initramfs_wrkdir)/host)
@@ -199,7 +211,7 @@ $(buildroot_rootfs_wrkdir)/.config: $(buildroot_srcdir) $(buildroot_initramfs_ta
 	cp $(buildroot_rootfs_config) $@
 	$(MAKE) -C $< RISCV=$(RISCV) PATH=$(RVPATH) O=$(buildroot_rootfs_wrkdir) olddefconfig
 
-$(buildroot_rootfs_ext): $(buildroot_srcdir) $(buildroot_rootfs_wrkdir)/.config $(target_gcc) $(buildroot_rootfs_config) $(version)	
+$(buildroot_rootfs_ext): $(buildroot_srcdir) $(buildroot_rootfs_wrkdir)/.config $(target_gcc) $(buildroot_rootfs_config) $(version) $(perf_tool_wrkdir)/perf
 	mkdir -p $(buildroot_rootfs_wrkdir)/target/lib
 	cp -r $(module_install_path)/lib/modules $(buildroot_rootfs_wrkdir)/target/lib/
 	mkdir -p $(buildroot_rootfs_wrkdir)/target/usr/bin
@@ -214,7 +226,7 @@ buildroot_rootfs: $(buildroot_rootfs_ext)
 buildroot_rootfs-menuconfig: $(buildroot_rootfs_wrkdir)/.config $(buildroot_srcdir)
 	$(MAKE) -C $(dir $<) O=$(buildroot_rootfs_wrkdir) menuconfig
 	$(MAKE) -C $(dir $<) O=$(buildroot_rootfs_wrkdir) savedefconfig
-	cp $(dir $<)defconfig conf/buildroot_rootfs_config
+	cp $(dir $<)defconfig $(buildroot_rootfs_config)
 
 $(buildroot_initramfs_sysroot_stamp): $(buildroot_initramfs_tar)
 	mkdir -p $(buildroot_initramfs_sysroot)
@@ -248,9 +260,15 @@ $(vmlinux): $(linux_srcdir) $(linux_wrkdir)/.config $(target_gcc)
 
 vpudriver-build: $(vmlinux)
 	$(MAKE) -C $(buildroot_initramfs_wrkdir) O=$(buildroot_initramfs_wrkdir) \
+		INSTALL_MOD_PATH=$(module_install_path) wave511-extract
+	$(MAKE) -C $(buildroot_initramfs_wrkdir) O=$(buildroot_initramfs_wrkdir) \
 		INSTALL_MOD_PATH=$(module_install_path) wave511driver
 	$(MAKE) -C $(buildroot_initramfs_wrkdir) O=$(buildroot_initramfs_wrkdir) \
+		INSTALL_MOD_PATH=$(module_install_path) wave420l-extract
+	$(MAKE) -C $(buildroot_initramfs_wrkdir) O=$(buildroot_initramfs_wrkdir) \
 		INSTALL_MOD_PATH=$(module_install_path) wave420ldriver
+	$(MAKE) -C $(buildroot_initramfs_wrkdir) O=$(buildroot_initramfs_wrkdir) \
+		INSTALL_MOD_PATH=$(module_install_path) codaj12-extract
 	$(MAKE) -C $(buildroot_initramfs_wrkdir) O=$(buildroot_initramfs_wrkdir) \
 		INSTALL_MOD_PATH=$(module_install_path) codaj12driver
 
@@ -273,8 +291,13 @@ $(initramfs).d: $(buildroot_initramfs_sysroot)
 
 $(initramfs): $(buildroot_initramfs_sysroot) $(vmlinux) vpudriver-build $(version) $(perf_tool_wrkdir)/perf
 	cp -r $(module_install_path)/lib/modules $(buildroot_initramfs_sysroot)/lib/
+ifeq ($(HWBOARD_CONFIG), debug)
 	cp $(perf_tool_wrkdir)/perf $(buildroot_initramfs_sysroot)/usr/bin/
-	cp $(version) $(buildroot_initramfs_sysroot)/usr/bin/version && \
+	cp $(version) $(buildroot_initramfs_sysroot)/usr/bin/version
+else
+	$(MAKE) -C $(buildroot_initramfs_wrkdir) O=$(buildroot_initramfs_wrkdir) img-gpu-powervr-extract
+	cp -ar $(buildroot_initramfs_wrkdir)/build/img-gpu-powervr-*/target/lib/firmware/ $(buildroot_initramfs_sysroot)/lib/
+endif
 	cd $(linux_wrkdir) && \
 		$(linux_srcdir)/usr/gen_initramfs_list.sh \
 		-o $@ -u $(shell id -u) -g $(shell id -g) \
@@ -477,6 +500,7 @@ UBOOTFIT    = 04ffcafa-cd65-11e8-b974-70b3d592f0fa
 #   The default sector size is 512 Bytes
 #   The partition start should be align on 2048-sector boundaries
 # expand the vfat size to 300+M for the vpu/jpu or other debug
+ifeq ($(HWBOARD_CONFIG), debug)
 SPL_START   = 4096
 SPL_END     = 8191
 UBOOT_START = 8192
@@ -486,6 +510,17 @@ VFAT_START  = 16384
 VFAT_END    = 614399
 VFAT_SIZE   = $(shell expr $(VFAT_END) - $(VFAT_START) + 1)
 ROOT_START  = 614400
+else
+SPL_START   = 4096
+SPL_END     = 8191
+UBOOT_START = 8192
+UBOOT_END   = 16383
+UBOOT_SIZE  = $(shell expr $(UBOOT_END) - $(UBOOT_START) + 1)
+VFAT_START  = 16384
+VFAT_END    = 61439
+VFAT_SIZE   = $(shell expr $(VFAT_END) - $(VFAT_START) + 1)
+ROOT_START  = 61440
+endif
 
 $(vfat_image): $(fit) $(confdir)/jh7110_uEnv.txt $(confdir)/vf2_uEnv.txt $(confdir)/vf2_nvme_uEnv.txt
 	@if [ `du --apparent-size --block-size=512 $(uboot) | cut -f 1` -ge $(UBOOT_SIZE) ]; then \

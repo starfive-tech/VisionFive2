@@ -7,13 +7,13 @@
         images {
                 vmlinux {
                         description = "vmlinux";
-                        data = /incbin/("../work/linux/arch/riscv/boot/Image");
+                        data = /incbin/("../work/linux/arch/riscv/boot/Image.gz");
                         type = "kernel";
                         arch = "riscv";
                         os = "linux";
                         load = <0x0 0x40200000>;
                         entry = <0x0 0x40200000>;
-                        compression = "none";
+                        compression = "gzip";
                 };
 
                 ramdisk {
@@ -24,9 +24,6 @@
                         os = "linux";
                         load = <0x0 0x46100000>;
                         compression = "none";
-                        hash-1 {
-                                algo = "sha256";
-                        };
                 };
 
                 fdt {
