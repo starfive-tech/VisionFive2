@@ -457,3 +457,22 @@ Prepare the tftp sever. e.g. `sudo apt install tftpd-hpa` for Ubuntu host.
 The SPL and U-Boot are stored inside the SPI flash on board. There may be situations where you accidentally emptied the flash or if the flash is damaged on your board. In these situations, it's better to recover the bootloader.
 
 Please jump to https://github.com/starfive-tech/Tools for more details
+
+## APPENDIX VI: Generating the Debug Initramfs Fit Image
+
+By default the initramfs fit image (image.fit) had limited features, the sdk provide a way to generate the debug initramfs fit image (image.fit).
+
+First clean up your build workspace, and run as below:
+
+```
+$ rm -rf work
+$ HWBOARD_CONFIG=debug make -j(nproc)
+```
+
+Then the work/image.fit which had many debug packages will be generated. Then it can be run with tftp download under u-boot console:
+
+```
+StarFive # setenv fileaddr a0000000;dhcp ${fileaddr} ${serverip}:image.fit
+StarFive # bootm start ${fileaddr};bootm loados ${fileaddr}
+StarFive # booti 0x40200000 0x46100000:${filesize} 0x46000000
+```
