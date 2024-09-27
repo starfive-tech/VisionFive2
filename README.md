@@ -32,6 +32,7 @@ Checkout this repository  (e.g.: branch `vf2-6.6.y-devel`). Then checkout all of
 	$ cd visionfive
 	$ git checkout --track origin/vf2-6.6.y-devel
 	$ git submodule update --init --recursive
+	$ cd linux && git branch vf2-6.6.y-devel origin/vf2-6.6.y-devel && cd ..
 
 In case someone run `git clone git@gitlab.starfivetech.com:sbc/visionfive.git`, recommend to add the below at the tail of the /etc/hosts to fix the network domain issue:
 
