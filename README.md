@@ -1,6 +1,6 @@
 # StarFiveTech VisionFive2 SDK
 
-This builds a complete RISC-V cross-compile toolchain for the `StarFiveTech` `JH7110` SoC. It also builds U-boot SPL, U-boot and a flattened image tree (FIT) image with a Opensbi binary, linux kernel, device tree, ramdisk image and rootfs image for the `JH7110 VisionFive2` board. Note this SDK is built with the linux kernel version `6.6`.
+This builds a complete RISC-V cross-compile toolchain for the `StarFiveTech` `JH7110` SoC. It also builds U-boot SPL, U-boot and a flattened image tree (FIT) image with a Opensbi binary, linux kernel, device tree, ramdisk image and rootfs image for the `JH7110 VisionFive2` board. Note this SDK is built with the linux kernel version `6.12`.
 
 ## Prerequisites
 
@@ -26,13 +26,13 @@ $ sudo apt-get install git-lfs
 
 ## Fetch Code Instructions ##
 
-Checkout this repository  (e.g.: branch `vf2-6.6.y-devel`). Then checkout all of the linked submodules using:
+Checkout this repository  (e.g.: branch `vf2-6.12.y-devel`). Then checkout all of the linked submodules using:
 
 	$ git clone git@192.168.110.45:sbc/visionfive.git
 	$ cd visionfive
-	$ git checkout --track origin/vf2-6.6.y-devel
+	$ git checkout --track origin/vf2-6.12.y-devel
 	$ git submodule update --init --recursive
-	$ cd linux && git branch vf2-6.6.y-devel origin/vf2-6.6.y-devel && cd ..
+	$ cd linux && git branch vf2-6.12.y-devel origin/vf2-6.12.y-devel && cd ..
 
 In case someone run `git clone git@gitlab.starfivetech.com:sbc/visionfive.git`, recommend to add the below at the tail of the /etc/hosts to fix the network domain issue:
 
@@ -47,7 +47,7 @@ For user who build the release tag version, the above command is enough. For dev
 ```
 $ cd buildroot && git checkout --track origin/jh7110-master && cd ..
 $ cd u-boot && git checkout --track origin/jh7110-master && cd ..
-$ cd linux && git checkout --track origin/vf2-6.6.y-devel && cd ..
+$ cd linux && git checkout --track origin/vf2-6.12.y-devel && cd ..
 $ cd opensbi && git checkout master && cd ..
 $ cd soft_3rdpart && git checkout jh7110-devel && cd ..
 ```
