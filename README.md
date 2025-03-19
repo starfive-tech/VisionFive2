@@ -14,7 +14,7 @@ $ sudo apt-get install build-essential automake libtool texinfo bison flex gawk
 g++ git xxd curl wget gdisk gperf cpio bc screen texinfo unzip libgmp-dev
 libmpfr-dev libmpc-dev libssl-dev libncurses-dev libglib2.0-dev libpixman-1-dev
 libyaml-dev patchutils python3-pip zlib1g-dev device-tree-compiler dosfstools
-mtools kpartx rsync scons
+mtools kpartx rsync
 ```
 
 Additional packages for Git LFS support:
@@ -26,30 +26,23 @@ $ sudo apt-get install git-lfs
 
 ## Fetch Code Instructions ##
 
-Checkout this repository  (e.g.: branch `vf2-6.12.y-devel`). Then checkout all of the linked submodules using:
+Checkout this repository  (e.g.: branch `JH7110_VisionFive2_devel`). Then checkout all of the linked submodules using:
 
-	$ git clone git@192.168.110.45:sbc/visionfive.git
-	$ cd visionfive
-	$ git checkout --track origin/vf2-6.12.y-devel
+	$ git clone https://github.com/starfive-tech/VisionFive2.git
+	$ cd VisionFive2
+	$ git checkout --track origin/JH7110_VisionFive2_6.12.y_devel
 	$ git submodule update --init --recursive
-	$ cd linux && git branch vf2-6.12.y-devel origin/vf2-6.12.y-devel && cd ..
-
-In case someone run `git clone git@gitlab.starfivetech.com:sbc/visionfive.git`, recommend to add the below at the tail of the /etc/hosts to fix the network domain issue:
-
-```
-192.168.110.45 gitlab.starfivetech.com
-```
-
+	$ cd linux && git branch JH7110_VisionFive2_6.12.y_devel origin/JH7110_VisionFive2_6.12.y_devel && cd ..
 This will take some time and require around 9GB of disk space. Some modules may fail because certain dependencies don't have the best git hosting. The only solution is to wait and try again later (or ask someone for a copy of that source repository).
 
-For user who build the release tag version, the above command is enough. For developer, need to switch the 5 submodules `buildroot`, `u-boot`, `linux`, `opensbi`, `soft_3rdpart` to correct branch manually, or refer to `.gitmodule`
+For user who build the release tag version, the above command is enough. For developer, need to switch the 5 submodules `buildroot`, `u-boot`, `linux`, `opensbi`, `soft_3rdpart` to correct branch manually, also could refer to `.gitmodule`
 
 ```
-$ cd buildroot && git checkout --track origin/jh7110-master && cd ..
-$ cd u-boot && git checkout --track origin/jh7110-master && cd ..
-$ cd linux && git checkout --track origin/vf2-6.12.y-devel && cd ..
-$ cd opensbi && git checkout master && cd ..
-$ cd soft_3rdpart && git checkout jh7110-devel && cd ..
+$ cd buildroot && git checkout --track origin/JH7110_VisionFive2_devel && cd ..
+$ cd u-boot && git checkout --track origin/JH7110_VisionFive2_devel && cd ..
+$ cd linux && git checkout --track origin/JH7110_VisionFive2_6.12.y_devel && cd ..
+$ cd opensbi && git checkout --track origin/JH7110_VisionFive2_devel && cd ..
+$ cd soft_3rdpart && git checkout JH7110_VisionFive2_devel && cd ..
 ```
 
 ## Quick Build Instructions
@@ -69,9 +62,9 @@ work/
 ├── linux/arch/riscv/boot
     ├── dts
     │   └── starfive
+    │       ├── jh7110-starfive-visionfive-2-A10.dtb
+    │       ├── jh7110-starfive-visionfive-2-A11.dtb
     │       ├── jh7110-starfive-visionfive-2-ac108.dtb
-    │       ├── jh7110-starfive-visionfive-2-tdm.dtb
-    │       ├── jh7110-starfive-visionfive-2-v1.2a.dtb
     │       ├── jh7110-starfive-visionfive-2-v1.3b.dtb
     │       ├── jh7110-starfive-visionfive-2-wm8960.dtb
     │       ├── vf2-overlay
@@ -364,46 +357,7 @@ swapoff -a
 swapon /dev/mmcblk0p5
 ```
 
-## APPENDIX II: Build RT-Thread AMP Image
-
-The sdk also support building RT-Thread AMP Image which will run both rt-thread os and linux os on JH7110 quad cpu core. For the details about the starfive rtthread amp usage, please reference to the [Starfive RVspace](https://doc.rvspace.org/VisionFive2/Application_Notes/RT-Thread/).
-
-First need to download RT-Thread code:
-
-```
-$ git clone -b amp-5.0.2-devel git@192.168.110.45:sdk/rtthread.git rtthread
-```
-
-Then download and prepare the toolchain needed for RT-Thread code:
-
-```
-# For Ubuntu 18.04:
-$ wget https://github.com/riscv-collab/riscv-gnu-toolchain/releases/download/2022.04.12/riscv64-elf-ubuntu-18.04-nightly-2022.04.12-nightly.tar.gz
-$ sudo tar xf riscv64-elf-ubuntu-18.04-nightly-2022.04.12-nightly.tar.gz -C /opt/
-$ /opt/riscv/bin/riscv64-unknown-elf-gcc --version
-riscv64-unknown-elf-gcc (g5964b5cd727) 11.1.0
-```
-
-Generate rtthread amp sdcard image:
-
-```
-$ make -j$(nproc)
-$ make ampuboot_fit  # build amp uboot image
-$ make buildroot_rootfs -j$(nproc)
-$ make img
-$ make amp_img       # generate sdcard img
-```
-
-Or just run script to implement the download rtthread and toolchain, and generate rtthread amp sdcard image:
-
-```
-$ build-rtthread-amp-sdk.sh
-```
-
-The output file `work/sdcard_amp.img` will be generated. How to write the sdcard img file to sdcard, please reference to the [APPENDIX I: Generate Booting SD Card](#Copy Image File to SD Card).
-
-## APPENDIX III: Using DTB Overlay Dynamically
-
+## APPENDIX II: Using DTB Overlay Dynamically
 The system support loading dtb overlay dynamically when the board is running. Run below on board:
 
 ```
@@ -419,7 +373,7 @@ Additional, you could remove the dtbo feature:
 # rmdir /sys/kernel/config/device-tree/overlays/dtoverlay
 ```
 
-## APPENDIX IV: Updating SPL and U-Boot binaries Under U-boot
+## APPENDIX III: Updating SPL and U-Boot binaries Under U-boot
 
 Prepare the tftp sever. e.g. `sudo apt install tftpd-hpa` for Ubuntu host.
 
@@ -453,7 +407,7 @@ Prepare the tftp sever. e.g. `sudo apt install tftpd-hpa` for Ubuntu host.
    StarFive # sf update ${loadaddr} 0x100000 $filesize
    ```
 
-## APPENDIX V: Recovering Bootloader
+## APPENDIX IV: Recovering Bootloader
 
 The SPL and U-Boot are stored inside the SPI flash on board. There may be situations where you accidentally emptied the flash or if the flash is damaged on your board. In these situations, it's better to recover the bootloader.
 
