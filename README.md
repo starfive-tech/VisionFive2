@@ -42,7 +42,7 @@ For user who build the release tag version, the above command is enough. For dev
 $ cd buildroot && git checkout --track origin/JH7110_VisionFive2_devel && cd ..
 $ cd u-boot && git checkout --track origin/JH7110_VisionFive2_devel && cd ..
 $ cd linux && git checkout --track origin/JH7110_VisionFive2_6.6.y_devel && cd ..
-$ cd opensbi && git checkout master && cd ..
+$ cd opensbi && git checkout --track origin/JH7110_VisionFive2_devel && cd ..
 $ cd soft_3rdpart && git checkout JH7110_VisionFive2_devel && cd ..
 ```
 
