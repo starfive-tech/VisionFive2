@@ -32,19 +32,61 @@
                         arch = "riscv";
                         load = <0x0 0x46000000>;
                         compression = "none";
-                        hash-1 {
-                                algo = "sha256";
-                        };
+                };
+
+                fdt-cm {
+                        data = /incbin/("../work/linux/arch/riscv/boot/dts/starfive/jh7110s-starfive-visionfive-2-cm.dtb");
+                        type = "flat_dt";
+                        arch = "riscv";
+                        load = <0x0 0x46000000>;
+                        compression = "none";
+                };
+
+                fdt-lite {
+                        data = /incbin/("../work/linux/arch/riscv/boot/dts/starfive/jh7110s-starfive-visionfive-2-lite.dtb");
+                        type = "flat_dt";
+                        arch = "riscv";
+                        load = <0x0 0x46000000>;
+                        compression = "none";
+                };
+
+                fdt-lite-emmc {
+                        data = /incbin/("../work/linux/arch/riscv/boot/dts/starfive/jh7110s-starfive-visionfive-2-lite-emmc.dtb");
+                        type = "flat_dt";
+                        arch = "riscv";
+                        load = <0x0 0x46000000>;
+                        compression = "none";
                 };
         };
 
         configurations {
-                default = "config-1";
+                default = "config-default";
 
-                config-1 {
+                config-default {
                         description = "visionfive2 with opensbi";
-						kernel = "vmlinux";
+                        kernel = "vmlinux";
                         fdt = "fdt";
+                        loadables = "ramdisk";
+                };
+
+                config-cm {
+                        description = "visionfive2 with opensbi";
+                        kernel = "vmlinux";
+                        fdt = "fdt-cm";
+                        loadables = "ramdisk";
+                };
+
+                config-lite {
+                        description = "visionfive2 with opensbi";
+                        kernel = "vmlinux";
+                        fdt = "fdt-lite";
+                        loadables = "ramdisk";
+                };
+
+                config-lite-emmc {
+                        description = "visionfive2 with opensbi";
+                        kernel = "vmlinux";
+                        fdt = "fdt-lite-emmc";
                         loadables = "ramdisk";
                 };
         };

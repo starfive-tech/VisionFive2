@@ -15,14 +15,37 @@
 			entry = <0x0 0x40000000>;
 			compression = "none";
 		};
+
+		fdt {
+			data = /incbin/("../work/u-boot/arch/riscv/dts/starfive_visionfive2.dtb");
+			type = "flat_dt";
+			arch = "riscv";
+			load = <0x40400000>;
+			compression = "none";
+		};
+
+		fdt-lite {
+			data = /incbin/("../work/u-boot/arch/riscv/dts/starfive_visionfive2_lite.dtb");
+			type = "flat_dt";
+			arch = "riscv";
+			load = <0x40400000>;
+			compression = "none";
+		};
 	};
 
 	configurations {
-		default = "config-1";
+		default = "config-default";
 
-		config-1 {
-			description = "U-boot-spl FIT config for JH7110 VisionFive2";
+		config-default {
+			description = "StarFive VisionFive V2";
 			firmware = "firmware";
+			fdt = "fdt";
+		};
+
+		config-lite {
+			description = "StarFive VisionFive V2 Lite";
+			firmware = "firmware";
+			fdt = "fdt-lite";
 		};
 	};
 };

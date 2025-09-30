@@ -22,4 +22,4 @@ setupfdt2=fdt set /chosen bootargs "${bootargs}";
 
 bootwait=setenv _delay ${bootdelay}; echo ${_delay}; while test ${_delay} > 0; do sleep 1; setexpr _delay ${_delay} - 1; echo ${_delay}; done
 
-boot2=run bootargs_ext; fatload ${bootdev} ${devnum}:${bootpart} ${loadaddr} ${fitfile}; bootm start ${loadaddr}; run setupfdt1;run setupird;run setupfdt2; bootm loados ${loadaddr}; run chipa_set_linux; run cpu_vol_set; echo "Booting kernel in"; booti ${kernel_addr_r} ${ramdisk_addr_r}:${filesize} ${fdtaddr}
+boot2=run bootargs_ext; fatload ${bootdev} ${devnum}:${bootpart} ${loadaddr} ${fitfile}; run fdt_conf_set; bootm start ${loadaddr}#${fdt_conf}; run setupfdt1;run setupird;run setupfdt2; bootm loados ${loadaddr}; run chipa_set_linux; run cpu_vol_set; echo "Booting kernel in"; booti ${kernel_addr_r} ${ramdisk_addr_r}:${filesize} ${fdtaddr}

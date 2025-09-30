@@ -67,8 +67,13 @@ work/
     │       ├── jh7110-starfive-visionfive-2-ac108.dtb
     │       ├── jh7110-starfive-visionfive-2-v1.3b.dtb
     │       ├── jh7110-starfive-visionfive-2-wm8960.dtb
+    │       ├── jh7110s-starfive-visionfive-2-lite-ac108.dtb
+    │       ├── jh7110s-starfive-visionfive-2-lite-emmc.dtb
+    │       ├── jh7110s-starfive-visionfive-2-lite-wm8960.dtb
+    │       ├── jh7110s-starfive-visionfive-2-lite.dtb
     │       ├── vf2-overlay
-    │       │   └── vf2-overlay-uart3-i2c.dtbo
+    │       │   │── vf2-overlay-uart3-i2c.dtbo
+    │       │   └── vf2-overlay-can.dtbo
     └── Image.gz
 ```
 
@@ -205,7 +210,7 @@ tftpboot ${loadaddr} image.fit;
 Step3: load and execute:
 
 ```
-bootm start ${loadaddr};bootm loados ${loadaddr};run chipa_set_linux;run cpu_vol_set; booti ${kernel_addr_r} ${ramdisk_addr_r}:${filesize} ${fdt_addr_r};
+run fdt_conf_set;bootm start ${loadaddr}#${fdt_conf};bootm loados ${loadaddr};run chipa_set_linux;run cpu_vol_set; booti ${kernel_addr_r} ${ramdisk_addr_r}:${filesize} ${fdt_addr_r};
 ```
 
 When you see the `buildroot login:` message, then congratulations, the launch was successful
