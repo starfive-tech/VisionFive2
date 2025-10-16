@@ -103,9 +103,11 @@ uboot_amp_orig := $(ampwrkdir)/u-boot/u-boot.bin
 uboot_amp      := $(ampwrkdir)/u-boot.bin
 ampsbi_wrkdir  := $(ampwrkdir)/opensbi
 rtos_file      := rtthread.bin
+rtos2_file     := rtthread2.bin
 rtos_elf       := rtthread.elf
 rtos_map       := rtthread.map
 amp_uboot_size := 1216K
+amp_rtos_size  := 400K
 rtos_compile   := scons
 rtos_defconfig := vf2_defconfig
 rtos_boardfile := vf2_rtconfig.h
@@ -400,13 +402,19 @@ $(uboot_amp_orig): $(uboot_srcdir) $(target_gcc)
 	$(MAKE) DEVICE_TREE=$(amp_dts) -C $(uboot_srcdir) O=$(uboot_amp_wrkdir) CROSS_COMPILE=$(CROSS_COMPILE)
 	cp $(rt_thread_wrkdir)/configs/$(rtos_defconfig) $(rt_thread_wrkdir)/.config
 	cp $(rt_thread_wrkdir)/configs/$(rtos_boardfile) $(rt_thread_wrkdir)/rtconfig.h
-	cd $(rt_thread_wrkdir) && $(rtos_compile) -c && $(rtos_compile)
+	cd $(rt_thread_wrkdir) && $(rtos_compile) -c && $(CROSS_COMPILE)cpp -P -I. -I`pwd` link.lds.S -o link.lds && $(rtos_compile)
+	cd -
+	cp $(rt_thread_wrkdir)/$(rtos_file) $(ampwrkdir)/$(rtos2_file)
+	truncate $(ampwrkdir)/$(rtos2_file) -c -s $(amp_rtos_size)
+	cd $(rt_thread_wrkdir) && $(rtos_compile) -c && $(CROSS_COMPILE)cpp -P -I. -I`pwd` -DRTOS2 link.lds.S -o link.lds && $(rtos_compile) --add-rtconfig=RTOS2
 	cd -
 	cp $(rt_thread_wrkdir)/$(rtos_file) $(ampwrkdir)
 	cp $(rt_thread_wrkdir)/$(rtos_elf) $(ampwrkdir)
 	cp $(rt_thread_wrkdir)/$(rtos_map) $(ampwrkdir)
 	cp $(uboot_amp_orig) $(uboot_amp)
 	truncate $(uboot_amp) -c -s $(amp_uboot_size)
+	truncate $(ampwrkdir)/$(rtos_file) -c -s $(amp_rtos_size)
+	cat $(ampwrkdir)/$(rtos2_file) >> $(uboot_amp)
 	cat $(ampwrkdir)/$(rtos_file) >> $(uboot_amp)
 
 $(ampsbi_bin): $(uboot_amp_orig)
