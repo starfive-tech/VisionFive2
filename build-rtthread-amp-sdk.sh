@@ -59,7 +59,7 @@ if [ ! -f /usr/bin/scons ]; then
 fi
 
 if [ ! -d rtthread ]; then
-    git clone -b amp-5.0.2-devel https://github.com/starfive-tech/rt-thread.git rtthread
+    git clone -b JH7110_VisionFive2_multi_rtos https://github.com/starfive-tech/rt-thread.git rtthread
 fi
 
 # build sdcard image

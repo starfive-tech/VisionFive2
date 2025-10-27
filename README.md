@@ -30,7 +30,7 @@ Checkout this repository  (e.g.: branch `JH7110_VisionFive2_6.6.y_devel`). Then 
 
 	$ git clone https://github.com/starfive-tech/VisionFive2.git
 	$ cd VisionFive2
-	$ git checkout --track origin/JH7110_VisionFive2_6.6.y_devel
+	$ git checkout --track origin/JH7110_VisionFive2_multi_rtos
 	$ git submodule update --init --recursive
 	$ cd linux && git branch JH7110_VisionFive2_6.6.y_devel origin/JH7110_VisionFive2_6.6.y_devel && cd ..
 
@@ -39,9 +39,9 @@ This will take some time and require around 9GB of disk space. Some modules may 
 For user who build the release tag version, the above command is enough. For developer, need to switch the 5 submodules `buildroot`, `u-boot`, `linux`, `opensbi`, `soft_3rdpart` to correct branch manually, or refer to `.gitmodule`
 
 ```
-$ cd buildroot && git checkout --track origin/JH7110_VisionFive2_devel && cd ..
-$ cd u-boot && git checkout --track origin/JH7110_VisionFive2_devel && cd ..
-$ cd linux && git checkout --track origin/JH7110_VisionFive2_6.6.y_devel && cd ..
+$ cd buildroot && git checkout --track origin/JH7110_VisionFive2_multi_rtos && cd ..
+$ cd u-boot && git checkout --track origin/JH7110_VisionFive2_multi_rtos && cd ..
+$ cd linux && git checkout --track origin/JH7110_VisionFive2_multi_rtos && cd ..
 $ cd opensbi && git checkout --track origin/JH7110_VisionFive2_devel && cd ..
 $ cd soft_3rdpart && git checkout JH7110_VisionFive2_devel && cd ..
 ```
